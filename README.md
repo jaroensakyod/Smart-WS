@@ -1,56 +1,57 @@
-# 📐 Smart WS
+﻿# 📐 Smart WS (Worksheet Builder)
 
-**Smart WS** is a premium Chrome Extension designed for teachers, students, and creators to build high-quality worksheets and educational materials directly on a dynamic canvas. Formerly known as Worksheet Builder, this tool provides a seamless experience for blending text, complex mathematics, and high-quality graphics.
-
----
-
-## ✨ Key Features
-
-### 🔢 Advanced Equation Rendering
-- **Mixed Mode:** Combine Thai or English text with LaTeX equations using `$inline$` and `$$display$$` notation.
-- **Editable equations:** Double-click any rendered equation to adjust its LaTeX source, color, and font size in real-time.
-- **Premium Math UI:** Powered by KaTeX for beautiful, crisp, and fast mathematical rendering.
-
-### 🔍 Powerful Graphic Search
-- **Web Image Discovery:** Integrated search using Wikimedia Commons (Free to use/CC).
-- **Lineart & Clipart:** Dedicated buttons for finding coloring-style graphics and educational illustrations.
-- **Frames & Borders:** A selection of hand-crafted vector frames to decorate your pages.
-- **SVG Library:** Instant access to commonly used math symbols, characters, and school icons.
-
-### 🛠️ Professional Layout Tools
-- **Fabric.js Engine:** Professional-grade canvas with layer ordering, opacity control, and group selection.
-- **Smart Sizing:** Text and equations automatically fit their content—no more squeezed graphics.
-- **Clipboard Integration:** Paste images, HTML, or plain math text directly into your workspace.
-- **Full Undo/Redo:** 30-step history with `Ctrl+Z` and `Ctrl+Y` support.
-
-### 📄 Export & Management
-- **High-Res PNG:** Export your worksheets at 2× resolution for crisp printing.
-- **Print-ready PDF:** Generate industry-standard A4 PDF documents.
-- **Auto-Save:** Your project is saved automatically to your browser storage.
+**Smart WS** คือ Chrome Extension ระดับพรีเมียมที่ออกแบบมาสำหรับครู นักเรียน และนักสร้างสรรค์ เพื่อสร้างใบงานและสื่อการเรียนรู้อย่างรวดเร็วบนพื้นที่ทำงานแบบ Canvas ช่วยให้คุณผสมผสานข้อความ สมการคณิตศาสตร์ และกราฟิกคุณภาพสูงได้อย่างราบรื่น
 
 ---
 
-## 🚀 Quick Setup
+## ✨ คุณสมบัติเด่น
 
-1. **Download/Clone** this repository to your computer.
-2. Open **Google Chrome** and navigate to `chrome://extensions/`.
-3. Enable **"Developer mode"** (top right corner).
-4. Click **"Load unpacked"**.
-5. Select the `worksheet-builder` folder.
-6. Open a **New Tab** or click the extension icon to start creating!
+### 🔢 การเขียนสมการขั้นสูง
+- **โหมดผสม (Mixed Mode):** เขียนข้อความภาษาไทยหรืออังกฤษควบคู่กับสมการ LaTeX โดยใช้สัญลักษณ์ $inline$ และ $}
+- **สมการที่แก้ไขได้:** ดับเบิลคลิกที่สมการเพื่อปรับแต่งโค้ด LaTeX, สี และขนาดฟอนต์ได้แบบเรียลไทม์
+- **ผลลัพธ์ที่สวยงาม:** ขับเคลื่อนด้วย KaTeX พื้นที่สมการจะคมชัดและประมวลผลได้อย่างรวดเร็ว
+
+### 🔍 ระบบค้นหากราฟิกที่ทรงพลัง
+- **ค้นหาภาพจากเว็บ:** เชื่อมต่อระบบค้นหาจาก Wikimedia Commons (ใช้งานฟรี/CC)
+- **โหมด Monoline (ใหม่!):** ระบบกรองรูปภาพลายเส้นและสมุดระบายสีที่แม่นยำ พร้อมรองรับไฟล์เวกเตอร์ SVG เพื่อการขยายที่ไม่เสียคุณภาพ
+- **คลัง SVG:** เข้าถึงสัญลักษณ์ทางคณิตศาสตร์ ตัวละคร และไอคอนทางการศึกษาได้ทันทีจากเมนูด้านซ้าย
+- **กรอบและขีดเส้น:** มีกรอบประดับและเส้นแบบต่างๆ (เส้นปะ/เส้นหยัก) ให้เลือกใช้ประดับใบงาน
+
+### 🛠️ เครื่องมือจัดวางระดับมืออาชีพ
+- **Fabric.js Engine:** จัดการเลเยอร์, ความโปร่งใส และการจัดกลุ่มวัตถุได้อย่างอิสระ
+- **Smart Sizing:** ข้อความและสมการจะปรับขนาดตามเนื้อหาอัตโนมัติ หมดปัญหาภาพบิดเบี้ยว
+- **ระบบคลิปบอร์ด:** คัดลอกรูปภาพหรือข้อความสมการมาวาง (Paste) ลงในพื้นที่ทำงานได้ทันที
+- **Undo/Redo:** รองรับประวัติการทำงาน 30 ขั้นตอน กด Ctrl+Z และ Ctrl+Y ได้อย่างราบรื่น
+
+### 📄 การส่งออกและการจัดการหลายหน้า
+- **ไฟล์ PNG ความละเอียดสูง:** ส่งออกใบงานในระดับ 2× (High-Res) เพื่อการพิมพ์ที่คมชัด
+- **PDF หลายหน้า:** สร้างไฟล์ PDF มาตรฐาน A4 ที่รวมทุกหน้าไว้ในไฟล์เดียว
+- **Word (.doc):** ส่งออกเป็นไฟล์ Word ที่สามารถเปิดและจัดลำดับหน้าได้ง่าย
+- **จัดการหน้า:** เพิ่มหน้า สลับหน้า และบันทึกโปรเจกต์อัตโนมัติลงในเบราว์เซอร์
 
 ---
 
-## 🛠️ Built With
+## 🚀 การติดตั้งอย่างรวดเร็ว
+
+1. **ดาวน์โหลด/Clone** พื้นที่เก็บข้อมูลนี้ลงในเครื่องของคุณ
+2. เปิดเบราว์เซอร์ **Google Chrome** และไปที่ chrome://extensions/
+3. เปิดใช้งาน **"ระบบนักพัฒนา" (Developer mode)** ที่มุมขวาบน
+4. คลิกปุ่ม **"โหลดส่วนขยายที่คลายแพ็กแล้ว" (Load unpacked)**
+5. เลือกโฟลเดอร์ของโปรเจกต์ Smart-WS
+6. เปิด **แท็บใหม่** หรือคลิกที่ไอคอนส่วนขยายเพื่อเริ่มสร้างใบงาน!
+
+---
+
+## 🛠️ พัฒนาด้วย
 
 - [Fabric.js](http://fabricjs.com/) - Interactive HTML5 Canvas
-- [KaTeX](https://katex.org/) - The fastest math typesetting library
-- [jsPDF](https://github.com/parallax/jsPDF) - Client-side PDF generation
-- [Wikimedia Commons API](https://commons.wikimedia.org/wiki/Main_Page) - World's largest free media library
+- [KaTeX](https://katex.org/) - ห้องสมุดประมวลผลคณิตศาสตร์ที่เร็วที่สุด
+- [jsPDF](https://github.com/parallax/jsPDF) - ระบบสร้างไฟล์ PDF ฝั่งไคลเอนต์
+- [Wikimedia Commons API](https://commons.wikimedia.org/wiki/Main_Page) - คลังสื่อเสรีที่ใหญ่ที่สุดในโลก
 
 ---
 
-## 📜 License & Copyright
+## 📜 ลิขสิทธิ์และสัญญาอนุญาต
 
 **Copyright © 2026 The Coach inc.**
-Built with ❤️ for educators. All bundled SVGs are Public Domain or CC0. Image search results are subject to their respective Creative Commons licenses.
+สร้างขึ้นด้วย ❤️ เพื่อนักศึกษาและคุณครู กราฟิกที่รวมอยู่ในระบบเป็นลิขสิทธิ์ Public Domain หรือ CC0 รูปภาพที่ค้นพบจาก Wikimedia Commons เป็นไปตามสัญญาอนุญาต Creative Commons ของผู้สร้างต้นฉบับ
