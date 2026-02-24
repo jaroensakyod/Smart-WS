@@ -51,6 +51,7 @@
       <div class="export-group">
         <button class="action-btn export-btn" id="btnExportPNG">🖼 PNG</button>
         <button class="action-btn export-btn" id="btnExportPDF">📄 PDF</button>
+        <button class="action-btn export-btn" id="btnExportDOCX">📝 Word</button>
       </div>
     </div>
   </header>
@@ -62,6 +63,12 @@
     <aside class="svg-panel">
       <div class="panel-search-wrap">
         <input type="text" id="svgSearch" class="panel-search" placeholder="🔍 ค้นหารูป..." />
+      </div>
+      <div class="panel-filter-wrap">
+        <label class="panel-filter-label">
+          <input type="checkbox" id="monoOnlyFilter" />
+          Monoline only
+        </label>
       </div>
 
       <!-- Upload your own SVG -->
@@ -80,6 +87,12 @@
     <main class="canvas-area">
       <div class="page-shadow">
         <canvas id="worksheetCanvas"></canvas>
+      </div>
+      <div class="page-nav-bar">
+        <button class="action-btn load-btn" id="btnPrevPage">◀ หน้าเดิม</button>
+        <span class="page-indicator" id="pageIndicator">หน้า 1 / 1</span>
+        <button class="action-btn load-btn" id="btnNextPage">หน้าถัดไป ▶</button>
+        <button class="action-btn save-btn" id="btnAddPage">➕ เพิ่มหน้า</button>
       </div>
     </main>
 
@@ -217,6 +230,13 @@
       <div class="eq-input-wrap">
         <input type="text" id="imgSearchInput" class="panel-search"
           placeholder="🔍 ค้นหา เช่น: school, frame, science, cat..." style="width:100%;box-sizing:border-box" />
+      </div>
+
+      <div class="panel-filter-wrap" style="padding:0 0 10px 0">
+        <label class="panel-filter-label">
+          <input type="checkbox" id="imgMonolineOnly" checked />
+          เน้น Monoline / Line Art
+        </label>
       </div>
 
       <div class="eq-chips" id="imgCategoryChips"></div>

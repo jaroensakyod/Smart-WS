@@ -148,5 +148,66 @@ window.SVG_LIBRARY = [
   {
     id: 'frame_wavy', name: 'กรอบคลื่น', category: 'frames',
     svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160"><path d="M10,8 Q30,0 50,8 Q70,16 90,8 Q110,0 130,8 Q150,16 170,8 Q190,0 196,8 L196,152 Q176,160 156,152 Q136,144 116,152 Q96,160 76,152 Q56,144 36,152 Q16,160 4,152 Z" fill="none" stroke="#ec4899" stroke-width="2.5"/></svg>`
+  },
+
+  /* ── MONOLINE ARROWS ─────────────────────────────────────── */
+  {
+    id: 'arrow_monoline_classic', name: 'ลูกศรตรง', category: 'arrows',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M8,32 L56,32 M44,20 L56,32 L44,44" fill="none" stroke="#1e293b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+  },
+  {
+    id: 'arrow_monoline_dashed', name: 'ลูกศรเส้นประ', category: 'arrows',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M8,32 L56,32 M44,20 L56,32 L44,44" fill="none" stroke="#1e293b" stroke-width="3" stroke-dasharray="8,4" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+  },
+  {
+    id: 'arrow_monoline_curve', name: 'ลูกศรโค้ง', category: 'arrows',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M8,48 Q32,12 56,48 M42,42 L56,48 L48,34" fill="none" stroke="#1e293b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+  },
+  {
+    id: 'arrow_monoline_zigzag', name: 'ลูกศรซิกแซก', category: 'arrows',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M8,40 L18,24 L28,40 L38,24 L48,40 L56,32 M44,24 L56,32 L46,42" fill="none" stroke="#1e293b" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+  },
+
+  {
+    id: 'frame_mono_header', name: 'กรอบหัวกระดาษ (Mono)', category: 'frames',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 170"><rect x="8" y="8" width="204" height="154" rx="8" fill="none" stroke="#1e293b" stroke-width="2.5"/><line x1="8" y1="34" x2="212" y2="34" stroke="#1e293b" stroke-width="2" stroke-dasharray="4,4"/></svg>`
+  },
+  {
+    id: 'frame_mono_note', name: 'กรอบเน้นข้อความ (Mono)', category: 'frames',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 170"><rect x="14" y="14" width="192" height="142" rx="10" fill="none" stroke="#1e293b" stroke-width="2.5"/><path d="M24,44 H196 M24,64 H176 M24,84 H188" stroke="#1e293b" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="6,5"/></svg>`
+  },
+
+  /* ── MONOLINE SYMBOLS ────────────────────────────────────── */
+  {
+    id: 'symbol_mono_circle', name: 'วงกลมกรอกช่อง', category: 'symbols',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="#1e293b" stroke-width="2.5"/></svg>`
+  },
+  {
+    id: 'symbol_mono_square', name: 'สี่เหลี่ยมกรอกช่อง', category: 'symbols',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="8" y="8" width="48" height="48" rx="4" fill="none" stroke="#1e293b" stroke-width="2.5"/></svg>`
+  },
+  {
+    id: 'symbol_mono_triangle', name: 'สามเหลี่ยมกรอกช่อง', category: 'symbols',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><polygon points="32,8 58,54 6,54" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>`
+  },
+
+  /* ── MONOLINE GEOMETRY ───────────────────────────────────── */
+  {
+    id: 'geom_mono_cube', name: 'ลูกบาศก์', category: 'geometry',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M12,24 L32,12 L52,24 L52,48 L32,60 L12,48 Z M12,24 L32,36 L52,24 M32,36 L32,60" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+  },
+  {
+    id: 'geom_mono_cylinder', name: 'ทรงกระบอก', category: 'geometry',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><ellipse cx="32" cy="14" rx="20" ry="8" fill="none" stroke="#1e293b" stroke-width="2.5"/><path d="M12,14 L12,50 A20,8 0 0,0 52,50 L52,14" fill="none" stroke="#1e293b" stroke-width="2.5"/><ellipse cx="32" cy="50" rx="20" ry="8" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-dasharray="4,4"/></svg>`
+  },
+
+  /* ── MONOLINE ANIMALS ────────────────────────────────────── */
+  {
+    id: 'animal_mono_cat', name: 'แมว', category: 'animals',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M16,42 Q8,42 8,30 Q8,18 16,10 L24,18 L40,18 L48,10 Q56,18 56,30 Q56,42 48,42 M16,42 L48,42 M32,42 L32,56 Q32,62 38,62" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="28" r="2" fill="#1e293b"/><circle cx="40" cy="28" r="2" fill="#1e293b"/><path d="M28,34 Q32,38 36,34" fill="none" stroke="#1e293b" stroke-width="2"/></svg>`
+  },
+  {
+    id: 'animal_mono_bird', name: 'นก', category: 'animals',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M12,32 Q12,12 32,12 Q52,12 52,32 Q52,52 32,52 Q18,52 12,42 M52,32 L60,28 L52,36" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="38" cy="24" r="2" fill="#1e293b"/><path d="M24,52 L24,60 M40,52 L40,60" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round"/></svg>`
   }
 ];

@@ -1,11 +1,12 @@
 /* ================================================================
    app.js  — Worksheet Builder Core
-   Fabric.js canvas init, undo/redo, tool state, keyboard shortcuts
+   Fabric.js canvas init, workbook pages, undo/redo, tools, shortcuts
    ================================================================ */
 
 /* ── 1. CANVAS INIT ─────────────────────────────────────────── */
 const PAPER_W = 794;   // A4 at 96dpi
 const PAPER_H = 1123;
+const SERIALIZE_PROPS = ['id', 'data', 'lockUniScaling', 'lockSkewingX', 'lockSkewingY'];
 
 const canvas = new fabric.Canvas('worksheetCanvas', {
     width: PAPER_W,
@@ -15,7 +16,126 @@ const canvas = new fabric.Canvas('worksheetCanvas', {
     preserveObjectStacking: true,
 });
 
-/* ── 2. ACTIVE TOOL STATE ───────────────────────────────────── */
+/* ── 2. WORKBOOK STATE (MULTI-PAGE) ───────────────────────── */
+const HISTORY_MAX = 30;
+let activePageIndex = 0;
+let workbook = { pages: [] };
+let isReplaying = false;
+
+const BLANK_PAGE_JSON = JSON.stringify(canvas.toJSON(SERIALIZE_PROPS));
+
+function createPageState(json = BLANK_PAGE_JSON) {
+    return {
+        json,
+        undoStack: [json],
+        redoStack: [],
+    };
+}
+
+function currentPage() {
+    return workbook.pages[activePageIndex];
+}
+
+function updatePageIndicator() {
+    const indicator = document.getElementById('pageIndicator');
+    if (indicator) indicator.textContent = `หน้า ${activePageIndex + 1} / ${workbook.pages.length}`;
+
+    const prevBtn = document.getElementById('btnPrevPage');
+    const nextBtn = document.getElementById('btnNextPage');
+    if (prevBtn) prevBtn.disabled = activePageIndex <= 0;
+    if (nextBtn) nextBtn.disabled = activePageIndex >= workbook.pages.length - 1;
+}
+
+function serializeCanvasNow() {
+    return JSON.stringify(canvas.toJSON(SERIALIZE_PROPS));
+}
+
+function persistCurrentPage() {
+    const page = currentPage();
+    if (!page) return;
+    page.json = serializeCanvasNow();
+    if (!page.undoStack.length) page.undoStack = [page.json];
+}
+
+function loadCanvasJson(json) {
+    return new Promise((resolve) => {
+        isReplaying = true;
+        canvas.loadFromJSON(json || BLANK_PAGE_JSON, () => {
+            canvas.backgroundColor = '#ffffff';
+            canvas.renderAll();
+            isReplaying = false;
+            resolve();
+        });
+    });
+}
+
+async function goToPage(index) {
+    if (index < 0 || index >= workbook.pages.length || index === activePageIndex) return false;
+    persistCurrentPage();
+    activePageIndex = index;
+    await loadCanvasJson(currentPage().json);
+    clearPropsPanel();
+    updatePageIndicator();
+    return true;
+}
+
+async function addPageAndGo() {
+    persistCurrentPage();
+    workbook.pages.push(createPageState());
+    activePageIndex = workbook.pages.length - 1;
+    await loadCanvasJson(currentPage().json);
+    clearPropsPanel();
+    updatePageIndicator();
+    showToast('➕ เพิ่มหน้าใหม่แล้ว');
+}
+
+function saveHistory() {
+    if (isReplaying) return;
+    const page = currentPage();
+    if (!page) return;
+
+    page.redoStack = [];
+    const snapshot = serializeCanvasNow();
+    if (page.undoStack[page.undoStack.length - 1] !== snapshot) {
+        page.undoStack.push(snapshot);
+        if (page.undoStack.length > HISTORY_MAX) page.undoStack.shift();
+    }
+    page.json = snapshot;
+}
+
+function undo() {
+    const page = currentPage();
+    if (!page || page.undoStack.length <= 1) { showToast('ไม่มีอะไรให้ย้อนกลับ'); return; }
+
+    page.redoStack.push(page.undoStack.pop());
+    const state = page.undoStack[page.undoStack.length - 1];
+    loadCanvasJson(state).then(() => {
+        page.json = state;
+        clearPropsPanel();
+    });
+}
+
+function redo() {
+    const page = currentPage();
+    if (!page || !page.redoStack.length) { showToast('ไม่มีอะไรให้ทำซ้ำ'); return; }
+
+    const state = page.redoStack.pop();
+    page.undoStack.push(state);
+    loadCanvasJson(state).then(() => {
+        page.json = state;
+        clearPropsPanel();
+    });
+}
+
+function initWorkbook() {
+    workbook.pages = [createPageState(BLANK_PAGE_JSON)];
+    activePageIndex = 0;
+    updatePageIndicator();
+}
+
+initWorkbook();
+
+/* ── 3. ACTIVE TOOL STATE ───────────────────────────────────── */
 window.activeTool = 'select'; // 'select' | 'text' | 'rect' | 'line'
 let isDrawing = false;
 let shapeStart = null;
@@ -27,7 +147,6 @@ function setActiveTool(tool) {
     canvas.defaultCursor = 'default';
     canvas.selection = true;
 
-    // Update toolbar button highlights
     document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tool === tool);
     });
@@ -35,51 +154,18 @@ function setActiveTool(tool) {
     if (tool === 'select') {
         canvas.getObjects().forEach(o => o.set({ selectable: true, evented: true }));
     } else {
-        // Disable selection while drawing
         canvas.discardActiveObject();
         canvas.selection = false;
         canvas.defaultCursor = 'crosshair';
     }
 }
 
-/* ── 3. UNDO / REDO ─────────────────────────────────────────── */
-const HISTORY_MAX = 30;
-let undoStack = [];
-let redoStack = [];
-let isReplaying = false;
-
-function saveHistory() {
-    if (isReplaying) return;
-    redoStack = [];
-    undoStack.push(JSON.stringify(canvas.toJSON(['id', 'data', 'lockUniScaling', 'lockSkewingX', 'lockSkewingY'])));
-    if (undoStack.length > HISTORY_MAX) undoStack.shift();
-}
-
-function undo() {
-    if (undoStack.length <= 1) { showToast('ไม่มีอะไรให้ย้อนกลับ'); return; }
-    isReplaying = true;
-    redoStack.push(undoStack.pop());
-    const state = undoStack[undoStack.length - 1];
-    canvas.loadFromJSON(state, () => { canvas.renderAll(); isReplaying = false; });
-}
-
-function redo() {
-    if (!redoStack.length) { showToast('ไม่มีอะไรให้ทำซ้ำ'); return; }
-    isReplaying = true;
-    const state = redoStack.pop();
-    undoStack.push(state);
-    canvas.loadFromJSON(state, () => { canvas.renderAll(); isReplaying = false; });
-}
-
-// Save initial (empty) state
-saveHistory();
-
-// Auto-save on every modification
+/* ── 4. AUTO-SAVE HISTORY ON MODIFICATION ─────────────────── */
 canvas.on('object:added', saveHistory);
 canvas.on('object:removed', saveHistory);
 canvas.on('object:modified', saveHistory);
 
-/* ── 4. SHAPE DRAWING (Rect, Line) ─────────────────────────── */
+/* ── 5. SHAPE DRAWING (Rect, Line) ─────────────────────────── */
 const getFill = () => document.getElementById('colorFill')?.value || '#ffffff';
 const getStroke = () => document.getElementById('colorStroke')?.value || '#1e293b';
 
@@ -142,7 +228,7 @@ canvas.on('mouse:up', () => {
     setActiveTool('select');
 });
 
-/* ── 5. SELECTION CHANGE → update properties panel ────────── */
+/* ── 6. SELECTION CHANGE → update properties panel ────────── */
 canvas.on('selection:created', updatePropsPanel);
 canvas.on('selection:updated', updatePropsPanel);
 canvas.on('selection:cleared', clearPropsPanel);
@@ -163,7 +249,6 @@ function updatePropsPanel() {
         const ffEl = document.getElementById('propFontFamily');
         if (ffEl) ffEl.value = obj.fontFamily || 'Sarabun';
     } else if (obj.data?.type === 'equation') {
-        // Equations also show size & color controls
         if (textProps) textProps.style.display = '';
         const fsEl = document.getElementById('propFontSize');
         if (fsEl) fsEl.value = obj.data.fontSize || 22;
@@ -188,9 +273,8 @@ function clearPropsPanel() {
     if (objectProps) objectProps.style.display = 'none';
 }
 
-/* ── 6. KEYBOARD SHORTCUTS ──────────────────────────────────── */
+/* ── 7. KEYBOARD SHORTCUTS ─────────────────────────────────── */
 document.addEventListener('keydown', (e) => {
-    // Don't intercept when editing text on canvas
     if (canvas.getActiveObject()?.isEditing) return;
 
     const tag = document.activeElement?.tagName;
@@ -213,7 +297,6 @@ document.addEventListener('keydown', (e) => {
         }
     }
 
-    // Duplicate (Ctrl+D)
     if (e.ctrlKey && e.key === 'd') {
         e.preventDefault();
         const obj = canvas.getActiveObject();
@@ -226,12 +309,10 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-/* ── 7. CANVAS DRAG-OVER for SVG drop ──────────────────────── */
-// (drag from panel, handled in panel.js via fabricAddSvg)
+/* ── 8. CANVAS DRAG-OVER for SVG drop ─────────────────────── */
 window.fabricAddSvgAtCenter = function (svgStr) {
     fabric.loadSVGFromString(svgStr, (objects, options) => {
         const group = fabric.util.groupSVGElements(objects, options);
-        // Scale to ~120px tall
         const scale = 120 / (group.height || 1);
         group.set({
             left: PAPER_W / 2 - (group.width * scale) / 2,
@@ -259,7 +340,7 @@ window.fabricAddSvgAt = function (svgStr, x, y) {
     });
 };
 
-/* ── 8. CANVAS DROP ZONE for SVG files ─────────────────────── */
+/* ── 9. CANVAS DROP ZONE for SVG files ─────────────────────── */
 const canvasEl = document.getElementById('worksheetCanvas');
 canvasEl.addEventListener('dragover', e => e.preventDefault());
 canvasEl.addEventListener('drop', e => {
@@ -272,7 +353,12 @@ canvasEl.addEventListener('drop', e => {
     window.fabricAddSvgAt(svgStr, x, y);
 });
 
-/* ── 9. TOAST HELPER ────────────────────────────────────────── */
+/* ── 10. PAGE NAV BUTTONS ──────────────────────────────────── */
+document.getElementById('btnAddPage')?.addEventListener('click', addPageAndGo);
+document.getElementById('btnPrevPage')?.addEventListener('click', () => goToPage(activePageIndex - 1));
+document.getElementById('btnNextPage')?.addEventListener('click', () => goToPage(activePageIndex + 1));
+
+/* ── 11. TOAST HELPER ──────────────────────────────────────── */
 let _toastTimer = null;
 function showToast(msg) {
     let t = document.getElementById('toast');
@@ -286,7 +372,38 @@ function showToast(msg) {
     clearTimeout(_toastTimer);
     _toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
 }
-window.showToast = showToast;
 
-/* Expose canvas globally for other modules */
+/* ── 12. EXPOSE API FOR OTHER MODULES ─────────────────────── */
+window.showToast = showToast;
 window.wbCanvas = canvas;
+window.wbPersistCurrentPage = persistCurrentPage;
+window.wbGetPageCount = () => workbook.pages.length;
+window.wbGetActivePageIndex = () => activePageIndex;
+window.wbGoToPage = goToPage;
+window.wbAddPage = addPageAndGo;
+window.wbGetWorkbookData = () => {
+    persistCurrentPage();
+    return {
+        version: 2,
+        activePageIndex,
+        pages: workbook.pages.map(p => p.json),
+    };
+};
+window.wbLoadWorkbookData = async (payload) => {
+    if (!payload?.pages?.length) {
+        workbook.pages = [createPageState(BLANK_PAGE_JSON)];
+        activePageIndex = 0;
+        await loadCanvasJson(BLANK_PAGE_JSON);
+        updatePageIndicator();
+        clearPropsPanel();
+        return;
+    }
+
+    workbook.pages = payload.pages.map(p => createPageState(p || BLANK_PAGE_JSON));
+    activePageIndex = Math.min(Math.max(payload.activePageIndex || 0, 0), workbook.pages.length - 1);
+    await loadCanvasJson(workbook.pages[activePageIndex].json);
+    updatePageIndicator();
+    clearPropsPanel();
+};
+
+updatePageIndicator();

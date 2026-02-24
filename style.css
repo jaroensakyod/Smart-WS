@@ -206,6 +206,41 @@ input[type="color"] {
   padding: 10px 10px 6px;
 }
 
+.panel-filter-wrap {
+  padding: 0 10px 8px;
+}
+
+.panel-mono-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.panel-mono-chip {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.panel-mono-chip.active {
+  background: var(--blue-dim);
+  color: var(--blue);
+  border-color: var(--blue);
+}
+
+.panel-filter-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  user-select: none;
+}
+
+.panel-filter-label input[type="checkbox"] {
+  accent-color: var(--blue);
+}
+
 .panel-search {
   width: 100%;
   background: var(--surface2);
@@ -319,7 +354,8 @@ input[type="color"] {
   overflow: auto;
   background: #0a0f1a;
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   padding: 30px;
   scrollbar-width: thin;
@@ -335,6 +371,23 @@ input[type="color"] {
 #worksheetCanvas {
   display: block;
   background: #ffffff;
+}
+
+.page-nav-bar {
+  margin-top: 14px;
+  width: min(100%, var(--paper-w));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.page-indicator {
+  min-width: 110px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 /* ═══════════════════════ RIGHT PANEL ═══════════════════════ */
@@ -748,6 +801,7 @@ input[type="color"] {
   border: 2px solid transparent;
   transition: all .15s;
   background: var(--surface2);
+  position: relative;
 }
 
 .img-card:hover {
@@ -761,6 +815,25 @@ input[type="color"] {
   height: 100px;
   object-fit: cover;
   display: block;
+}
+
+.img-card-media-tags {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: flex;
+  gap: 4px;
+}
+
+.img-media-badge {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--blue);
+  background: var(--blue-dim);
+  color: var(--blue);
 }
 
 .img-card-info {
