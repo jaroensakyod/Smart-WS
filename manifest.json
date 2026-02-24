@@ -1,0 +1,25 @@
+{
+    "manifest_version": 3,
+    "name": "Smart WS",
+    "version": "1.0.0",
+    "description": "สร้างแบบฝึกหัดด้วย Canvas ลาก-วาง Vector ได้ง่ายๆ",
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    },
+    "permissions": [
+        "storage",
+        "downloads"
+    ],
+    "host_permissions": [
+        "https://commons.wikimedia.org/*",
+        "https://upload.wikimedia.org/*"
+    ],
+    "action": {
+        "default_title": "Smart WS"
+    },
+    "chrome_url_overrides": {
+        "newtab": "newtab.html"
+    }
+}
