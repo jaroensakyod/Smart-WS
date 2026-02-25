@@ -14,7 +14,11 @@
     ],
     "host_permissions": [
         "https://commons.wikimedia.org/*",
-        "https://upload.wikimedia.org/*"
+        "https://upload.wikimedia.org/*",
+        "https://api.iconify.design/*",
+        "https://api.openverse.org/*",
+        "https://www.flickr.com/*",
+        "https://live.staticflickr.com/*"
     ],
     "action": {
         "default_title": "Smart WS"

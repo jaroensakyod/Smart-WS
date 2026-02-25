@@ -1,39 +1,42 @@
 /* ================================================================
-   webImages.js — Free Image Search (Wikimedia Commons API)
-   Truly free, no API key, no OAuth. Public domain / CC images.
+   webImages.js — Free Image Search
+    Sources: Wikimedia / Iconify / Flickr / Openverse
    ================================================================ */
 
 (function () {
     'use strict';
 
-    const API = 'https://commons.wikimedia.org/w/api.php';
+    const WIKIMEDIA_API = 'https://commons.wikimedia.org/w/api.php';
+    const OPENVERSE_API = 'https://api.openverse.org/v1/images/';
+    const PAGE_SIZE = 24;
+    const FETCH_TIMEOUT = 12000;
 
     const imgModal = document.getElementById('imageSearchModal');
     const imgSearch = document.getElementById('imgSearchInput');
+    const imgSearchBtn = document.getElementById('imgSearchBtn');
     const imgGrid = document.getElementById('imgSearchGrid');
     const imgLoading = document.getElementById('imgSearchLoading');
     const imgError = document.getElementById('imgSearchError');
-    const imgMonolineOnly = document.getElementById('imgMonolineOnly');
+    const imgSvgOnly = document.getElementById('imgSvgOnly');
+    const imgVectorOnly = document.getElementById('imgVectorOnly');
+    const imgSourceSelect = document.getElementById('imgSourceSelect');
+    const imgHint = document.querySelector('.img-search-hint');
 
-    const BASE_CATS = [
-        { label: '🎓 การศึกษา', q: 'education school student clipart' },
-        { label: '🔬 วิทยาศาสตร์', q: 'science laboratory experiment clipart' },
-        { label: '🧮 คณิตศาสตร์', q: 'mathematics geometry shapes clipart' },
-        { label: '🌿 ธรรมชาติ', q: 'nature plant flower vector' },
-        { label: '🐾 สัตว์', q: 'animal cute cartoon clipart' },
-        { label: '🖼️ กรอบ', q: 'frame border ornament decorative clipart' },
-    ];
+    let currentQuery = '';
+    let currentSource = 'wikimedia';
+    let currentOffset = 0;
+    let hasMore = true;
+    let isLoading = false;
+    let seenResultKeys = new Set();
 
-    const MONO_CATS = [
-        { label: '🎨 ระบายสี', q: 'coloring page' },
-        { label: '🖊️ ลายเส้น', q: 'outline drawing' },
-        { label: '🔳 ไอคอน', q: 'simple icon symbol' },
-        { label: '📏 รูปวาดเทคนิค', q: 'technical diagram schematic' },
-    ];
+    let observer = null;
+    const sentinel = document.createElement('div');
+    sentinel.id = 'imgScrollSentinel';
+    sentinel.style.height = '8px';
 
     const MONO_QUERY_MAP = [
-        { re: /แมว|cat/i, q: 'cat outline incategory:"Line art of cats"' },
-        { re: /สุนัข|dog/i, q: 'dog outline incategory:"Line art of dogs"' },
+        { re: /แมว|cat/i, q: 'cat' },
+        { re: /สุนัข|dog/i, q: 'dog outline line art' },
         { re: /ปลา|fish/i, q: 'fish outline' },
         { re: /นก|bird/i, q: 'bird outline' },
         { re: /รถ|car/i, q: 'car outline technical drawing' },
@@ -43,195 +46,512 @@
         { re: /คณิต|math|mathematics|geometry/i, q: 'geometry diagram line art' },
     ];
 
-    const MONO_INCLUDE_TERMS = /line art|coloring pages?|coloring book|black and white|black & white|outline|ink drawing|technical drawing|diagram|engraving|monochrome|silhouette/i;
-    const MONO_EXCLUDE_TERMS = /color photograph|landscape|portrait|full color|colorful|wallpaper|oil painting|photo of/i;
-
-    const chipBox = document.getElementById('imgCategoryChips');
-    function renderQuickChips() {
-        if (!chipBox) return;
-        const monoOnly = !!imgMonolineOnly?.checked;
-        const chips = monoOnly ? MONO_CATS : BASE_CATS;
-        chipBox.innerHTML = '';
-        chips.forEach(cat => {
-            const btn = document.createElement('button');
-            btn.className = 'eq-chip';
-            btn.textContent = cat.label;
-            btn.addEventListener('click', () => {
-                if (imgSearch) imgSearch.value = cat.q;
-                doSearch(cat.q);
-            });
-            chipBox.appendChild(btn);
-        });
-    }
-    renderQuickChips();
-
-    /* Open / Close */
-    function openImgModal() {
-        if (!imgModal) return;
-        imgModal.style.display = 'flex';
-        imgSearch?.focus();
-    }
-    function closeImgModal() {
-        if (imgModal) imgModal.style.display = 'none';
-    }
-
-    document.getElementById('toolImageSearch')?.addEventListener('click', openImgModal);
-    document.getElementById('imgModalClose')?.addEventListener('click', closeImgModal);
-    document.getElementById('imgCancel')?.addEventListener('click', closeImgModal);
-    imgModal?.addEventListener('click', e => { if (e.target === imgModal) closeImgModal(); });
-
-    /* Search */
-    let _timer;
-    imgSearch?.addEventListener('input', () => {
-        clearTimeout(_timer);
-        _timer = setTimeout(() => doSearch(imgSearch.value.trim()), 500);
-    });
-    imgSearch?.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { clearTimeout(_timer); doSearch(imgSearch.value.trim()); }
-    });
-
-    function cleanText(value) {
-        return String(value || '').replace(/<[^>]+>/g, ' ').replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim();
-    }
-
-    function metadataBlob(ext) {
-        return cleanText([
-            ext?.ImageDescription?.value,
-            ext?.ObjectName?.value,
-            ext?.Categories?.value,
-            ext?.Credit?.value,
-            ext?.LicenseShortName?.value,
-            ext?.Artist?.value,
-        ].join(' '));
-    }
+    const RANDOM_KEYWORDS = ['cat', 'dog', 'bird', 'flower', 'forest', 'mountain', 'school', 'science', 'math', 'book', 'teacher', 'planet'];
+    const ICONIFY_TRENDING = [
+        'mdi:home', 'mdi:school', 'mdi:book-open-page-variant', 'mdi:calculator', 'mdi:triangle-outline',
+        'mdi:circle-outline', 'mdi:square-outline', 'mdi:star-outline', 'mdi:leaf', 'mdi:weather-sunny',
+        'mdi:account', 'mdi:human-male', 'mdi:human-female', 'mdi:fruit-cherries', 'mdi:fish',
+        'tabler:math-function', 'tabler:atom-2', 'tabler:microscope', 'tabler:world', 'tabler:flask',
+        'tabler:abc', 'tabler:numbers', 'tabler:school', 'tabler:bookmark', 'tabler:ruler-2',
+        'tabler:clock-hour-3', 'tabler:calendar-event', 'tabler:mail', 'tabler:device-laptop', 'tabler:device-mobile'
+    ];
 
     function mapMonolineQuery(rawQuery) {
         const q = String(rawQuery || '').trim();
         if (!q) return q;
         const mapped = MONO_QUERY_MAP.find(entry => entry.re.test(q));
-        if (mapped) return mapped.q;
-        return q;
+        return mapped ? mapped.q : q;
     }
 
-    function scoreMonolineCandidate(page) {
-        const info = page.imageinfo?.[0];
-        if (!info) return -999;
-
-        const mime = info.mime || '';
-        const ext = info.extmetadata || {};
-        const blob = metadataBlob(ext);
-        const title = cleanText(page.title || '').replace(/^File:/i, '');
-        const text = (blob + ' ' + title).toLowerCase();
-
-        let score = 0;
-        if (mime === 'image/svg+xml') score += 90;
-        else if (mime === 'image/png') score += 40;
-        else if (mime === 'image/jpeg') score += 15;
-
-        if (MONO_INCLUDE_TERMS.test(text)) score += 45;
-        if (MONO_EXCLUDE_TERMS.test(text)) score -= 80;
-
-        if (/outline|line art|coloring|diagram|icon|schematic/.test(title.toLowerCase())) score += 20;
-        return score;
+    function cleanText(value) {
+        return String(value || '').replace(/<[^>]+>/g, ' ').replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim();
     }
 
-    async function doSearch(query) {
-        if (!query || !imgGrid) return;
-        imgGrid.innerHTML = '';
-        if (imgLoading) imgLoading.style.display = '';
-        if (imgError) imgError.style.display = 'none';
-        const monoOnly = !!imgMonolineOnly?.checked;
-        const normalizedQuery = monoOnly ? mapMonolineQuery(query) : query;
-        const boostedQuery = monoOnly
-            ? `${normalizedQuery} (incategory:"Line art" OR incategory:"Coloring pages") (intitle:"outline" OR intitle:"line art")`
-            : `${normalizedQuery} clipart`;
+    function setError(message) {
+        if (!imgError) return;
+        imgError.textContent = '❌ ' + message;
+        imgError.style.display = '';
+    }
 
+    function clearError() {
+        if (!imgError) return;
+        imgError.style.display = 'none';
+    }
+
+    function setLoading(loading) {
+        isLoading = loading;
+        if (imgLoading) imgLoading.style.display = loading ? '' : 'none';
+    }
+
+    function openImgModal() {
+        if (!imgModal) return;
+        imgModal.style.display = 'flex';
+        clearError();
+        setLoading(false);
+        setTimeout(() => imgSearch?.focus(), 0);
+        startSearch(imgSearch?.value.trim() || '');
+    }
+
+    function closeImgModal() {
+        if (!imgModal) return;
+        imgModal.style.display = 'none';
+    }
+
+    function getSearchHintBySource(source) {
+        if (source === 'iconify') {
+            return 'Iconify: ค้นหาเป็นอังกฤษ เช่น home, school, calculator หรือระบุชื่อไอคอนตรงๆ เช่น mdi:home, tabler:math-function';
+        }
+        if (source === 'flickr') {
+            return 'Flickr: เหมาะกับภาพจริง/ภาพถ่าย ใช้คำทั่วไป เช่น classroom, forest, mountains';
+        }
+        if (source === 'openverse') {
+            return 'Openverse: ค้นหารูป CC ฟรี เช่น cat, science, worksheet, nature (ถ้าช่องค้นหาว่างระบบจะสุ่มรูปให้อัตโนมัติ)';
+        }
+        return 'Wikimedia: พิมพ์คำอังกฤษตรงๆ เช่น cat, school, flower (ถ้าช่องค้นหาว่างระบบจะสุ่มรูปให้อัตโนมัติ)';
+    }
+
+    function updateSearchHint() {
+        if (!imgHint) return;
+        const source = imgSourceSelect?.value || 'wikimedia';
+        imgHint.textContent = getSearchHintBySource(source);
+    }
+
+    async function safeFetch(url, options = {}) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
         try {
-            const params = new URLSearchParams({
-                action: 'query',
-                generator: 'search',
-                gsrsearch: boostedQuery,
-                gsrnamespace: '6',       // File namespace
-                gsrlimit: '30',
-                prop: 'imageinfo',
-                iiprop: 'url|size|mime|extmetadata',
-                iiurlwidth: '300',       // Get 300px thumbnail
-                format: 'json',
-                origin: '*',             // Enable CORS
-            });
-
-            const res = await fetch(API + '?' + params);
-            if (!res.ok) throw new Error('API Error ' + res.status);
-            const data = await res.json();
-
-            const pages = data.query?.pages;
-            if (!pages) {
-                imgGrid.innerHTML = '<div class="img-no-result">ไม่พบรูป — ลองคำค้นภาษาอังกฤษ เช่น cat, school, math</div>';
-                return;
-            }
-
-            // Convert to array & filter to valid images
-            let items = Object.values(pages)
-                .filter(p => {
-                    const info = p.imageinfo?.[0];
-                    if (!info) return false;
-                    const mime = info.mime || '';
-                    return mime.startsWith('image/');
-                })
-                .sort((a, b) => (a.index || 0) - (b.index || 0));
-
-            if (monoOnly) {
-                items = items
-                    .map(page => ({ page, score: scoreMonolineCandidate(page) }))
-                    .filter(item => item.score >= 10)
-                    .sort((a, b) => b.score - a.score)
-                    .map(item => item.page);
-            }
-
-            if (items.length) {
-                renderResults(items);
-            } else {
-                imgGrid.innerHTML = '<div class="img-no-result">ไม่พบรูป — ลองคำค้นอื่น</div>';
-            }
+            const res = await fetch(url, { ...options, signal: controller.signal });
+            return res;
         } catch (err) {
-            console.error('[webImages]', err);
-            if (imgError) {
-                imgError.textContent = '❌ ค้นหาไม่สำเร็จ: ' + err.message;
-                imgError.style.display = '';
+            if (err?.name === 'AbortError') {
+                throw new Error('เชื่อมต่อช้าเกินไป (timeout)');
             }
+            throw new Error('Failed to fetch');
         } finally {
-            if (imgLoading) imgLoading.style.display = 'none';
+            clearTimeout(timer);
         }
     }
 
-    imgMonolineOnly?.addEventListener('change', () => {
-        renderQuickChips();
-        const q = imgSearch?.value.trim();
-        if (q) doSearch(q);
-    });
+    function buildWikimediaQuery(rawQuery) {
+        const svgOnly = !!imgSvgOnly?.checked;
+        const vectorOnly = !!imgVectorOnly?.checked;
+        const normalized = String(rawQuery || '').trim();
+        if (!normalized) return '';
 
-    function renderResults(items) {
+        if (!(svgOnly || vectorOnly)) {
+            return normalized;
+        }
+
+        const mapped = mapMonolineQuery(normalized);
+        let query = `${mapped} filetype:svg`;
+        return query;
+    }
+
+    function tokenizeQuery(query) {
+        return String(query || '')
+            .toLowerCase()
+            .split(/[^\p{L}\p{N}]+/u)
+            .map(token => token.trim())
+            .filter(token => token.length >= 2);
+    }
+
+    function rankAndFilterByTitle(items, query) {
+        const tokens = tokenizeQuery(query);
+        if (!tokens.length) return items;
+
+        return (items || [])
+            .map(item => {
+                const title = String(item?.title || '').toLowerCase();
+                let score = 0;
+                tokens.forEach(token => {
+                    if (title === token) score += 120;
+                    else if (title.includes(` ${token} `)) score += 80;
+                    else if (title.includes(token)) score += 40;
+                });
+                return { item, score };
+            })
+            .filter(row => row.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .map(row => row.item);
+    }
+
+    function mediaPassesFilters(page) {
+        const info = page.imageinfo?.[0];
+        if (!info) return false;
+        const mime = info.mime || '';
+        const isImage = mime.startsWith('image/');
+        const isSvg = mime === 'image/svg+xml';
+        const svgOnly = !!imgSvgOnly?.checked;
+        const vectorOnly = !!imgVectorOnly?.checked;
+
+        if (!isImage) return false;
+        if (svgOnly && !isSvg) return false;
+        if (vectorOnly && !isSvg) return false;
+        return true;
+    }
+
+    function normalizeWikiItems(pages) {
+        return Object.values(pages || {})
+            .filter(mediaPassesFilters)
+            .sort((a, b) => (a.index || 0) - (b.index || 0))
+            .map(page => {
+                const info = page.imageinfo?.[0] || {};
+                return {
+                    source: 'wikimedia',
+                    title: page.title?.replace('File:', '') || 'image',
+                    thumbUrl: info.thumburl || info.url,
+                    fullUrl: info.url,
+                    mime: info.mime || 'image/png',
+                    width: info.width || 0,
+                    height: info.height || 0,
+                };
+            });
+    }
+
+    function normalizeIconifyItems(iconNames) {
+        const names = iconNames || [];
+        return names.map(name => ({
+            source: 'iconify',
+            id: name,
+            title: name,
+            thumbUrl: `https://api.iconify.design/${name}.svg?width=320&height=320`,
+            fullUrl: `https://api.iconify.design/${name}.svg`,
+            mime: 'image/svg+xml',
+            width: 320,
+            height: 320,
+        }));
+    }
+
+    function normalizeFlickrItems(items) {
+        const svgOnly = !!imgSvgOnly?.checked;
+        const vectorOnly = !!imgVectorOnly?.checked;
+        return (items || [])
+            .map(item => {
+                const thumb = item?.media?.m || '';
+                const full = thumb.replace('_m.', '_b.');
+                return {
+                    source: 'flickr',
+                    id: item?.link || full || thumb,
+                    title: cleanText(item?.title || 'flickr image'),
+                    thumbUrl: thumb,
+                    fullUrl: full,
+                    mime: 'image/jpeg',
+                    width: 0,
+                    height: 0,
+                };
+            })
+            .filter(item => !!item.thumbUrl && !!item.fullUrl)
+            .filter(item => {
+                if (svgOnly || vectorOnly) return false;
+                return true;
+            });
+    }
+
+    function normalizeOpenverseItems(items) {
+        const svgOnly = !!imgSvgOnly?.checked;
+        const vectorOnly = !!imgVectorOnly?.checked;
+
+        return (items || []).map(item => ({
+            source: 'openverse',
+            title: cleanText(item?.title || item?.id || 'openverse image'),
+            thumbUrl: item?.thumbnail || item?.url,
+            fullUrl: item?.url,
+            mime: item?.mimetype || '',
+            width: item?.width || 0,
+            height: item?.height || 0,
+        })).filter(item => {
+            if (!item.thumbUrl || !item.fullUrl) return false;
+            if (!(item.mime || '').startsWith('image/')) return false;
+            const isSvg = item.mime === 'image/svg+xml' || String(item.fullUrl).toLowerCase().endsWith('.svg');
+            if (svgOnly && !isSvg) return false;
+            if (vectorOnly && !isSvg) return false;
+            return true;
+        });
+    }
+
+    async function fetchWikimediaItems(query, offset, relevanceQuery = query) {
+        const params = new URLSearchParams({
+            action: 'query',
+            generator: 'search',
+            gsrsearch: buildWikimediaQuery(query),
+            gsrnamespace: '6',
+            gsrlimit: String(PAGE_SIZE),
+            gsroffset: String(offset),
+            prop: 'imageinfo',
+            iiprop: 'url|size|mime|extmetadata',
+            iiurlwidth: '460',
+            format: 'json',
+            origin: '*',
+        });
+
+        const res = await safeFetch(WIKIMEDIA_API + '?' + params);
+        if (!res.ok) throw new Error('Wikimedia API Error ' + res.status);
+        const data = await res.json();
+
+        let items = normalizeWikiItems(data.query?.pages);
+        items = rankAndFilterByTitle(items, relevanceQuery);
+
+        return {
+            items,
+            nextOffset: data.continue?.gsroffset ?? null,
+        };
+    }
+
+    async function fetchWikimediaRandomItems() {
+        const params = new URLSearchParams({
+            action: 'query',
+            generator: 'random',
+            grnnamespace: '6',
+            grnlimit: String(PAGE_SIZE),
+            prop: 'imageinfo',
+            iiprop: 'url|size|mime|extmetadata',
+            iiurlwidth: '460',
+            format: 'json',
+            origin: '*',
+        });
+
+        const res = await safeFetch(WIKIMEDIA_API + '?' + params);
+        if (!res.ok) throw new Error('Wikimedia API Error ' + res.status);
+        const data = await res.json();
+        const items = normalizeWikiItems(data.query?.pages);
+        return { items };
+    }
+
+    async function fetchOpenverseItems(query, page) {
+        const params = new URLSearchParams({
+            q: query,
+            page: String(Math.max(1, page)),
+            page_size: String(PAGE_SIZE),
+        });
+        const res = await safeFetch(OPENVERSE_API + '?' + params);
+        if (!res.ok) {
+            if (res.status === 401) throw new Error('Openverse API Error 401');
+            throw new Error('Openverse API Error ' + res.status);
+        }
+        const data = await res.json();
+        const items = rankAndFilterByTitle(normalizeOpenverseItems(data?.results || []), query);
+        return {
+            items,
+            pageCount: Number(data?.page_count || 1),
+        };
+    }
+
+    function getItemKey(item) {
+        return item?.id || item?.fullUrl || item?.thumbUrl || item?.title || '';
+    }
+
+    function dedupeAgainstSeen(items) {
+        const out = [];
+        for (const item of (items || [])) {
+            const key = getItemKey(item);
+            if (!key) continue;
+            if (seenResultKeys.has(key)) continue;
+            seenResultKeys.add(key);
+            out.push(item);
+        }
+        return out;
+    }
+
+    async function doSearch({ append = false } = {}) {
+        if (!imgGrid || isLoading) return;
+        if (append && !hasMore) return;
+
+        setLoading(true);
+        clearError();
+
+        if (!append) {
+            imgGrid.innerHTML = '';
+            currentOffset = 0;
+            hasMore = true;
+            seenResultKeys = new Set();
+        }
+
+        try {
+            let items = [];
+            const q = String(currentQuery || '').trim();
+
+            if (currentSource === 'iconify') {
+                if (q) {
+                    let iconifyPageTries = 0;
+                    let rawIcons = [];
+                    let total = 0;
+
+                    while (iconifyPageTries < 3) {
+                        const params = new URLSearchParams({
+                            query: q,
+                            limit: String(PAGE_SIZE),
+                            start: String(currentOffset),
+                        });
+                        const res = await safeFetch('https://api.iconify.design/search?' + params);
+                        if (!res.ok) throw new Error('Iconify API Error ' + res.status);
+                        const data = await res.json();
+
+                        rawIcons = data?.icons || [];
+                        total = Number(data?.total || 0);
+                        currentOffset += rawIcons.length || PAGE_SIZE;
+
+                        items = rankAndFilterByTitle(normalizeIconifyItems(rawIcons), q);
+                        items = dedupeAgainstSeen(items);
+                        hasMore = currentOffset < total;
+
+                        if (items.length > 0 || !hasMore) break;
+                        iconifyPageTries += 1;
+                    }
+                } else {
+                    const slice = ICONIFY_TRENDING.slice(currentOffset, currentOffset + PAGE_SIZE);
+                    items = dedupeAgainstSeen(normalizeIconifyItems(slice));
+                    currentOffset += items.length;
+                    hasMore = currentOffset < ICONIFY_TRENDING.length;
+                }
+            } else if (currentSource === 'flickr') {
+                const page = currentOffset + 1;
+                const params = new URLSearchParams({
+                    format: 'json',
+                    nojsoncallback: '1',
+                    page: String(page),
+                });
+                if (q) params.set('tags', q);
+                const res = await safeFetch('https://www.flickr.com/services/feeds/photos_public.gne?' + params);
+                if (!res.ok) throw new Error('Flickr API Error ' + res.status);
+                const data = await res.json();
+                items = rankAndFilterByTitle(normalizeFlickrItems(data?.items), q).slice(0, PAGE_SIZE);
+                items = dedupeAgainstSeen(items);
+
+                currentOffset = page;
+                hasMore = currentOffset < 20;
+
+                if (append && !items.length && hasMore) {
+                    const retryPage = currentOffset + 1;
+                    const retryParams = new URLSearchParams({
+                        format: 'json',
+                        nojsoncallback: '1',
+                        page: String(retryPage),
+                    });
+                    if (q) retryParams.set('tags', q);
+                    const retryRes = await safeFetch('https://www.flickr.com/services/feeds/photos_public.gne?' + retryParams);
+                    if (retryRes.ok) {
+                        const retryData = await retryRes.json();
+                        const retryItems = rankAndFilterByTitle(normalizeFlickrItems(retryData?.items), q).slice(0, PAGE_SIZE);
+                        items = dedupeAgainstSeen(retryItems);
+                        currentOffset = retryPage;
+                        hasMore = currentOffset < 20;
+                    }
+                }
+            } else if (currentSource === 'openverse') {
+                const page = currentOffset + 1;
+                const term = q || RANDOM_KEYWORDS[Math.floor(Math.random() * RANDOM_KEYWORDS.length)];
+                try {
+                    const result = await fetchOpenverseItems(term, page);
+                    items = dedupeAgainstSeen(result.items);
+                    currentOffset = page;
+                    hasMore = page < Math.max(1, result.pageCount);
+                } catch (err) {
+                    if (String(err?.message || '').includes('Openverse API Error 401')) {
+                        if (imgSourceSelect) imgSourceSelect.value = 'wikimedia';
+                        currentSource = 'wikimedia';
+                        updateSearchHint();
+                        window.showToast?.('Openverse ใช้งานไม่ได้ชั่วคราว (401) — สลับไป Wikimedia อัตโนมัติ');
+
+                        if (q) {
+                            let result = await fetchWikimediaItems(q, currentOffset, q);
+                            if (!result.items.length && !append) {
+                                const fallbackQuery = `${q} image`;
+                                result = await fetchWikimediaItems(fallbackQuery, 0, q);
+                            }
+                            items = dedupeAgainstSeen(result.items);
+                            currentOffset = result.nextOffset ?? currentOffset;
+                            hasMore = result.nextOffset != null;
+                        } else {
+                            const result = await fetchWikimediaRandomItems();
+                            items = result.items;
+                            currentOffset += 1;
+                            hasMore = true;
+                        }
+                    } else {
+                        throw err;
+                    }
+                }
+            } else {
+                if (q) {
+                    let result = await fetchWikimediaItems(q, currentOffset, q);
+
+                    if (!result.items.length && !append) {
+                        const fallbackQuery = `${q} image`;
+                        result = await fetchWikimediaItems(fallbackQuery, 0, q);
+                    }
+
+                    items = dedupeAgainstSeen(result.items);
+                    currentOffset = result.nextOffset ?? currentOffset;
+                    hasMore = result.nextOffset != null;
+                } else {
+                    const result = await fetchWikimediaRandomItems();
+                    items = dedupeAgainstSeen(result.items);
+                    currentOffset += 1;
+                    hasMore = true;
+                }
+            }
+
+            if (!items.length && !append) {
+                imgGrid.innerHTML = '<div class="img-no-result">ไม่พบรูป — ลองคำค้นเป็นอังกฤษสั้นๆ เช่น cat, school, flower หรือเว้นว่างเพื่อสุ่มรูป</div>';
+                hasMore = false;
+                return;
+            }
+
+            if (!items.length && append) {
+                hasMore = false;
+                return;
+            }
+
+            renderResults(items, append);
+            ensureGridFilled();
+        } catch (err) {
+            if (String(err?.message || '').includes('Failed to fetch')) {
+                setError('เชื่อมต่อไม่สำเร็จ (Failed to fetch) — ตรวจสอบอินเทอร์เน็ต/สิทธิ์ host permissions แล้วลองใหม่');
+            } else {
+                setError('ค้นหาไม่สำเร็จ: ' + err.message);
+            }
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    function startSearch(query) {
+        currentQuery = String(query || '').trim();
+        currentOffset = 0;
+        currentSource = imgSourceSelect?.value || 'wikimedia';
+        hasMore = true;
+        doSearch({ append: false });
+    }
+
+    function renderResults(items, append) {
         if (!imgGrid) return;
-        imgGrid.innerHTML = '';
-        items.forEach(page => {
-            const info = page.imageinfo[0];
-            const thumb = info.thumburl || info.url;
-            const fullUrl = info.url;
-            const title = page.title?.replace('File:', '') || 'image';
-            const isSvg = info.mime === 'image/svg+xml';
+        if (!append) imgGrid.innerHTML = '';
+
+        items.forEach(item => {
+            const thumb = item.thumbUrl;
+            const fullUrl = item.fullUrl;
+            const title = item.title || 'image';
+            const isSvg = item.mime === 'image/svg+xml' || String(fullUrl).toLowerCase().endsWith('.svg');
 
             const card = document.createElement('div');
             card.className = 'img-card';
-            card.title = title + '\n' + info.width + '×' + info.height;
+            card.title = title + '\n' + (item.width || 0) + '×' + (item.height || 0);
             card.innerHTML =
                 '<img src="' + thumb + '" alt="' + title.replace(/"/g, '') + '" loading="lazy"/>' +
                 '<div class="img-card-media-tags">' +
                 (isSvg ? '<span class="img-media-badge">SVG</span><span class="img-media-badge">Vector</span>' : '') +
+                (item.source === 'flickr' ? '<span class="img-media-badge">FL</span>' : '') +
+                (item.source === 'iconify' ? '<span class="img-media-badge">IC</span>' : '') +
+                (item.source === 'openverse' ? '<span class="img-media-badge">OV</span>' : '') +
                 '</div>' +
-                '<div class="img-card-info">' + title.substring(0, 30) + '</div>';
-            card.addEventListener('click', () => addToCanvas({ fullUrl, thumbUrl: thumb, mime: info.mime, title }));
+                '<div class="img-card-info">' + title.substring(0, 54) + '</div>';
+
+            card.addEventListener('click', () => addToCanvas({ fullUrl, thumbUrl: thumb, mime: item.mime, title }));
             imgGrid.appendChild(card);
         });
+
+        if (imgGrid.lastChild?.id === 'imgScrollSentinel') imgGrid.lastChild.remove();
+        imgGrid.appendChild(sentinel);
     }
 
     function addToCanvas(item) {
@@ -239,8 +559,8 @@
             addSvgToCanvas(item);
             return;
         }
-        window.showToast?.('⏳ กำลังโหลดรูป...');
 
+        window.showToast?.('⏳ กำลังโหลดรูป...');
         fabric.Image.fromURL(item.fullUrl, function (img) {
             if (!img || !img.width) {
                 loadRasterFallback(item.thumbUrl);
@@ -265,15 +585,18 @@
                 }
                 placeFabricObject(group);
             });
-        } catch (e) {
-            console.warn('[webImages] SVG load failed', e);
+        } catch (err) {
+            console.warn('[webImages] SVG load failed', err);
             loadRasterFallback(item.thumbUrl);
         }
     }
 
     function loadRasterFallback(thumbUrl) {
         fabric.Image.fromURL(thumbUrl, function (img2) {
-            if (!img2 || !img2.width) { window.showToast?.('❌ โหลดรูปไม่สำเร็จ'); return; }
+            if (!img2 || !img2.width) {
+                window.showToast?.('❌ โหลดรูปไม่สำเร็จ');
+                return;
+            }
             placeImage(img2);
         }, { crossOrigin: 'anonymous' });
     }
@@ -281,6 +604,7 @@
     function placeFabricObject(obj) {
         const canvas = window.wbCanvas;
         if (!canvas || !obj) return;
+
         const baseW = obj.width || 1;
         const baseH = obj.height || 1;
         const maxW = canvas.width * 0.5;
@@ -302,12 +626,17 @@
 
     function placeImage(img) {
         const canvas = window.wbCanvas;
-        const maxW = canvas.width * 0.5, maxH = canvas.height * 0.4;
+        if (!canvas || !img) return;
+
+        const maxW = canvas.width * 0.5;
+        const maxH = canvas.height * 0.4;
         const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+
         img.set({
             left: canvas.width / 2 - (img.width * scale) / 2,
             top: canvas.height / 2 - (img.height * scale) / 2,
-            scaleX: scale, scaleY: scale,
+            scaleX: scale,
+            scaleY: scale,
         });
         canvas.add(img);
         canvas.setActiveObject(img);
@@ -316,4 +645,59 @@
         window.showToast?.('✅ เพิ่มรูปแล้ว');
     }
 
+    function ensureGridFilled() {
+        if (!imgGrid || isLoading || !hasMore) return;
+        const notScrollableYet = imgGrid.scrollHeight <= imgGrid.clientHeight + 24;
+        if (notScrollableYet) {
+            doSearch({ append: true });
+        }
+    }
+
+    function setupInfiniteScrollObserver() {
+        if (!imgGrid) return;
+        if (observer) observer.disconnect();
+
+        observer = new IntersectionObserver((entries) => {
+            const [entry] = entries;
+            if (!entry?.isIntersecting) return;
+            if (isLoading || !hasMore) return;
+            doSearch({ append: true });
+        }, {
+            root: imgGrid,
+            threshold: 0.1,
+        });
+
+        observer.observe(sentinel);
+    }
+
+    imgSearch?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            startSearch(imgSearch.value.trim());
+        }
+    });
+
+    imgSearchBtn?.addEventListener('click', () => {
+        startSearch(imgSearch?.value.trim() || '');
+    });
+
+    imgSourceSelect?.addEventListener('change', () => {
+        updateSearchHint();
+    });
+
+    imgGrid?.addEventListener('scroll', () => {
+        if (!imgGrid || isLoading || !hasMore) return;
+        const nearBottom = imgGrid.scrollTop + imgGrid.clientHeight >= imgGrid.scrollHeight - 160;
+        if (nearBottom) doSearch({ append: true });
+    });
+
+    document.getElementById('toolImageSearch')?.addEventListener('click', openImgModal);
+    document.getElementById('imgModalClose')?.addEventListener('click', closeImgModal);
+    document.getElementById('imgCancel')?.addEventListener('click', closeImgModal);
+    imgModal?.addEventListener('click', e => {
+        if (e.target === imgModal) closeImgModal();
+    });
+
+    if (imgSourceSelect) imgSourceSelect.value = 'wikimedia';
+    updateSearchHint();
+    setupInfiniteScrollObserver();
 })();

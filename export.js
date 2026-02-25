@@ -1,6 +1,6 @@
 /* ================================================================
-   export.js — Export PNG / PDF / Word, Save & Load Workbook
-   ================================================================ */
+    export.js — Export PNG / PDF, Save & Load Workbook
+    ================================================================ */
 
 async function collectAllPagesPng(multiplier = 2) {
     const canvas = window.wbCanvas;
@@ -68,37 +68,7 @@ document.getElementById('btnExportPDF')?.addEventListener('click', async () => {
     }
 });
 
-/* ── 3. EXPORT WORD (.doc) ─────────────────────────────────── */
-document.getElementById('btnExportDOCX')?.addEventListener('click', async () => {
-    try {
-        window.showToast?.('⏳ กำลังสร้างไฟล์ Word...');
-        const images = await collectAllPagesPng(2);
-        if (!images.length) return;
-
-        const pagesHtml = images.map((imgData, index) => {
-            const pageBreak = index < images.length - 1 ? 'page-break-after:always;' : '';
-            return `<div style="${pageBreak}width:794px;height:1123px;margin:0 auto;">` +
-                `<img src="${imgData}" style="width:794px;height:1123px;display:block;"/>` +
-                '</div>';
-        }).join('');
-
-        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body>${pagesHtml}</body></html>`;
-        const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `worksheet_${Date.now()}.doc`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-
-        window.showToast?.('📝 ดาวน์โหลด Word เรียบร้อย');
-    } catch (err) {
-        console.error('[export.docx]', err);
-        window.showToast?.('❌ ส่งออก Word ไม่สำเร็จ');
-    }
-});
-
-/* ── 4. SAVE WORKBOOK (chrome.storage.local) ───────────────── */
+/* ── 3. SAVE WORKBOOK (chrome.storage.local) ───────────────── */
 document.getElementById('btnSave')?.addEventListener('click', () => {
     const key = 'wb_project_autosave';
     const payload = window.wbGetWorkbookData?.() || null;
@@ -121,7 +91,7 @@ document.getElementById('btnSave')?.addEventListener('click', () => {
     }
 });
 
-/* ── 5. LOAD WORKBOOK ──────────────────────────────────────── */
+/* ── 4. LOAD WORKBOOK ──────────────────────────────────────── */
 document.getElementById('btnLoad')?.addEventListener('click', () => {
     const key = 'wb_project_autosave';
 
@@ -175,7 +145,7 @@ function openFilePicker() {
     fi.click();
 }
 
-/* ── 6. AUTO-SAVE every 60 seconds ─────────────────────────── */
+/* ── 5. AUTO-SAVE every 60 seconds ─────────────────────────── */
 setInterval(() => {
     if (typeof chrome === 'undefined' || !chrome.storage?.local) return;
     const payload = window.wbGetWorkbookData?.();

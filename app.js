@@ -136,10 +136,234 @@ function initWorkbook() {
 initWorkbook();
 
 /* ── 3. ACTIVE TOOL STATE ───────────────────────────────────── */
-window.activeTool = 'select'; // 'select' | 'text' | 'rect' | 'line'
+window.activeTool = 'select'; // 'select' | 'text' | 'rect' | 'table' | 'line' | 'lineDoubleArrow' | 'curve' | 'callout'
 let isDrawing = false;
 let shapeStart = null;
 let tempShape = null;
+let lineSettings = {
+    type: 'line',
+    pattern: 'solid',
+    width: 2,
+};
+
+function getLineSettingsFromPanel() {
+    const typeEl = document.getElementById('propLineType');
+    const patternEl = document.getElementById('propLinePattern');
+    const widthEl = document.getElementById('propLineWidth');
+
+    return {
+        type: typeEl?.value || lineSettings.type || 'line',
+        pattern: patternEl?.value || lineSettings.pattern || 'solid',
+        width: Math.max(1, Number(widthEl?.value || lineSettings.width || 2)),
+    };
+}
+
+function getDashArray(pattern, width) {
+    if (pattern === 'dashed') return [Math.max(8, width * 3), Math.max(4, width * 1.8)];
+    if (pattern === 'dotted') return [1, Math.max(5, width * 2.2)];
+    return null;
+}
+
+function createArrowHead(endX, endY, angleDeg, stroke, width) {
+    const size = Math.max(8, width * 4.4);
+    const head = new fabric.Triangle({
+        left: endX,
+        top: endY,
+        width: size,
+        height: size,
+        originX: 'center',
+        originY: 'center',
+        angle: angleDeg + 90,
+        fill: stroke,
+        stroke: stroke,
+        strokeWidth: 1,
+        selectable: false,
+        evented: false,
+    });
+    return head;
+}
+
+function makeLineLikeShape(x1, y1, x2, y2, opts) {
+    const stroke = getStroke();
+    const width = Math.max(1, Number(opts.width || 2));
+    const pattern = opts.pattern || 'solid';
+    const dash = getDashArray(pattern, width);
+
+    if (opts.type === 'line') {
+        const line = new fabric.Line([x1, y1, x2, y2], {
+            stroke,
+            strokeWidth: width,
+            strokeLineCap: 'round',
+            strokeDashArray: dash,
+            fill: 'transparent',
+        });
+        line.data = { type: 'lineShape', lineMode: 'line', pattern, lineWidth: width, isLineTool: true };
+        return line;
+    }
+
+    const base = new fabric.Line([x1, y1, x2, y2], {
+        stroke,
+        strokeWidth: width,
+        strokeLineCap: 'round',
+        strokeDashArray: dash,
+        fill: 'transparent',
+        selectable: false,
+        evented: false,
+    });
+
+    const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+    const heads = [createArrowHead(x2, y2, angle, stroke, width)];
+    if (opts.type === 'doubleArrow') heads.push(createArrowHead(x1, y1, angle + 180, stroke, width));
+
+    const group = new fabric.Group([base, ...heads], {
+        objectCaching: false,
+    });
+    group.data = { type: 'lineShape', lineMode: opts.type, pattern, lineWidth: width, isLineTool: true };
+    return group;
+}
+
+function makeCurveShape(x1, y1, x2, y2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const cx = x1 + dx / 2;
+    const cy = y1 + dy / 2 - Math.max(30, Math.abs(dx) * 0.25);
+    const path = new fabric.Path(`M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`, {
+        fill: 'transparent',
+        stroke: getStroke(),
+        strokeWidth: Math.max(1, Number(lineSettings.width || 2)),
+        strokeLineCap: 'round',
+        strokeDashArray: getDashArray(lineSettings.pattern || 'solid', Math.max(1, Number(lineSettings.width || 2))),
+    });
+    path.data = { type: 'lineShape', lineMode: 'curve', pattern: lineSettings.pattern || 'solid', lineWidth: Math.max(1, Number(lineSettings.width || 2)), isLineTool: true };
+    return path;
+}
+
+function addTableAt(x, y, rows = 4, cols = 4) {
+    const stroke = getStroke();
+    const width = Math.max(1, Number(lineSettings.width || 2));
+    const pattern = lineSettings.pattern || 'solid';
+    const dash = getDashArray(pattern, width);
+    const cellW = 96;
+    const cellH = 52;
+    const totalW = cols * cellW;
+    const totalH = rows * cellH;
+    const lines = [];
+
+    for (let r = 0; r <= rows; r++) {
+        const yPos = y + r * cellH;
+        lines.push(new fabric.Line([x, yPos, x + totalW, yPos], {
+            stroke,
+            strokeWidth: width,
+            strokeDashArray: dash,
+            strokeLineCap: 'round',
+            selectable: false,
+            evented: false,
+        }));
+    }
+
+    for (let c = 0; c <= cols; c++) {
+        const xPos = x + c * cellW;
+        lines.push(new fabric.Line([xPos, y, xPos, y + totalH], {
+            stroke,
+            strokeWidth: width,
+            strokeDashArray: dash,
+            strokeLineCap: 'round',
+            selectable: false,
+            evented: false,
+        }));
+    }
+
+    const group = new fabric.Group(lines, {
+        objectCaching: false,
+    });
+    group.data = {
+        type: 'table',
+        rows,
+        cols,
+        lineMode: 'line',
+        pattern,
+        lineWidth: width,
+        isLineTool: true,
+    };
+    canvas.add(group);
+    canvas.setActiveObject(group);
+    canvas.renderAll();
+}
+
+function askTableSize() {
+    const rawRows = window.prompt('จำนวนแถว (Rows):', '4');
+    if (rawRows === null) return null;
+    const rawCols = window.prompt('จำนวนคอลัมน์ (Columns):', '4');
+    if (rawCols === null) return null;
+
+    const rows = Math.min(20, Math.max(1, Number(rawRows) || 4));
+    const cols = Math.min(20, Math.max(1, Number(rawCols) || 4));
+    return { rows, cols };
+}
+
+function addCalloutAt(x, y) {
+    const stroke = getStroke();
+    const fill = getFill();
+    const boxW = 190;
+    const boxH = 84;
+
+    const bubble = new fabric.Rect({
+        left: x,
+        top: y,
+        width: boxW,
+        height: boxH,
+        rx: 10,
+        ry: 10,
+        fill,
+        stroke,
+        strokeWidth: 2,
+        originX: 'left',
+        originY: 'top',
+    });
+
+    const tip = new fabric.Triangle({
+        left: x + 22,
+        top: y + boxH + 10,
+        width: 24,
+        height: 20,
+        angle: 180,
+        fill,
+        stroke,
+        strokeWidth: 2,
+        originX: 'center',
+        originY: 'center',
+    });
+
+    const text = new fabric.IText('', {
+        left: x + 12,
+        top: y + 10,
+        width: boxW - 24,
+        fontFamily: 'Sarabun',
+        fontSize: 18,
+        fill: document.getElementById('colorText')?.value || '#1e293b',
+        name: 'calloutText',
+    });
+
+    const callout = new fabric.Group([bubble, tip, text], {
+        subTargetCheck: true,
+        interactive: true,
+    });
+    callout.data = { type: 'callout' };
+    canvas.add(callout);
+    canvas.setActiveObject(callout);
+
+    // Auto-edit internal text on double-click
+    callout.on('mousedblclick', (opt) => {
+        if (opt.subTargets && opt.subTargets[0] && opt.subTargets[0].type === 'i-text') {
+            const innerText = opt.subTargets[0];
+            innerText.enterEditing();
+            canvas.setActiveObject(innerText);
+            canvas.renderAll();
+        }
+    });
+
+    canvas.renderAll();
+}
 
 function setActiveTool(tool) {
     window.activeTool = tool;
@@ -157,7 +381,35 @@ function setActiveTool(tool) {
         canvas.discardActiveObject();
         canvas.selection = false;
         canvas.defaultCursor = 'crosshair';
+
+        // Show properties for the selected tool immediately
+        if (tool.includes('line') || tool === 'curve') {
+            showLinePropsForTool(tool);
+        }
     }
+}
+
+function showLinePropsForTool(tool) {
+    const objectProps = document.getElementById('objectProps');
+    const lineProps = document.getElementById('lineProps');
+    const propsContent = document.getElementById('propsContent');
+    const textProps = document.getElementById('textProps');
+
+    if (propsContent) propsContent.style.display = 'none';
+    if (objectProps) objectProps.style.display = '';
+    if (lineProps) lineProps.style.display = '';
+    if (textProps) textProps.style.display = 'none';
+
+    // Sync line type dropdown
+    const typeEl = document.getElementById('propLineType');
+    const patternEl = document.getElementById('propLinePattern');
+    if (typeEl) {
+        if (tool === 'line') typeEl.value = 'line';
+        else if (tool === 'lineArrow') typeEl.value = 'arrow';
+        else if (tool === 'lineDoubleArrow') typeEl.value = 'doubleArrow';
+        else if (tool === 'curve') typeEl.value = 'line'; // or curve if we had it
+    }
+    if (patternEl) patternEl.value = lineSettings.pattern || 'solid';
 }
 
 /* ── 4. AUTO-SAVE HISTORY ON MODIFICATION ─────────────────── */
@@ -171,6 +423,8 @@ const getStroke = () => document.getElementById('colorStroke')?.value || '#1e293
 
 canvas.on('mouse:down', (opt) => {
     if (window.activeTool === 'select') return;
+    lineSettings = getLineSettingsFromPanel();
+
     if (window.activeTool === 'text') {
         const ptr = canvas.getPointer(opt.e);
         const text = new fabric.IText('พิมพ์ข้อความที่นี่', {
@@ -185,6 +439,26 @@ canvas.on('mouse:down', (opt) => {
         setActiveTool('select');
         return;
     }
+
+    if (window.activeTool === 'callout') {
+        const ptr = canvas.getPointer(opt.e);
+        addCalloutAt(ptr.x, ptr.y);
+        setActiveTool('select');
+        return;
+    }
+
+    if (window.activeTool === 'table') {
+        const ptr = canvas.getPointer(opt.e);
+        const tableSize = askTableSize();
+        if (!tableSize) {
+            setActiveTool('select');
+            return;
+        }
+        addTableAt(ptr.x, ptr.y, tableSize.rows, tableSize.cols);
+        setActiveTool('select');
+        return;
+    }
+
     isDrawing = true;
     const ptr = canvas.getPointer(opt.e);
     shapeStart = { x: ptr.x, y: ptr.y };
@@ -195,11 +469,17 @@ canvas.on('mouse:down', (opt) => {
             fill: getFill(), stroke: getStroke(), strokeWidth: 2,
             rx: 4, ry: 4,
         });
-    } else if (window.activeTool === 'line') {
-        tempShape = new fabric.Line([ptr.x, ptr.y, ptr.x, ptr.y], {
-            stroke: getStroke(), strokeWidth: 2, strokeLineCap: 'round',
-        });
+    } else if (['line', 'lineArrow', 'lineDoubleArrow'].includes(window.activeTool)) {
+        const requested = { ...lineSettings };
+        if (window.activeTool === 'lineArrow') requested.type = 'arrow';
+        else if (window.activeTool === 'lineDoubleArrow') requested.type = 'doubleArrow';
+        else if (window.activeTool === 'line') requested.type = 'line';
+
+        tempShape = makeLineLikeShape(ptr.x, ptr.y, ptr.x, ptr.y, requested);
+    } else if (window.activeTool === 'curve') {
+        tempShape = makeCurveShape(ptr.x, ptr.y, ptr.x, ptr.y);
     }
+
     if (tempShape) canvas.add(tempShape);
 });
 
@@ -214,8 +494,19 @@ canvas.on('mouse:move', (opt) => {
             top: Math.min(ptr.y, shapeStart.y),
             width: w, height: h,
         });
-    } else if (window.activeTool === 'line') {
-        tempShape.set({ x2: ptr.x, y2: ptr.y });
+    } else if (['line', 'lineArrow', 'lineDoubleArrow'].includes(window.activeTool)) {
+        canvas.remove(tempShape);
+        const requested = { ...lineSettings };
+        if (window.activeTool === 'lineArrow') requested.type = 'arrow';
+        else if (window.activeTool === 'lineDoubleArrow') requested.type = 'doubleArrow';
+        else if (window.activeTool === 'line') requested.type = 'line';
+
+        tempShape = makeLineLikeShape(shapeStart.x, shapeStart.y, ptr.x, ptr.y, requested);
+        canvas.add(tempShape);
+    } else if (window.activeTool === 'curve') {
+        canvas.remove(tempShape);
+        tempShape = makeCurveShape(shapeStart.x, shapeStart.y, ptr.x, ptr.y);
+        canvas.add(tempShape);
     }
     canvas.renderAll();
 });
@@ -239,6 +530,7 @@ function updatePropsPanel() {
     const propsContent = document.getElementById('propsContent');
     const textProps = document.getElementById('textProps');
     const objectProps = document.getElementById('objectProps');
+    const lineProps = document.getElementById('lineProps');
     if (propsContent) propsContent.style.display = 'none';
     if (objectProps) objectProps.style.display = '';
 
@@ -256,6 +548,23 @@ function updatePropsPanel() {
         if (textProps) textProps.style.display = 'none';
     }
 
+    const isLineLike = obj.type === 'line' || obj.type === 'path' || obj.data?.isLineTool;
+    if (lineProps) lineProps.style.display = isLineLike ? '' : 'none';
+    if (isLineLike) {
+        const typeEl = document.getElementById('propLineType');
+        const patternEl = document.getElementById('propLinePattern');
+        const widthEl = document.getElementById('propLineWidth');
+        const widthValEl = document.getElementById('propLineWidthVal');
+        const lineMode = obj.data?.lineMode || (obj.type === 'path' ? 'curve' : 'line');
+        const lineWidth = Number(obj.data?.lineWidth || obj.strokeWidth || 2);
+        const pattern = obj.data?.pattern || (obj.strokeDashArray?.length ? 'dashed' : 'solid');
+
+        if (typeEl) typeEl.value = lineMode === 'doubleArrow' ? 'doubleArrow' : (lineMode === 'arrow' ? 'arrow' : 'line');
+        if (patternEl) patternEl.value = pattern;
+        if (widthEl) widthEl.value = String(lineWidth);
+        if (widthValEl) widthValEl.textContent = `${lineWidth}px`;
+    }
+
     const opEl = document.getElementById('propOpacity');
     const opValEl = document.getElementById('propOpacityVal');
     if (opEl) {
@@ -268,9 +577,11 @@ function clearPropsPanel() {
     const propsContent = document.getElementById('propsContent');
     const textProps = document.getElementById('textProps');
     const objectProps = document.getElementById('objectProps');
+    const lineProps = document.getElementById('lineProps');
     if (propsContent) propsContent.style.display = '';
     if (textProps) textProps.style.display = 'none';
     if (objectProps) objectProps.style.display = 'none';
+    if (lineProps) lineProps.style.display = 'none';
 }
 
 /* ── 7. KEYBOARD SHORTCUTS ─────────────────────────────────── */
@@ -286,7 +597,9 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'v' || e.key === 'V') setActiveTool('select');
     if (e.key === 't' || e.key === 'T') setActiveTool('text');
     if (e.key === 'r' || e.key === 'R') setActiveTool('rect');
+    if (e.key === 'g' || e.key === 'G') setActiveTool('table');
     if (e.key === 'l' || e.key === 'L') setActiveTool('line');
+    if (e.key === 'c' || e.key === 'C') setActiveTool('curve');
 
     if (e.key === 'Delete' || e.key === 'Backspace') {
         const active = canvas.getActiveObjects();
@@ -373,6 +686,23 @@ function showToast(msg) {
     _toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
 }
 
+function applyTheme(theme) {
+    const nextTheme = theme === 'light' ? 'light' : 'dark';
+    document.body.setAttribute('data-theme', nextTheme);
+    localStorage.setItem('smartws_theme', nextTheme);
+    const toggle = document.getElementById('themeToggle');
+    if (toggle) toggle.textContent = nextTheme === 'dark' ? '🌙' : '☀️';
+}
+
+function initThemeToggle() {
+    const saved = localStorage.getItem('smartws_theme') || 'dark';
+    applyTheme(saved);
+    document.getElementById('themeToggle')?.addEventListener('click', () => {
+        const current = document.body.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+        applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
+}
+
 /* ── 12. EXPOSE API FOR OTHER MODULES ─────────────────────── */
 window.showToast = showToast;
 window.wbCanvas = canvas;
@@ -381,6 +711,10 @@ window.wbGetPageCount = () => workbook.pages.length;
 window.wbGetActivePageIndex = () => activePageIndex;
 window.wbGoToPage = goToPage;
 window.wbAddPage = addPageAndGo;
+window.wbSetLineSettings = (nextSettings) => {
+    lineSettings = { ...lineSettings, ...(nextSettings || {}) };
+};
+window.wbGetLineSettings = () => ({ ...lineSettings });
 window.wbGetWorkbookData = () => {
     persistCurrentPage();
     return {
@@ -406,4 +740,5 @@ window.wbLoadWorkbookData = async (payload) => {
     clearPropsPanel();
 };
 
+initThemeToggle();
 updatePageIndicator();

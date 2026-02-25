@@ -90,3 +90,175 @@
 - `panel.js` เพิ่มชิปย่อยเมื่อเปิด `Monoline only` เพื่อกรองหมวด Mono ได้เร็วขึ้น (`all`, `arrows`, `symbols`, `geometry`, `animals`)
 - ชิปจะซ่อนอัตโนมัติเมื่อปิดโหมด Monoline และรีเซ็ตกลับ `all`
 - ใช้ class ใหม่ใน `style.css` (`panel-mono-chips`, `panel-mono-chip`) โดยยึด theme token เดิม (`--blue`, `--blue-dim`, `--border`)
+
+## 10) Phase 3 UI Refresh + Tooling Upgrade
+
+- Toolbar ถูกปรับเป็นโทนน้ำเงินเข้มคอนทราสต์สูง เพื่อให้ปุ่ม/ไอคอนอ่านง่ายขึ้นบนจอมืด
+- ปุ่มค้นหารูป `toolImageSearch` ถูกย้ายไปตำแหน่งแรกสุดของกลุ่มเครื่องมือ
+- ตัดระบบส่งออก Word (`btnExportDOCX`) ออกจากทั้ง HTML และ JS เพื่อให้ bundle เล็กลงและลดโค้ดที่ไม่จำเป็น
+
+## 11) SVG Library Expansion (Geometry / Symbols / Frames)
+
+- ลบหมวดเก่า `arrows` และ `animals` ออกจาก panel categorization เพื่อโฟกัสชุดที่ใช้งานจริง
+- เพิ่มชุดเรขาคณิตพื้นฐานและสามมิติในหมวด `geometry`:
+  - cone, cylinder (detail), sphere (latitude), pyramid (tri/square base), prisms, pentagon/hexagon/octagon
+- เพิ่มชุด `symbols` แนวข้อสอบ/เอกสาร:
+  - check/cross, star 4-12 แฉก, heart, warning, phone/laptop/tablet
+- เพิ่มกรอบใหม่ใน `frames`:
+  - floral, thai-applied, shadow, scallop-corner
+
+## 12) Image Search Engine (Infinite Scroll + Advanced Filters)
+
+- เพิ่ม state pagination:
+  - `currentOffset`, `currentQuery`, `hasMore`, `isLoading`
+- เปลี่ยนการค้นหาเป็น incremental:
+  - ค้นครั้งแรก reset grid
+  - เลื่อนลงท้าย `#imgSearchGrid` แล้วโหลดหน้าเพิ่ม (`append`) อัตโนมัติ
+- เพิ่ม filter ใหม่:
+  - `imgSvgOnly`, `imgVectorOnly`
+  - build query เพิ่ม `filetype:svg` เมื่อเลือก SVG/Vector
+- เพิ่ม post-filter ฝั่ง client:
+  - คัด mime ที่ตรง filter
+  - โหมด Monoline ยังคงใช้ scoring model เดิมเพื่อจัดอันดับคุณภาพผลลัพธ์
+
+## 13) Advanced Drawing System (Line / Arrow / Curve / Callout)
+
+- ขยาย tool mode ใน `app.js`:
+  - `line`, `lineDoubleArrow`, `curve`, `callout`
+- เพิ่ม line settings ใน properties panel:
+  - type (`line`, `arrow`, `doubleArrow`), width, dashed
+- เส้นลูกศรสร้างจาก line + triangle head (group) เพื่อให้ควบคุมทรงหัวลูกศรได้ง่าย
+- เส้นโค้งใช้ quadratic path (`M ... Q ...`) สำหรับ arc แบบเร็ว
+- callout สร้างจาก group (bubble + pointer + text) เพื่อแก้ไข/ย้ายได้เป็นก้อนเดียว
+- expose API ใหม่:
+  - `window.wbSetLineSettings(next)`
+  - `window.wbGetLineSettings()`
+  เพื่อให้ `toolbar.js` sync ค่า line settings กับ engine
+
+## 14) ข้อสังเกตหลังใช้งานจริง
+
+- การแก้ style ของ object กลุ่มลูกศร (`fabric.Group`) ต้องจัดการ child object แยก (line/triangle) ไม่สามารถ set stroke ทีเดียวที่ group แล้วครบทุกกรณี
+- การ redraw เส้นลูกศรระหว่างลากเมาส์ใช้วิธี remove+create object ใหม่ในทุก move event เพื่อคำนวณหัวลูกศรให้ตรงทิศ
+- ถ้าต้องการรองรับการสลับชนิดเส้นของ object เดิมแบบสมบูรณ์ (line ↔ arrow ↔ doubleArrow) ควรเพิ่ม utility แปลง object ที่คง geometry เดิมโดยตรงในรอบถัดไป
+
+## 15) Phase 3.1 (Theme + Callout + Arrow Pattern + Multi-source Search)
+
+- เพิ่มระบบ Theme จริงแบบ stateful:
+  - ใช้ `body[data-theme='light']` สำหรับ override token สีทั้งหมด
+  - ใช้ `localStorage` key `smartws_theme` เพื่อจำค่าธีมข้าม session
+  - ใช้ปุ่ม `#themeToggle` เพื่อสลับ Light/Dark แบบไม่ต้อง reload
+- บทเรียนด้าน Contrast:
+  - ปุ่มเครื่องมือบน toolbar ควรมีทั้ง `color`, `background`, `border` ที่ต่างระดับกันชัดเจน
+  - สถานะ `active` ควรมีทั้งสีพื้น + เส้นขอบ + shadow เพื่อแยกจาก `hover` อย่างชัด
+- ปรับ Callout ให้เป็น “กล่องเปล่า” โดยยังแก้ไขข้อความได้:
+  - `fabric.IText('')` แทน placeholder text ช่วยลดขั้นตอนลบข้อความเดิม
+  - คง `subTargetCheck: true` และ event `mousedblclick` เพื่อเข้าระบบพิมพ์ใน group ได้
+- อัปเกรดระบบเส้นให้รองรับ Pattern:
+  - เปลี่ยนจาก boolean `dashed` เป็น enum `pattern` (`solid`, `dashed`, `dotted`)
+  - ทำ helper `getDashArray(pattern, width)` ให้ทั้ง `app.js` และ `toolbar.js` ใช้ตรรกะเดียวกัน
+  - group line/arrow ต้องตั้ง dash เฉพาะ child ที่เป็น `line/path` ไม่ใช่ `triangle` (หัวลูกศร)
+- ระบบค้นหารูปฟรีหลายแหล่ง:
+  - เพิ่ม source switch: `Wikimedia Commons` และ `Openverse`
+  - โหมด Wikimedia ใช้ query แบบเน้น `intitle:"..."` + token เฉพาะโดเมน (clipart/vector/line-art)
+  - โหมด Openverse ใช้ endpoint `https://api.openverse.org/v1/images/` พร้อม page-based infinite scroll
+  - ทำ normalize layer รวมผลลัพธ์ต่างโครงสร้างให้ UI render ชุดเดียวได้ (`thumbUrl/fullUrl/mime/title`)
+- ข้อสังเกตเชิงระบบค้นหา:
+  - Wikimedia เหมาะกับไฟล์เชิงเอกสารและภาพจากหมวดหมู่
+  - Openverse ให้ผลกว้างและเน้นรูปใช้งานได้จริง จึงควรมีทั้งสองแหล่งเพื่อ balance precision/coverage
+
+## 16) Hotfix รอบล่าสุด (Search UX + Openverse 401 + Library Expansion)
+
+- ปรับ UX ของหน้าค้นหารูปให้เห็นรูปตัวอย่างชัดขึ้น:
+  - เพิ่มขนาด modal ค้นหารูป และขยาย card thumbnail + ข้อความใต้ภาพ
+  - เปลี่ยน grid เป็น `auto-fill minmax(...)` เพื่อให้ card ใหญ่ขึ้นอัตโนมัติตามพื้นที่
+- แก้ปัญหา infinite scroll ไม่โหลดต่อ:
+  - เพิ่ม `ensureGridFilled()` ให้โหลดหน้าเพิ่มทันทีเมื่อผลลัพธ์ยังไม่พอจนเกิด scrollbar
+  - เพิ่ม guard เมื่อ append แล้วไม่พบรายการ ให้หยุด `hasMore` ป้องกัน loop วน
+  - เพิ่ม listener เสริมบน wheel ของ modal เพื่อให้ trigger append ได้เสถียรขึ้น
+- แก้ปัญหา `Openverse API Error 401`:
+  - เมื่อเจอ 401 จะ fallback อัตโนมัติไป Wikimedia
+  - อัปเดต source selector ให้ตรงกับ source ที่ใช้งานจริงและแจ้งผู้ใช้ด้วย toast
+  - แนวคิดนี้ช่วยไม่ให้ UX หยุดด้วย error แม้ third-party source จะ block ชั่วคราว
+- เพิ่มความสามารถเปลี่ยนสีข้อความ:
+  - รองรับ `i-text`, `text`, `textbox`
+  - รองรับข้อความที่อยู่ภายใน `fabric.Group` (เช่น Callout) โดยไล่เปลี่ยน fill เฉพาะ child ที่เป็น text object
+- ขยาย SVG Library จำนวนมาก:
+  - เพิ่มชุด `frames` ใหม่หลายแบบ (ticket, cloud, notebook-hole, math-grid, ฯลฯ)
+  - เพิ่มชุด `symbols` ใหม่ (mail, home, calendar, clock, gear, link, ฯลฯ)
+  - เพิ่มชุด `geometry` ใหม่ (tetrahedron, torus, frustum, nonagon, decagon, ellipse axes, ฯลฯ)
+
+## 17) Hotfix รอบใหม่ (Source Replace + Scoped Color + Table Tool)
+
+- เปลี่ยนแหล่งค้นหารูปฟรี:
+  - ถอด `Openverse` ออกจาก UI/logic ทั้งหมดตาม requirement
+  - เพิ่มแหล่ง `OpenClipart` แทน และ fallback ไป Wikimedia อัตโนมัติเมื่อแหล่งใหม่ล้มเหลว
+- แก้ปัญหา preview ย่อ/กลายเป็นขีดระหว่างเลื่อน:
+  - ล็อกโครง grid เป็น 2 คอลัมน์คงที่ ลดการ reflow ที่ทำให้ card ยุบ
+  - เพิ่มขนาดภาพ preview และใช้ `object-fit: contain` + พื้นหลังขาวเพื่ออ่านรูปได้ชัด
+  - คุม `min-height` ของ card/info เพื่อไม่ให้ collapse ระหว่างโหลดภาพ
+- แยกการเปลี่ยนสีตามชนิด object (scoped color editing):
+  - `colorText` มีผลเฉพาะ text objects (`i-text/text/textbox`) เท่านั้น
+  - `colorFill` มีผลเฉพาะกล่อง/shape เท่านั้น ไม่กระทบเส้น/ข้อความ
+  - `colorStroke` มีผลเฉพาะ line/path/arrow/table เท่านั้น ไม่กระทบ object อื่น
+- เพิ่มเครื่องมือสร้างตาราง:
+  - เพิ่มปุ่ม `toolTable` (ไอคอน ▦) และ shortcut `G`
+  - ตารางถูกสร้างเป็น group ของเส้นตามสี/รูปแบบเส้นปัจจุบัน และปรับผ่าน panel เส้นได้
+
+## 18) Hotfix รอบล่าสุด (Multi-source Search + UX Simplify + Equation Width)
+
+- ถอด OpenClipart ออกจากระบบค้นหารูป (เนื่องจากเสถียรภาพไม่ดีในสภาพแวดล้อมจริง)
+- เพิ่มแหล่งค้นหารูปฟรีแบบไม่ต้องใช้ API key รวม 2 แหล่งใหม่:
+  - `Flickr Public` (ภาพสาธารณะ)
+  - `Iconify` (ไอคอน SVG)
+  - รวมกับ `Wikimedia` เป็น 3 แหล่งค้นหา
+- โหมด Monoline ถูกบังคับเปิดตลอด (always-on) โดยไม่ต้องมี checkbox
+- ถอด quick chips หมวดหมู่ (การศึกษา/วิทยาศาสตร์/ฯลฯ) ออกจาก UI ตาม requirement
+- เพิ่มคำแนะนำการกรอกในช่องค้นหา เพื่อช่วยให้ user ใส่คีย์เวิร์ดได้แม่นขึ้น
+- แก้ปัญหา card preview ย่อ/เป็นเส้นระหว่างเลื่อน:
+  - ล็อก grid เป็นคอลัมน์คงที่
+  - เพิ่ม `min-height` card และกำหนดขนาดรูปคงที่ + `object-fit: contain`
+- ตารางกำหนดจำนวนแถว/คอลัมน์ได้:
+  - ตอนวางตารางจะถาม Rows/Columns และ validate ช่วง 1..20
+- ปรับขนาดกรอบสมการ:
+  - ลด max render width ของสมการ
+  - เพิ่ม auto-fit scale ตามพื้นที่กระดาษเพื่อลดปัญหากรอบกว้างเกิน
+
+## 19) Hotfix รอบปัจจุบัน (Wikimedia Reliability + Infinite Scroll + Source Guide)
+
+- ปรับระบบค้นหารูปใหม่ทั้งโมดูล โดยเน้นความเสถียร:
+  - ทำ `safeFetch()` พร้อม timeout และ error handling กลาง
+  - แสดงข้อความ `Failed to fetch` แบบเข้าใจง่ายขึ้น พร้อมแนะแนวตรวจอินเทอร์เน็ต/สิทธิ์โดเมน
+- ปรับ query ของ Wikimedia ให้กว้างขึ้น ลดอาการ “ไม่เจอรูป” จาก query ที่แคบเกิน:
+  - ใช้คำผสมแนว `outline / line art / icon / diagram / clipart / vector`
+  - มี fallback query เมื่อผลรอบแรกว่าง
+- เพิ่มช่องทางค้นหารูปฟรีหลายแหล่ง (รวมเกิน 2 แหล่ง):
+  - Wikimedia Commons
+  - Flickr Public
+  - Iconify Icons
+  - Library (ในเครื่อง)
+- เพิ่มคู่มือการค้นหา Iconify แบบ contextual:
+  - hint เปลี่ยนตาม source ที่เลือก
+  - ยกตัวอย่างทั้ง keyword และรูปแบบ `prefix:name` (เช่น `mdi:home`)
+- แก้ infinite scroll ให้เสถียร:
+  - ใช้ทั้ง `IntersectionObserver` (sentinel) + near-bottom scroll trigger
+  - มี `ensureGridFilled()` เติมผลลัพธ์อัตโนมัติเมื่อรายการยังไม่พอให้เกิด scroll
+- เพิ่ม host permissions ใน manifest สำหรับแหล่งใหม่เพื่อลด fetch error ใน extension context
+- ขยายคลัง SVG เพิ่มอีกมากกว่า 10 ชิ้น กระจายในหมวดที่ร้องขอ:
+  - math / people / nature / school / frames / symbols / geometry
+
+## 20) Hotfix ล่าสุด (Search Relevance + Manual Search + Openverse 401)
+
+- แก้ปัญหา `Iconify/Flickr` เลื่อนสุดแล้วไม่โหลดเพิ่ม:
+  - ใช้ offset/page ที่คงที่ขึ้น และไม่ผูกกับจำนวนผลลัพธ์หลังกรอง
+  - เพิ่ม dedupe key ต่อ session เพื่อกันรายการซ้ำตอน append
+  - กรณีผลลัพธ์หน้าใหม่ว่าง จะลองขยับหน้าเพิ่มอีกรอบก่อนหยุด
+- แก้ relevance เมื่อเปิด `SVG Only / Vector Only`:
+  - ปรับ Wikimedia query เป็น `filetype:svg` แบบตรงคำค้น
+  - จัดอันดับ/คัดผลจาก “ชื่อรายการ” เป็นหลัก
+  - fallback query (`<query> image`) ยังใช้คำค้นเดิมเป็น relevance key เพื่อไม่หลุดหัวข้อ
+- ปรับ UX การค้นหา:
+  - เปลี่ยนจากค้นหาอัตโนมัติขณะพิมพ์ → ค้นหาเมื่อกดปุ่ม/Enter เท่านั้น
+  - เพิ่มปุ่ม `ค้นหา` ใน modal เพื่อให้ workflow ชัดเจน
+- Openverse API:
+  - บริการฟรีแต่บางช่วงเจอ `401` ได้
+  - ระบบสลับ fallback ไป Wikimedia อัตโนมัติและแจ้งผู้ใช้ด้วย toast

@@ -15,19 +15,15 @@ const CATEGORIES = {
     nature: { label: '🌿 ธรรมชาติ' },
     school: { label: '🏫 โรงเรียน' },
     frames: { label: '🖼️ กรอบ' },
-    arrows: { label: '➡️ ลูกศร (Mono)' },
     symbols: { label: '🔘 สัญลักษณ์ (Mono)' },
     geometry: { label: '🧊 เรขาคณิต (Mono)' },
-    animals: { label: '🐾 สัตว์ (Mono)' },
 };
 
-const MONO_CATEGORIES = new Set(['arrows', 'symbols', 'geometry', 'animals']);
+const MONO_CATEGORIES = new Set(['symbols', 'geometry']);
 const MONO_CHIPS = [
     { key: 'all', label: 'ทั้งหมด' },
-    { key: 'arrows', label: '➡️ ลายเส้น' },
     { key: 'symbols', label: '🔳 ไอคอน' },
     { key: 'geometry', label: '📏 เทคนิค' },
-    { key: 'animals', label: '🐾 สัตว์' },
 ];
 
 let activeMonoChip = 'all';

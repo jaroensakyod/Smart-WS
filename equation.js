@@ -104,7 +104,7 @@ ${_cssText}
 async function renderAndPlace(source, opts = {}) {
     const clr = opts.color || '#1e293b';
     const fs = opts.fontSize || 22;
-    const scale = (opts.scale || 1.5) * 0.5;
+    let scale = (opts.scale || 1.5) * 0.5;
     const isPure = opts.pureLatex;
 
     let bodyHtml;
@@ -115,11 +115,18 @@ async function renderAndPlace(source, opts = {}) {
         bodyHtml = mixedTextToHtml(source);
     }
 
-    const { dataUrl } = await htmlToPng(bodyHtml, { fontSize: fs, color: clr, W: 760 });
+    const { dataUrl } = await htmlToPng(bodyHtml, { fontSize: fs, color: clr, W: 560 });
 
     return new Promise((resolve) => {
         fabric.Image.fromURL(dataUrl, (img) => {
             const canvas = window.wbCanvas;
+            const maxObjW = canvas.width * 0.62;
+            const maxObjH = canvas.height * 0.28;
+            const widthAtScale = img.width * scale;
+            const heightAtScale = img.height * scale;
+            if (widthAtScale > maxObjW) scale = maxObjW / img.width;
+            if (heightAtScale > maxObjH) scale = Math.min(scale, maxObjH / img.height);
+
             img.set({
                 left: opts.left ?? (canvas.width / 2 - img.width * scale / 2),
                 top: opts.top ?? (canvas.height / 2 - img.height * scale / 2),
