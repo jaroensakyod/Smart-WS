@@ -258,6 +258,29 @@
   - fallback query (`<query> image`) ยังใช้คำค้นเดิมเป็น relevance key เพื่อไม่หลุดหัวข้อ
 - ปรับ UX การค้นหา:
   - เปลี่ยนจากค้นหาอัตโนมัติขณะพิมพ์ → ค้นหาเมื่อกดปุ่ม/Enter เท่านั้น
+
+## 21) Phase 6 + 7 Delivery Notes (Pro Features + Template Scale)
+
+- Advanced Page Management ถูกย้ายจากแนวคิดเป็นระบบใช้งานจริง:
+  - เพิ่ม API ระดับ app core: `wbDuplicatePage`, `wbDeletePage`, `wbClearPage`, `wbMovePage`, `wbGetPageThumbnails`
+  - `wbGetPageThumbnails()` ใช้วิธีวนสลับหน้า + `toDataURL` แล้วกลับหน้าปัจจุบันเพื่อให้ thumbnail ตรง state จริง
+- Page Manager UX:
+  - ใช้ modal เดียวพร้อม thumbnail grid
+  - รองรับ drag and drop reorder โดย drop target เป็น page card แต่ละหน้า
+  - หลัง reorder ต้อง reload หน้า active เพื่อ sync index + indicator
+- Text Effects Implementation:
+  - Outline: toggle ผ่าน `stroke` + `strokeWidth`
+  - Shadow: ใช้ `fabric.Shadow`
+  - Curved text: แปลงข้อความเป็น `fabric.Text` แล้วผูกกับ `fabric.Path` แบบ quadratic
+- Image Finishing:
+  - Crop ใช้ native image crop props (`cropX`, `cropY`, `width`, `height`) โดย quick percentage crop
+  - Mask ใช้ `clipPath` แบบ circle/rounded rect และ reset ได้
+- QR Generator:
+  - ใช้ URL API (`api.qrserver.com`) แล้วโหลดกลับเข้า Fabric image object
+  - ต้องเพิ่ม host permission ใน MV3 ให้ครบ มิฉะนั้น extension fetch/load อาจถูกบล็อก
+- Template scaling strategy:
+  - เพิ่ม template ใหม่เป็น branch ใน `applyTemplate(type)` เพื่อ reuse object factory เดิมและลด regression
+  - sync key เดียวกันทั้ง `templateSelect` และ `templateCards` ป้องกัน mismatch ระหว่าง dropdown กับ gallery
   - เพิ่มปุ่ม `ค้นหา` ใน modal เพื่อให้ workflow ชัดเจน
 - Openverse API:
   - บริการฟรีแต่บางช่วงเจอ `401` ได้

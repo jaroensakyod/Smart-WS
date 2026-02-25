@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Fredoka:wght@400;600&family=Inter:wght@400;500;600;700&family=Kalam:wght@400;700&family=Patrick+Hand&family=Quicksand:wght@400;600;700&family=Sarabun:wght@400;500;600;700&display=swap');
 
 *,
 *::before,
@@ -33,6 +33,8 @@
     /* Canvas A4 paper */
     --paper-w: 794px;
     --paper-h: 1123px;
+    --safe-margin: 48px;
+    --grid-size: 24px;
 }
 
 body[data-theme='light'] {
@@ -123,6 +125,26 @@ body {
     color: var(--tool-active-color);
     border-color: #60a5fa;
     box-shadow: 0 0 0 1px rgba(96, 165, 250, .2), 0 4px 12px rgba(30, 64, 175, .2);
+}
+
+.toolbar-select {
+    height: 34px;
+    min-width: 108px;
+    padding: 0 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, .25);
+    background: transparent;
+    color: var(--tool-color);
+    font-size: 12px;
+}
+
+.toolbar-select:focus {
+    outline: none;
+    border-color: var(--blue);
+}
+
+.toolbar-select option {
+    color: #111827;
 }
 
 .toolbar-sep {
@@ -388,16 +410,53 @@ input[type="color"] {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
     padding: 30px;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
 }
 
+.canvas-wrapper {
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
 .page-shadow {
+    position: relative;
     box-shadow: 0 8px 48px rgba(0, 0, 0, .7), 0 0 0 1px rgba(255, 255, 255, .05);
     border-radius: 2px;
     flex-shrink: 0;
+}
+
+.page-grid,
+.page-guides {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.page-grid {
+    display: none;
+    background-image:
+        linear-gradient(to right, rgba(148, 163, 184, .18) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, .18) 1px, transparent 1px);
+    background-size: var(--grid-size) var(--grid-size);
+}
+
+body.show-grid .page-grid {
+    display: block;
+}
+
+.page-guides::before {
+    content: '';
+    position: absolute;
+    left: var(--safe-margin);
+    right: var(--safe-margin);
+    top: var(--safe-margin);
+    bottom: var(--safe-margin);
+    border: 1px dashed rgba(220, 38, 38, .45);
 }
 
 #worksheetCanvas {
@@ -905,6 +964,49 @@ input[type="color"] {
     font-size: 13px;
 }
 
+.page-thumb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+    max-height: 66vh;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.page-thumb-card {
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 8px;
+    cursor: pointer;
+    text-align: left;
+    color: var(--text);
+}
+
+.page-thumb-card.active {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 1px var(--blue-dim);
+}
+
+.page-thumb-card:hover {
+    border-color: var(--blue);
+}
+
+.page-thumb-card img {
+    width: 100%;
+    background: #fff;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    display: block;
+}
+
+.page-thumb-label {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 600;
+}
+
 /* ── Copyright footer ─── */
 .app-footer {
     position: fixed;
@@ -921,4 +1023,174 @@ input[type="color"] {
     border-top: 1px solid var(--border);
     z-index: 10;
     letter-spacing: 0.3px;
+}
+
+/* ── Smart WS Pro layout overrides ─── */
+.global-toolbar {
+    min-height: 52px;
+    height: auto;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.toolbar-tools.compact {
+    gap: 6px;
+}
+
+.autosave-status {
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.autosave-status.saving {
+    color: var(--amber);
+    border-color: var(--amber);
+}
+
+.autosave-status.saved {
+    color: var(--green);
+    border-color: var(--green);
+}
+
+.context-bar {
+    min-height: 48px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px;
+    overflow-x: auto;
+}
+
+.context-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    padding-right: 6px;
+    border-right: 1px solid var(--border);
+}
+
+.context-group:last-child {
+    border-right: none;
+}
+
+.zoom-indicator {
+    min-width: 52px;
+    text-align: center;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.main-layout {
+    height: calc(100vh - 124px);
+}
+
+.sidebar-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.sidebar-tab {
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 8px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.sidebar-tab.active {
+    background: var(--blue-dim);
+    color: var(--blue);
+    border-color: var(--blue);
+}
+
+.sidebar-tab-content {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.sidebar-tab-content.active {
+    display: block;
+}
+
+.template-gallery {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 8px 10px 14px;
+}
+
+.template-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface2);
+    padding: 10px;
+    cursor: pointer;
+    transition: border-color .15s, transform .15s;
+}
+
+.template-card:hover {
+    border-color: var(--blue);
+    transform: translateY(-1px);
+}
+
+.template-card-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.template-card-desc {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.upload-thumb {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface2);
+    padding: 6px;
+    cursor: pointer;
+}
+
+.upload-thumb img {
+    width: 100%;
+    height: 112px;
+    object-fit: contain;
+    background: #fff;
+    border-radius: 6px;
+}
+
+.document-colors {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+}
+
+.doc-color-chip {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+}
+
+body.panning,
+body.panning * {
+    cursor: grab !important;
 }

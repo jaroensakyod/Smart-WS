@@ -13,17 +13,33 @@
 </head>
 
 <body>
-    <!-- ═══ TOP TOOLBAR ══════════════════════════════════════════ -->
-    <header class="toolbar">
-        <div class="toolbar-brand">📐 Smart WS</div>
+    <!-- ═══ GLOBAL TOP BAR ════════════════════════════════════════ -->
+    <header class="toolbar global-toolbar">
+        <div class="toolbar-brand">📐 Smart WS Pro</div>
+        <div class="toolbar-tools compact">
+            <button class="tool-btn" id="toolUndo" title="ย้อนกลับ (Ctrl+Z)">↩</button>
+            <button class="tool-btn" id="toolRedo" title="ทำซ้ำ (Ctrl+Y)">↪</button>
+        </div>
+        <div class="toolbar-actions">
+            <button class="action-btn load-btn" id="btnDuplicateAnswer">🧪 Duplicate เฉลย</button>
+            <button class="action-btn load-btn" id="btnToggleAnswerMode">👩‍🎓 โหมดนักเรียน</button>
+            <button class="action-btn save-btn" id="btnSave">💾 บันทึก</button>
+            <button class="action-btn load-btn" id="btnLoad">📂 โหลด</button>
+            <div class="export-group">
+                <button class="action-btn export-btn" id="btnExportPNG">🖼 PNG</button>
+                <button class="action-btn export-btn" id="btnExportPDF">📄 PDF</button>
+                <button class="action-btn export-btn" id="btnExportPreview">👁 Preview</button>
+            </div>
+            <span id="autosaveStatus" class="autosave-status">Saved</span>
+            <button class="action-btn load-btn" id="themeToggle" title="สลับ Light / Dark">🌙</button>
+        </div>
+    </header>
 
-        <div class="toolbar-tools">
-            <button class="tool-btn" id="toolImageSearch" title="ค้นหารูปฟรี">🖼️</button>
-            <!-- Active Tool -->
+    <!-- ═══ CONTEXTUAL BAR ═══════════════════════════════════════ -->
+    <div class="context-bar" id="contextBar">
+        <div class="context-group">
             <button class="tool-btn active" id="toolSelect" title="เลือก (V)">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M4 0l16 12-7 2-4 8L4 0z" />
-                </svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M4 0l16 12-7 2-4 8L4 0z" /></svg>
             </button>
             <button class="tool-btn" id="toolText" title="เพิ่มข้อความ (T)">T</button>
             <button class="tool-btn" id="toolRect" title="วาดกล่อง (R)">▭</button>
@@ -33,15 +49,22 @@
             <button class="tool-btn" id="toolArrowDouble" title="เส้นลูกศรสองหัว">↔</button>
             <button class="tool-btn" id="toolCurve" title="เส้นโค้ง">◜</button>
             <button class="tool-btn" id="toolCallout" title="กล่องข้อความลูกศรชี้">💬</button>
+            <button class="tool-btn" id="toolWritingLines" title="เส้นบรรทัดคัดลายมือ">≡</button>
+            <button class="tool-btn" id="toolAutoNumber" title="เพิ่มเลขข้ออัตโนมัติ">1.</button>
             <button class="tool-btn" id="toolEquation" title="แทรกสมการ LaTeX (E)">∑</button>
-            <div class="toolbar-sep"></div>
-            <button class="tool-btn" id="toolUndo" title="ย้อนกลับ (Ctrl+Z)">↩</button>
-            <button class="tool-btn" id="toolRedo" title="ทำซ้ำ (Ctrl+Y)">↪</button>
-            <div class="toolbar-sep"></div>
             <button class="tool-btn" id="toolDelete" title="ลบที่เลือก (Del)">🗑</button>
         </div>
-
-        <div class="toolbar-color">
+        <div class="context-group">
+            <button class="tool-btn" id="propBringFront" title="Bring to Front">⤒</button>
+            <button class="tool-btn" id="propSendBack" title="Send to Back">⤓</button>
+            <button class="tool-btn" id="propBringFwd" title="Bring Forward">▲</button>
+            <button class="tool-btn" id="propSendBwd" title="Send Backward">▼</button>
+            <button class="tool-btn" id="propLock" title="Lock">🔒</button>
+            <button class="tool-btn" id="propUnlock" title="Unlock">🔓</button>
+            <button class="tool-btn" id="propGroup" title="Group (Ctrl+G)">🧩</button>
+            <button class="tool-btn" id="propUngroup" title="Ungroup (Ctrl+Shift+G)">🧱</button>
+        </div>
+        <div class="context-group toolbar-color">
             <label class="color-label">Fill</label>
             <input type="color" id="colorFill" value="#ffffff" title="สี Fill" />
             <label class="color-label">Stroke</label>
@@ -49,55 +72,152 @@
             <label class="color-label">Text</label>
             <input type="color" id="colorText" value="#1e293b" title="สี Text" />
         </div>
-
-        <div class="toolbar-actions">
-            <button class="action-btn save-btn" id="btnSave">💾 บันทึก</button>
-            <button class="action-btn load-btn" id="btnLoad">📂 โหลด</button>
-            <div class="export-group">
-                <button class="action-btn export-btn" id="btnExportPNG">🖼 PNG</button>
-                <button class="action-btn export-btn" id="btnExportPDF">📄 PDF</button>
-            </div>
-            <button class="action-btn load-btn" id="themeToggle" title="สลับ Light / Dark">🌙</button>
+        <div class="context-group">
+            <select id="pageSizeSelect" class="toolbar-select" title="ขนาดกระดาษ">
+                <option value="a4">A4</option>
+                <option value="letter">US Letter</option>
+            </select>
+            <button class="tool-btn" id="btnToggleGrid" title="เปิด/ปิด Grid">#</button>
+            <button class="tool-btn" id="btnToggleSnap" title="เปิด/ปิด Snap">🧲</button>
+            <button class="tool-btn" id="btnZoomOut" title="Zoom Out">－</button>
+            <button class="tool-btn" id="btnZoomIn" title="Zoom In">＋</button>
+            <button class="tool-btn" id="btnZoomFit" title="Zoom to Fit">⛶</button>
+            <span class="zoom-indicator" id="zoomIndicator">100%</span>
         </div>
-    </header>
+    </div>
 
     <!-- ═══ MAIN LAYOUT ══════════════════════════════════════════ -->
     <div class="main-layout">
 
         <!-- LEFT PANEL — SVG Library -->
         <aside class="svg-panel">
-            <div class="panel-search-wrap">
-                <input type="text" id="svgSearch" class="panel-search" placeholder="🔍 ค้นหารูป..." />
-            </div>
-            <div class="panel-filter-wrap">
-                <label class="panel-filter-label">
-                    <input type="checkbox" id="monoOnlyFilter" />
-                    Monoline only
-                </label>
+            <div class="sidebar-tabs">
+                <button class="sidebar-tab active" data-tab="templatesTab">Templates</button>
+                <button class="sidebar-tab" data-tab="elementsTab">Elements</button>
+                <button class="sidebar-tab" data-tab="bordersTab">Borders</button>
+                <button class="sidebar-tab" data-tab="uploadsTab">Uploads</button>
+                <button class="sidebar-tab" data-tab="textTab">Text</button>
             </div>
 
-            <!-- Upload your own SVG -->
-            <div class="panel-upload">
-                <label class="upload-btn" for="svgFileInput">📁 นำเข้า SVG จากเครื่อง</label>
-                <input type="file" id="svgFileInput" accept=".svg" style="display:none" />
+            <div class="sidebar-tab-content active" id="templatesTab">
+                <div class="panel-search-wrap">
+                    <select id="templateSelect" class="toolbar-select" title="เทมเพลต" style="width:100%">
+                        <option value="">Template...</option>
+                        <option value="mcq">Multiple Choice</option>
+                        <option value="matching">Matching</option>
+                        <option value="fillblank">Fill in the Blank</option>
+                        <option value="bingo">Bingo 5x5</option>
+                        <option value="taskcards4">Task Cards 4</option>
+                        <option value="taskcards8">Task Cards 8</option>
+                        <option value="venn">Venn Diagram</option>
+                        <option value="frayer">Frayer Model</option>
+                        <option value="kwl">KWL Chart</option>
+                        <option value="graphpaper">Graph Paper</option>
+                        <option value="numberline">Number Line</option>
+                        <option value="fractionpies">Fraction Pies</option>
+                        <option value="quiz">Quiz MCQ</option>
+                        <option value="matchingColumns">Matching Columns</option>
+                        <option value="handwriting">Handwriting Lines</option>
+                        <option value="comicstrip">Comic Strip</option>
+                        <option value="foldable">Foldable / Flipbook</option>
+                        <option value="bingo3">Bingo 3x3</option>
+                        <option value="wordsearch10">Word Search 10x10</option>
+                        <option value="boardgame">Board Game Path</option>
+                        <option value="exitticket">Exit Tickets</option>
+                        <option value="mindmap">Mind Map</option>
+                        <option value="certificate">Certificate</option>
+                        <option value="teacherplanner">Teacher Planner</option>
+                    </select>
+                </div>
+                <div class="panel-upload">
+                    <button class="action-btn load-btn" id="btnApplyTemplate" style="width:100%">ใช้ Template</button>
+                </div>
+                <div class="template-gallery" id="templateGallery"></div>
             </div>
 
-            <!-- Categories -->
-            <div class="panel-categories" id="panelCategories">
-                <!-- Populated by panel.js -->
+            <div class="sidebar-tab-content" id="elementsTab">
+                <div class="panel-search-wrap">
+                    <button class="action-btn load-btn" id="toolImageSearch" style="width:100%">🖼 ค้นหารูปฟรี</button>
+                </div>
+                <div class="panel-search-wrap">
+                    <input type="text" id="svgSearch" class="panel-search" placeholder="🔍 ค้นหารูป..." />
+                </div>
+                <div class="panel-filter-wrap">
+                    <label class="panel-filter-label">
+                        <input type="checkbox" id="monoOnlyFilter" />
+                        Monoline only
+                    </label>
+                </div>
+                <div class="panel-upload">
+                    <button class="action-btn load-btn" id="btnAddSquare" style="width:100%">⬛ Add Square</button>
+                    <button class="action-btn load-btn" id="btnAddCircle" style="width:100%;margin-top:6px">⚪ Add Circle</button>
+                    <button class="action-btn load-btn" id="btnAddTriangle" style="width:100%;margin-top:6px">🔺 Add Triangle</button>
+                    <button class="action-btn load-btn" id="btnAddArrowShape" style="width:100%;margin-top:6px">➡ Add Arrow</button>
+                </div>
+                <div class="panel-upload">
+                    <label class="upload-btn" for="svgFileInput">📁 นำเข้า SVG จากเครื่อง</label>
+                    <input type="file" id="svgFileInput" accept=".svg" style="display:none" />
+                </div>
+                <div class="panel-categories" id="panelCategories"></div>
+            </div>
+
+            <div class="sidebar-tab-content" id="bordersTab">
+                <div class="template-gallery" id="borderGallery"></div>
+            </div>
+
+            <div class="sidebar-tab-content" id="uploadsTab">
+                <div class="panel-upload">
+                    <label class="upload-btn" for="assetUploadInput">📁 เพิ่มไฟล์รูปของฉัน</label>
+                    <input type="file" id="assetUploadInput" accept="image/*,.svg" multiple style="display:none" />
+                </div>
+                <div class="template-gallery" id="uploadGallery"></div>
+            </div>
+
+            <div class="sidebar-tab-content" id="textTab">
+                <div class="panel-upload">
+                    <button class="action-btn load-btn" id="btnInsertHeading" style="width:100%">+ Heading</button>
+                    <button class="action-btn load-btn" id="btnInsertSubheading" style="width:100%;margin-top:6px">+ Subheading</button>
+                    <button class="action-btn load-btn" id="btnInsertBody" style="width:100%;margin-top:6px">+ Body Text</button>
+                </div>
+                <div class="panel-upload">
+                    <button class="action-btn load-btn" id="btnTextOutline" style="width:100%">🅾 Text Outline</button>
+                    <button class="action-btn load-btn" id="btnTextShadow" style="width:100%;margin-top:6px">🌑 Drop Shadow</button>
+                    <button class="action-btn load-btn" id="btnTextCurve" style="width:100%;margin-top:6px">〰 Curved Text</button>
+                </div>
+                <div class="panel-upload">
+                    <button class="action-btn load-btn" id="btnCropImage" style="width:100%">✂ Crop Image</button>
+                    <button class="action-btn load-btn" id="btnMaskCircle" style="width:100%">🟢 Mask Circle</button>
+                    <button class="action-btn load-btn" id="btnMaskRounded" style="width:100%;margin-top:6px">▢ Mask Rounded</button>
+                    <button class="action-btn load-btn" id="btnResetMask" style="width:100%;margin-top:6px">↺ Reset Mask</button>
+                </div>
+                <div class="panel-upload">
+                    <input type="url" id="qrUrlInput" class="panel-search" placeholder="https://example.com" style="margin-bottom:6px" />
+                    <button class="action-btn load-btn" id="btnAddQR" style="width:100%">🔳 Add QR Code</button>
+                </div>
+                <div class="panel-search-wrap">
+                    <div class="document-colors" id="documentColors"></div>
+                </div>
             </div>
         </aside>
 
         <!-- CENTER — Canvas -->
         <main class="canvas-area">
-            <div class="page-shadow">
-                <canvas id="worksheetCanvas"></canvas>
-            </div>
-            <div class="page-nav-bar">
-                <button class="action-btn load-btn" id="btnPrevPage">◀ หน้าเดิม</button>
-                <span class="page-indicator" id="pageIndicator">หน้า 1 / 1</span>
-                <button class="action-btn load-btn" id="btnNextPage">หน้าถัดไป ▶</button>
-                <button class="action-btn save-btn" id="btnAddPage">➕ เพิ่มหน้า</button>
+            <div class="canvas-wrapper">
+                <div class="page-shadow">
+                    <div class="page-grid" id="pageGrid"></div>
+                    <div class="page-guides" id="pageGuides"></div>
+                    <canvas id="worksheetCanvas"></canvas>
+                </div>
+                <div class="page-nav-bar">
+                    <button class="action-btn load-btn" id="btnPrevPage">◀ หน้าเดิม</button>
+                    <span class="page-indicator" id="pageIndicator">หน้า 1 / 1</span>
+                    <button class="action-btn load-btn" id="btnNextPage">หน้าถัดไป ▶</button>
+                    <button class="action-btn save-btn" id="btnAddPage">➕ เพิ่มหน้า</button>
+                    <button class="action-btn load-btn" id="btnDuplicatePage">📄 Duplicate</button>
+                    <button class="action-btn load-btn" id="btnDeletePage">🗑 Delete</button>
+                    <button class="action-btn load-btn" id="btnClearPage">🧹 Clear</button>
+                    <button class="action-btn load-btn" id="btnPageManager">🗂 Pages</button>
+                </div>
             </div>
         </main>
 
@@ -120,7 +240,17 @@
                         <option value="Georgia">Georgia</option>
                         <option value="Courier New">Courier New</option>
                         <option value="Times New Roman">Times New Roman</option>
+                        <option value="Comic Neue">Comic Neue</option>
+                        <option value="Fredoka">Fredoka</option>
+                        <option value="Quicksand">Quicksand</option>
+                        <option value="Kalam">Kalam</option>
+                        <option value="Patrick Hand">Patrick Hand</option>
                     </select>
+                </div>
+                <div class="prop-row">
+                    <label>ฟอนต์เพิ่มเติม</label>
+                    <button class="prop-toggle" id="btnUploadFont">อัปโหลด .ttf/.otf</button>
+                    <input type="file" id="customFontInput" accept=".ttf,.otf,.woff,.woff2" style="display:none" />
                 </div>
                 <div class="prop-row">
                     <label>Bold / Italic</label>
@@ -128,6 +258,7 @@
                         <button class="prop-toggle" id="propBold"><b>B</b></button>
                         <button class="prop-toggle" id="propItalic"><i>I</i></button>
                         <button class="prop-toggle" id="propUnderline"><u>U</u></button>
+                        <button class="prop-toggle" id="propTracing">···</button>
                     </div>
                 </div>
                 <div class="prop-row">
@@ -177,6 +308,32 @@
                         <button class="prop-toggle" id="propBringFwd" title="ขึ้นมาข้างบน">▲</button>
                         <button class="prop-toggle" id="propSendBwd" title="ลงไปข้างล่าง">▼</button>
                     </div>
+                </div>
+                <div class="prop-row">
+                    <label>จัดวาง</label>
+                    <div class="prop-toggle-row">
+                        <button class="prop-toggle" id="propAlignObjLeft" title="Align Left">⬅</button>
+                        <button class="prop-toggle" id="propAlignObjCenter" title="Align Center">↔</button>
+                        <button class="prop-toggle" id="propAlignObjRight" title="Align Right">➡</button>
+                    </div>
+                    <div class="prop-toggle-row">
+                        <button class="prop-toggle" id="propAlignObjTop" title="Align Top">⬆</button>
+                        <button class="prop-toggle" id="propAlignObjMiddle" title="Align Middle">↕</button>
+                        <button class="prop-toggle" id="propAlignObjBottom" title="Align Bottom">⬇</button>
+                    </div>
+                </div>
+                <div class="prop-row">
+                    <label>กระจายระยะ</label>
+                    <div class="prop-toggle-row">
+                        <button class="prop-toggle" id="propDistributeH">H</button>
+                        <button class="prop-toggle" id="propDistributeV">V</button>
+                    </div>
+                </div>
+                <div class="prop-row">
+                    <label class="panel-filter-label">
+                        <input type="checkbox" id="propAnswerOnly" />
+                        แสดงเฉพาะโหมดเฉลย
+                    </label>
                 </div>
             </div>
         </aside>
@@ -252,7 +409,7 @@
         <div class="modal-box modal-box-wide">
             <div class="modal-header">
                 <span class="modal-icon">🖼️</span>
-                <h2 class="modal-title">ค้นหารูปฟรี (Wikimedia / Flickr / Iconify / Openverse)</h2>
+                <h2 class="modal-title">ค้นหารูปฟรี (Wikimedia / Flickr / Iconify)</h2>
                 <button class="modal-close" id="imgModalClose">✕</button>
             </div>
 
@@ -273,7 +430,6 @@
                     <option value="wikimedia">Wikimedia Commons</option>
                     <option value="flickr">Flickr Public</option>
                     <option value="iconify">Iconify Icons</option>
-                    <option value="openverse">Openverse</option>
                 </select>
             </div>
 
@@ -299,12 +455,28 @@
         </div>
     </div>
 
+    <div id="pageManagerModal" class="modal-overlay" style="display:none">
+        <div class="modal-box modal-box-wide">
+            <div class="modal-header">
+                <span class="modal-icon">🗂️</span>
+                <h2 class="modal-title">Page Manager</h2>
+                <button class="modal-close" id="pageManagerClose">✕</button>
+            </div>
+            <div class="img-search-hint">ลากเพื่อสลับลำดับหน้า หรือคลิกหน้าเพื่อไปยังหน้าที่เลือก</div>
+            <div id="pageThumbGrid" class="page-thumb-grid"></div>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancel" id="pageManagerDone">เสร็จสิ้น</button>
+            </div>
+        </div>
+    </div>
+
     <footer class="app-footer">Copyright © 2026 The Coach inc.</footer>
 
     <script src="data/svgLibrary.js"></script>
     <script src="app.js"></script>
     <script src="panel.js"></script>
     <script src="toolbar.js"></script>
+    <script src="proFeatures.js"></script>
     <script src="export.js"></script>
     <script src="equation.js"></script>
     <script src="clipboard.js"></script>

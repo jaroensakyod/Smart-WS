@@ -1,13 +1,12 @@
 /* ================================================================
-   webImages.js — Free Image Search
-    Sources: Wikimedia / Iconify / Flickr / Openverse
-   ================================================================ */
+    webImages.js — Free Image Search
+     Sources: Wikimedia / Iconify / Flickr
+    ================================================================ */
 
 (function () {
     'use strict';
 
     const WIKIMEDIA_API = 'https://commons.wikimedia.org/w/api.php';
-    const OPENVERSE_API = 'https://api.openverse.org/v1/images/';
     const PAGE_SIZE = 24;
     const FETCH_TIMEOUT = 12000;
 
@@ -103,9 +102,6 @@
         }
         if (source === 'flickr') {
             return 'Flickr: เหมาะกับภาพจริง/ภาพถ่าย ใช้คำทั่วไป เช่น classroom, forest, mountains';
-        }
-        if (source === 'openverse') {
-            return 'Openverse: ค้นหารูป CC ฟรี เช่น cat, science, worksheet, nature (ถ้าช่องค้นหาว่างระบบจะสุ่มรูปให้อัตโนมัติ)';
         }
         return 'Wikimedia: พิมพ์คำอังกฤษตรงๆ เช่น cat, school, flower (ถ้าช่องค้นหาว่างระบบจะสุ่มรูปให้อัตโนมัติ)';
     }
@@ -317,25 +313,6 @@
         return { items };
     }
 
-    async function fetchOpenverseItems(query, page) {
-        const params = new URLSearchParams({
-            q: query,
-            page: String(Math.max(1, page)),
-            page_size: String(PAGE_SIZE),
-        });
-        const res = await safeFetch(OPENVERSE_API + '?' + params);
-        if (!res.ok) {
-            if (res.status === 401) throw new Error('Openverse API Error 401');
-            throw new Error('Openverse API Error ' + res.status);
-        }
-        const data = await res.json();
-        const items = rankAndFilterByTitle(normalizeOpenverseItems(data?.results || []), query);
-        return {
-            items,
-            pageCount: Number(data?.page_count || 1),
-        };
-    }
-
     function getItemKey(item) {
         return item?.id || item?.fullUrl || item?.thumbUrl || item?.title || '';
     }
@@ -437,40 +414,6 @@
                         hasMore = currentOffset < 20;
                     }
                 }
-            } else if (currentSource === 'openverse') {
-                const page = currentOffset + 1;
-                const term = q || RANDOM_KEYWORDS[Math.floor(Math.random() * RANDOM_KEYWORDS.length)];
-                try {
-                    const result = await fetchOpenverseItems(term, page);
-                    items = dedupeAgainstSeen(result.items);
-                    currentOffset = page;
-                    hasMore = page < Math.max(1, result.pageCount);
-                } catch (err) {
-                    if (String(err?.message || '').includes('Openverse API Error 401')) {
-                        if (imgSourceSelect) imgSourceSelect.value = 'wikimedia';
-                        currentSource = 'wikimedia';
-                        updateSearchHint();
-                        window.showToast?.('Openverse ใช้งานไม่ได้ชั่วคราว (401) — สลับไป Wikimedia อัตโนมัติ');
-
-                        if (q) {
-                            let result = await fetchWikimediaItems(q, currentOffset, q);
-                            if (!result.items.length && !append) {
-                                const fallbackQuery = `${q} image`;
-                                result = await fetchWikimediaItems(fallbackQuery, 0, q);
-                            }
-                            items = dedupeAgainstSeen(result.items);
-                            currentOffset = result.nextOffset ?? currentOffset;
-                            hasMore = result.nextOffset != null;
-                        } else {
-                            const result = await fetchWikimediaRandomItems();
-                            items = result.items;
-                            currentOffset += 1;
-                            hasMore = true;
-                        }
-                    } else {
-                        throw err;
-                    }
-                }
             } else {
                 if (q) {
                     let result = await fetchWikimediaItems(q, currentOffset, q);
@@ -519,6 +462,10 @@
         currentQuery = String(query || '').trim();
         currentOffset = 0;
         currentSource = imgSourceSelect?.value || 'wikimedia';
+        if (!['wikimedia', 'flickr', 'iconify'].includes(currentSource)) {
+            currentSource = 'wikimedia';
+            if (imgSourceSelect) imgSourceSelect.value = 'wikimedia';
+        }
         hasMore = true;
         doSearch({ append: false });
     }
@@ -542,7 +489,6 @@
                 (isSvg ? '<span class="img-media-badge">SVG</span><span class="img-media-badge">Vector</span>' : '') +
                 (item.source === 'flickr' ? '<span class="img-media-badge">FL</span>' : '') +
                 (item.source === 'iconify' ? '<span class="img-media-badge">IC</span>' : '') +
-                (item.source === 'openverse' ? '<span class="img-media-badge">OV</span>' : '') +
                 '</div>' +
                 '<div class="img-card-info">' + title.substring(0, 54) + '</div>';
 
