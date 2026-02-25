@@ -97,6 +97,9 @@
                 <button class="sidebar-tab" data-tab="bordersTab">Borders</button>
                 <button class="sidebar-tab" data-tab="uploadsTab">Uploads</button>
                 <button class="sidebar-tab" data-tab="textTab">Text</button>
+                <button class="sidebar-tab" data-tab="generatorsTab">Generators</button>
+                <button class="sidebar-tab" data-tab="layersTab">Layers</button>
+                <button class="sidebar-tab" data-tab="savedTab">Saved</button>
             </div>
 
             <div class="sidebar-tab-content active" id="templatesTab">
@@ -194,15 +197,55 @@
                     <input type="url" id="qrUrlInput" class="panel-search" placeholder="https://example.com" style="margin-bottom:6px" />
                     <button class="action-btn load-btn" id="btnAddQR" style="width:100%">🔳 Add QR Code</button>
                 </div>
+                <div class="panel-upload">
+                    <button class="action-btn load-btn" id="btnTableAddRow" style="width:100%">➕ Row</button>
+                    <button class="action-btn load-btn" id="btnTableRemoveRow" style="width:100%;margin-top:6px">➖ Row</button>
+                    <button class="action-btn load-btn" id="btnTableAddCol" style="width:100%;margin-top:6px">➕ Column</button>
+                    <button class="action-btn load-btn" id="btnTableRemoveCol" style="width:100%;margin-top:6px">➖ Column</button>
+                </div>
+                <div class="panel-upload">
+                    <select id="writingLineStyle" class="toolbar-select" style="width:100%;margin-bottom:6px">
+                        <option value="primary">Writing - Primary</option>
+                        <option value="dotted">Writing - Dotted</option>
+                        <option value="grid">Grid Paper</option>
+                    </select>
+                    <input type="number" id="writingLineSpacing" class="panel-search" min="24" max="120" step="2" value="46" placeholder="Line spacing" style="margin-bottom:6px" />
+                    <button class="action-btn load-btn" id="btnApplyWritingPreset" style="width:100%">Apply Line Preset</button>
+                </div>
                 <div class="panel-search-wrap">
                     <div class="document-colors" id="documentColors"></div>
                 </div>
+            </div>
+
+            <div class="sidebar-tab-content" id="generatorsTab">
+                <div class="panel-upload">
+                    <button class="action-btn load-btn" id="btnGenMath" style="width:100%">🧮 Math Generator</button>
+                    <button class="action-btn load-btn" id="btnGenWordSearch" style="width:100%;margin-top:6px">🔤 Word Search</button>
+                    <button class="action-btn load-btn" id="btnGenCrossword" style="width:100%;margin-top:6px">🧩 Crossword</button>
+                    <button class="action-btn save-btn" id="btnGenerateAnswerKey" style="width:100%;margin-top:6px">🧪 Generate Answer Key</button>
+                </div>
+            </div>
+
+            <div class="sidebar-tab-content" id="layersTab">
+                <div class="panel-search-wrap">
+                    <button class="action-btn load-btn" id="btnRefreshLayers" style="width:100%">🔄 Refresh Layers</button>
+                </div>
+                <div id="layersPanelList" class="layers-list"></div>
+            </div>
+
+            <div class="sidebar-tab-content" id="savedTab">
+                <div class="panel-upload">
+                    <button class="action-btn save-btn" id="btnSaveElement" style="width:100%">💾 Save Selection</button>
+                </div>
+                <div id="savedElementsGrid" class="template-gallery"></div>
             </div>
         </aside>
 
         <!-- CENTER — Canvas -->
         <main class="canvas-area">
             <div class="canvas-wrapper">
+                <div class="canvas-ruler ruler-top" id="rulerTop"></div>
+                <div class="canvas-ruler ruler-left" id="rulerLeft"></div>
                 <div class="page-shadow">
                     <div class="page-grid" id="pageGrid"></div>
                     <div class="page-guides" id="pageGuides"></div>

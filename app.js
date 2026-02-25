@@ -288,11 +288,41 @@ let lineSettings = {
     pattern: 'solid',
     width: 2,
 };
+let writingLineSettings = {
+    style: 'primary',
+    spacing: 46,
+    width: 520,
+    rows: 4,
+};
 let activeGuideLines = [];
 
-function makeWritingLinesAt(x, y, width = 520, rows = 4) {
+function makeWritingLinesAt(x, y, width = 520, rows = 4, style = 'primary', spacing = 46) {
     const lines = [];
-    const rowHeight = 46;
+    const rowHeight = Math.max(24, Number(spacing) || 46);
+    const mode = style || 'primary';
+
+    if (mode === 'grid') {
+        const totalH = rows * rowHeight;
+        const cols = Math.max(2, Math.round(width / rowHeight));
+        for (let r = 0; r <= rows; r++) {
+            const yPos = y + r * rowHeight;
+            lines.push(new fabric.Line([x, yPos, x + width, yPos], {
+                stroke: '#94a3b8',
+                strokeWidth: r % 5 === 0 ? 1.4 : 0.8,
+                selectable: false,
+                evented: false,
+            }));
+        }
+        for (let c = 0; c <= cols; c++) {
+            const xPos = x + c * rowHeight;
+            lines.push(new fabric.Line([xPos, y, xPos, y + totalH], {
+                stroke: '#94a3b8',
+                strokeWidth: c % 5 === 0 ? 1.4 : 0.8,
+                selectable: false,
+                evented: false,
+            }));
+        }
+    } else {
     for (let i = 0; i < rows; i++) {
         const baseY = y + i * rowHeight;
         lines.push(new fabric.Line([x, baseY, x + width, baseY], {
@@ -301,16 +331,27 @@ function makeWritingLinesAt(x, y, width = 520, rows = 4) {
             selectable: false,
             evented: false,
         }));
-        lines.push(new fabric.Line([x, baseY + rowHeight / 2, x + width, baseY + rowHeight / 2], {
-            stroke: '#64748b',
-            strokeWidth: 1.2,
-            strokeDashArray: [3, 5],
-            selectable: false,
-            evented: false,
-        }));
+            if (mode === 'dotted') {
+                lines.push(new fabric.Line([x, baseY + rowHeight / 2, x + width, baseY + rowHeight / 2], {
+                    stroke: '#475569',
+                    strokeWidth: 1.4,
+                    strokeDashArray: [1, 8],
+                    selectable: false,
+                    evented: false,
+                }));
+            } else {
+                lines.push(new fabric.Line([x, baseY + rowHeight / 2, x + width, baseY + rowHeight / 2], {
+                    stroke: '#64748b',
+                    strokeWidth: 1.2,
+                    strokeDashArray: [3, 5],
+                    selectable: false,
+                    evented: false,
+                }));
+            }
+        }
     }
     const g = new fabric.Group(lines, { objectCaching: false });
-    g.data = { type: 'writingLines' };
+    g.data = { type: 'writingLines', style: mode, spacing: rowHeight, width, rows };
     return g;
 }
 
@@ -367,6 +408,59 @@ function duplicateAsAnswerKey() {
         applyWorksheetVisibilityMode();
         updatePageIndicator();
         showToast('🧪 สร้างหน้าเฉลยแล้ว');
+    });
+}
+
+function collectTextObjects(root, bucket) {
+    if (!root) return;
+    if (root.type === 'i-text' || root.type === 'text' || root.type === 'textbox') {
+        bucket.push(root);
+        return;
+    }
+    if (root.type === 'group' && typeof root.getObjects === 'function') {
+        root.getObjects().forEach(item => collectTextObjects(item, bucket));
+    }
+}
+
+function generateAnswerKeyPage() {
+    persistCurrentPage();
+    const source = currentPage()?.json || BLANK_PAGE_JSON;
+    workbook.pages.push(createPageState(source));
+    activePageIndex = workbook.pages.length - 1;
+    loadCanvasJson(source).then(() => {
+        worksheetMode = 'answer';
+        syncUiToggles();
+
+        const allText = [];
+        canvas.getObjects().forEach(obj => collectTextObjects(obj, allText));
+        allText.forEach(txt => {
+            const raw = String(txt.text || '');
+            const m = raw.match(/\[([^\]]+)\]/);
+            if (m) {
+                txt.set({ text: raw.replace(/\[([^\]]+)\]/g, '$1'), fill: '#dc2626', fontWeight: '700' });
+                txt.data = { ...(txt.data || {}), answerOnly: true, answerText: m[1] };
+            }
+        });
+
+        const watermark = new fabric.Text('ANSWER KEY', {
+            left: PAPER_W / 2,
+            top: PAPER_H / 2,
+            originX: 'center',
+            originY: 'center',
+            angle: -20,
+            opacity: 0.14,
+            fontFamily: 'Fredoka',
+            fontSize: 96,
+            fill: '#dc2626',
+            selectable: false,
+            evented: false,
+        });
+        watermark.data = { type: 'answerWatermark', answerOnly: true };
+        canvas.add(watermark);
+
+        applyWorksheetVisibilityMode();
+        updatePageIndicator();
+        showToast('🧪 สร้างหน้าเฉลย (Answer Key) แล้ว');
     });
 }
 
@@ -820,56 +914,144 @@ function makeCurveShape(x1, y1, x2, y2) {
     return path;
 }
 
-function addTableAt(x, y, rows = 4, cols = 4) {
+function normalizeTableCells(cells, rows, cols) {
+    const output = [];
+    for (let r = 0; r < rows; r++) {
+        const row = [];
+        for (let c = 0; c < cols; c++) {
+            row.push(String(cells?.[r]?.[c] || ''));
+        }
+        output.push(row);
+    }
+    return output;
+}
+
+function createSmartTableGroup({ x, y, rows = 4, cols = 4, cellW = 96, cellH = 52, cells = null }) {
     const stroke = getStroke();
     const width = Math.max(1, Number(lineSettings.width || 2));
     const pattern = lineSettings.pattern || 'solid';
     const dash = getDashArray(pattern, width);
-    const cellW = 96;
-    const cellH = 52;
-    const totalW = cols * cellW;
-    const totalH = rows * cellH;
-    const lines = [];
+    const textColor = document.getElementById('colorText')?.value || '#1e293b';
+    const normalized = normalizeTableCells(cells, rows, cols);
 
-    for (let r = 0; r <= rows; r++) {
-        const yPos = y + r * cellH;
-        lines.push(new fabric.Line([x, yPos, x + totalW, yPos], {
-            stroke,
-            strokeWidth: width,
-            strokeDashArray: dash,
-            strokeLineCap: 'round',
-            selectable: false,
-            evented: false,
-        }));
+    const objects = [];
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const left = c * cellW;
+            const top = r * cellH;
+            objects.push(new fabric.Rect({
+                left,
+                top,
+                width: cellW,
+                height: cellH,
+                fill: '#ffffff',
+                stroke,
+                strokeWidth: width,
+                strokeDashArray: dash,
+                selectable: false,
+                evented: false,
+                name: `tableCell_${r}_${c}`,
+            }));
+            objects.push(new fabric.IText(normalized[r][c], {
+                left: left + 8,
+                top: top + Math.max(6, (cellH - 24) / 2),
+                fontFamily: 'Sarabun',
+                fontSize: 18,
+                fill: textColor,
+                selectable: false,
+                evented: false,
+                name: `tableText_${r}_${c}`,
+            }));
+        }
     }
 
-    for (let c = 0; c <= cols; c++) {
-        const xPos = x + c * cellW;
-        lines.push(new fabric.Line([xPos, y, xPos, y + totalH], {
-            stroke,
-            strokeWidth: width,
-            strokeDashArray: dash,
-            strokeLineCap: 'round',
-            selectable: false,
-            evented: false,
-        }));
-    }
-
-    const group = new fabric.Group(lines, {
+    const group = new fabric.Group(objects, {
+        left: x,
+        top: y,
+        subTargetCheck: true,
         objectCaching: false,
     });
     group.data = {
         type: 'table',
         rows,
         cols,
+        cellW,
+        cellH,
+        cells: normalized,
         lineMode: 'line',
         pattern,
         lineWidth: width,
         isLineTool: true,
     };
+    return group;
+}
+
+function rebuildSmartTable(tableGroup, nextRows, nextCols) {
+    if (!tableGroup?.data || tableGroup.data.type !== 'table') return null;
+    const rows = Math.max(1, Number(nextRows) || 1);
+    const cols = Math.max(1, Number(nextCols) || 1);
+    const replacement = createSmartTableGroup({
+        x: tableGroup.left,
+        y: tableGroup.top,
+        rows,
+        cols,
+        cellW: Number(tableGroup.data.cellW || 96),
+        cellH: Number(tableGroup.data.cellH || 52),
+        cells: tableGroup.data.cells || [],
+    });
+    replacement.set({ angle: tableGroup.angle || 0, scaleX: tableGroup.scaleX || 1, scaleY: tableGroup.scaleY || 1 });
+    canvas.remove(tableGroup);
+    canvas.add(replacement);
+    canvas.setActiveObject(replacement);
+    canvas.requestRenderAll();
+    return replacement;
+}
+
+function editSmartTableCellAtPointer(group, pointer) {
+    if (!group?.data || group.data.type !== 'table') return false;
+    const rows = Number(group.data.rows || 0);
+    const cols = Number(group.data.cols || 0);
+    const cellW = Number(group.data.cellW || 96);
+    const cellH = Number(group.data.cellH || 52);
+    if (!rows || !cols) return false;
+
+    const localX = (pointer.x - group.left) / (group.scaleX || 1);
+    const localY = (pointer.y - group.top) / (group.scaleY || 1);
+    const col = Math.floor(localX / cellW);
+    const row = Math.floor(localY / cellH);
+    if (row < 0 || col < 0 || row >= rows || col >= cols) return false;
+
+    const oldValue = String(group.data.cells?.[row]?.[col] || '');
+    const nextValue = window.prompt(`แก้ไขเซลล์ R${row + 1}C${col + 1}`, oldValue);
+    if (nextValue === null) return false;
+
+    group.data.cells[row][col] = String(nextValue);
+    const next = rebuildSmartTable(group, rows, cols);
+    if (next) showToast(`อัปเดตตาราง R${row + 1}C${col + 1} แล้ว`);
+    return !!next;
+}
+
+function addTableAt(x, y, rows = 4, cols = 4) {
+    const group = createSmartTableGroup({ x, y, rows, cols, cellW: 96, cellH: 52 });
     canvas.add(group);
     canvas.setActiveObject(group);
     canvas.renderAll();
+}
+
+function addTableRowCol(rowDelta = 0, colDelta = 0) {
+    const active = canvas.getActiveObject();
+    if (!active?.data || active.data.type !== 'table') {
+        showToast('เลือกตารางก่อน');
+        return false;
+    }
+    const nextRows = Math.max(1, Number(active.data.rows || 1) + Number(rowDelta || 0));
+    const nextCols = Math.max(1, Number(active.data.cols || 1) + Number(colDelta || 0));
+    const rebuilt = rebuildSmartTable(active, nextRows, nextCols);
+    if (rebuilt) {
+        showToast(`ตาราง ${nextRows}x${nextCols}`);
+        return true;
+    }
+    return false;
 }
 
 function askTableSize() {
@@ -1068,7 +1250,14 @@ canvas.on('mouse:down', (opt) => {
 
     if (window.activeTool === 'writingLines') {
         const ptr = canvas.getPointer(opt.e);
-        const group = makeWritingLinesAt(ptr.x, ptr.y);
+        const group = makeWritingLinesAt(
+            ptr.x,
+            ptr.y,
+            writingLineSettings.width,
+            writingLineSettings.rows,
+            writingLineSettings.style,
+            writingLineSettings.spacing,
+        );
         canvas.add(group);
         canvas.setActiveObject(group);
         canvas.renderAll();
@@ -1134,6 +1323,14 @@ canvas.on('mouse:up', () => {
     tempShape = null;
     shapeStart = null;
     setActiveTool('select');
+});
+
+canvas.on('mouse:dblclick', (opt) => {
+    const target = opt?.target;
+    if (!target?.data || target.data.type !== 'table') return;
+    const pointer = canvas.getPointer(opt.e);
+    const edited = editSmartTableCellAtPointer(target, pointer);
+    if (edited) saveHistory();
 });
 
 /* ── 6. SELECTION CHANGE → update properties panel ────────── */
@@ -1395,7 +1592,23 @@ window.wbToggleWorksheetMode = () => {
 window.wbGetWorksheetMode = () => worksheetMode;
 window.wbSetAnswerOnlyForSelection = markAnswerOnlyForSelection;
 window.wbDuplicateAsAnswerKey = duplicateAsAnswerKey;
+window.wbGenerateAnswerKeyPage = generateAnswerKeyPage;
 window.wbAddAutoNumber = addAutoNumberAt;
+window.wbAddTableRow = () => addTableRowCol(1, 0);
+window.wbRemoveTableRow = () => addTableRowCol(-1, 0);
+window.wbAddTableCol = () => addTableRowCol(0, 1);
+window.wbRemoveTableCol = () => addTableRowCol(0, -1);
+window.wbSetWritingLinesConfig = (cfg) => {
+    writingLineSettings = {
+        ...writingLineSettings,
+        ...(cfg || {}),
+    };
+    writingLineSettings.spacing = Math.max(24, Number(writingLineSettings.spacing) || 46);
+    writingLineSettings.rows = Math.max(1, Number(writingLineSettings.rows) || 4);
+    writingLineSettings.width = Math.max(120, Number(writingLineSettings.width) || 520);
+    if (!['primary', 'dotted', 'grid'].includes(writingLineSettings.style)) writingLineSettings.style = 'primary';
+};
+window.wbGetWritingLinesConfig = () => ({ ...writingLineSettings });
 window.wbGetWorkbookData = () => {
     persistCurrentPage();
     return {

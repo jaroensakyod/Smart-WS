@@ -1,5 +1,50 @@
 # สรุปผลการปฏิบัติงานวันนี้ (25 กุมภาพันธ์ 2026)
 
+## อัปเดตใหญ่รอบล่าสุด: Ultimate Plan (Phase 8-11) ลงระบบจริง
+
+### ✅ Phase 8: Smart Worksheet Elements
+- Smart Table รุ่นใหม่
+    - วางตารางพร้อมเลือกจำนวนแถว/คอลัมน์
+    - ดับเบิลคลิกแก้ข้อความในเซลล์ได้ทันที
+    - เพิ่ม/ลดแถวและคอลัมน์ด้วยปุ่ม Row/Column
+- Handwriting Presets รุ่นใหม่
+    - รองรับ `Primary`, `Dotted`, `Grid`
+    - ปรับระยะห่างบรรทัด (Line Spacing) จาก UI
+
+### ✅ Phase 9: Pro Layout & Workflow
+- เพิ่มแท็บ `Layers` ใน Sidebar
+    - เลือก layer ได้ตรงจากรายการ
+    - Lock/Unlock, Hide/Show, Bring Forward/Send Backward
+- เพิ่ม Rulers รอบ Canvas
+- ระบบ Alignment/Distribution เดิมถูกใช้งานต่อร่วมกับ Layers ได้ครบ workflow
+
+### ✅ Phase 10: Auto-Generators
+- เพิ่มแท็บ `Generators`
+    - Math Problem Generator
+    - Word Search Generator
+    - Crossword Generator
+    - Generate Answer Key
+- Answer Key Mode ใหม่
+    - Duplicate หน้าอัตโนมัติ
+    - แปลงข้อความรูปแบบ `[answer]` ให้เป็นเฉลยเด่น
+    - เติม watermark `ANSWER KEY`
+
+### ✅ Phase 11: Rich Assets & Personal Library
+- เพิ่มแท็บ `Saved`
+    - บันทึก Selection ลง IndexedDB
+    - เรียกใช้งานองค์ประกอบที่บันทึกไว้ซ้ำได้
+    - รองรับลบรายการด้วย context menu
+- คงระบบ Borders/Frames และ Icon search (Wikimedia/Flickr/Iconify) เป็น asset stack หลัก
+
+### ✅ โครงสร้างไฟล์ที่แก้ในรอบนี้
+- `app.js` — Smart table core, table row/col APIs, writing presets, answer key generator
+- `newtab.html` — เพิ่ม tabs/controls ใหม่ (Generators, Layers, Saved, table & writing controls)
+- `proFeatures.js` — layers panel logic, generators, IndexedDB saved elements, event wiring
+- `style.css` — styles สำหรับ rulers + layers panel
+- `README.md` / `implementation_plan_ultimate.md` / `implementation_knowledge.md` / `SUMMARY_TODAY.md`
+
+---
+
 ## อัปเดตใหญ่: Phase 6 + Phase 7 ลงระบบจริง
 
 ### ✅ Phase 6: Advanced Pro Features

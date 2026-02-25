@@ -285,3 +285,32 @@
 - Openverse API:
   - บริการฟรีแต่บางช่วงเจอ `401` ได้
   - ระบบสลับ fallback ไป Wikimedia อัตโนมัติและแจ้งผู้ใช้ด้วย toast
+
+## 22) Ultimate Delivery Notes (Phase 8-11)
+
+- Smart Table ที่ editable ใน Fabric:
+  - ใช้วิธีสร้าง `fabric.Group` ที่ประกอบด้วย `Rect + IText` ต่อ cell
+  - เก็บ schema ตารางไว้ใน `group.data` (`rows`, `cols`, `cellW`, `cellH`, `cells`)
+  - ดับเบิลคลิกแล้วคำนวณ pointer -> row/col ด้วย local coordinate ของ group
+  - เมื่อแก้ไขข้อมูลหรือเพิ่ม/ลด row/col ใช้วิธี rebuild group ทั้งก้อนเพื่อคงโครงสร้างสม่ำเสมอ
+- Handwriting presets:
+  - แยก style เป็น `primary`, `dotted`, `grid`
+  - ตั้งค่า `spacing` จาก UI แล้วส่งผ่าน API `wbSetWritingLinesConfig`
+  - ค่าตั้งต้นของ tool ถูกเก็บใน state กลาง (`writingLineSettings`) เพื่อใช้ซ้ำทุกครั้งที่วาง
+- Layers panel architecture:
+  - render จาก `canvas.getObjects()` แล้ว reverse ให้ชั้นบนสุดแสดงบนสุด
+  - event sync สำคัญ: `object:added/modified/removed` + `selection:*`
+  - การ lock object ต้องตั้งทั้ง `selectable/evented/hasControls` และ `lockMovement/lockScaling/lockRotation`
+- Auto-generators:
+  - Math generator: random expression + layout แบบ grid columns
+  - Word Search: place คำแบบสุ่มทิศทาง (แนวนอน/แนวตั้ง/ทแยง) แล้ว fill ช่องว่างด้วย A-Z
+  - Crossword (เวอร์ชันเบา): วางคำสลับแนวนอน/แนวตั้งและเติม clue list ข้างกริด
+- Answer key generation pattern:
+  - ใช้รูปแบบข้อความ `[answer]` เป็น marker ในหน้าใบงาน
+  - เมื่อ Generate Answer Key: duplicate หน้า -> replace marker -> highlight เฉลย -> ใส่ watermark
+  - วัตถุที่เป็นเฉลยถูก tag `answerOnly` เพื่อทำงานร่วมกับ worksheet mode เดิม
+- Saved Elements ด้วย IndexedDB:
+  - localStorage ไม่เหมาะกับ object JSON/preview ขนาดใหญ่
+  - ใช้ object store เดียว (`elements`) เก็บ `name`, `json`, `preview`, `createdAt`
+  - revive object กลับเข้า canvas ผ่าน `fabric.util.enlivenObjects`
+  - รองรับ CRUD เบื้องต้น: save, list, insert, delete

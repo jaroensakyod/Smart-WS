@@ -10,6 +10,8 @@
 
     const STORAGE_UPLOADS = 'smartws_upload_assets_v1';
     const STORAGE_COLORS = 'smartws_doc_colors_v1';
+    const SAVED_DB = 'smartws_saved_elements_v1';
+    const SAVED_STORE = 'elements';
 
     const templateCards = [
         { key: 'taskcards4', title: 'Task Cards 4', desc: 'การ์ดงาน 4 ช่องพร้อมเส้นตัด' },
@@ -507,6 +509,377 @@
         modal.style.display = open ? 'flex' : 'none';
     }
 
+    function getLayerLabel(obj, idx) {
+        const base = obj.data?.type || obj.type || 'object';
+        return `${idx + 1}. ${base}`;
+    }
+
+    function renderLayersPanel() {
+        const root = document.getElementById('layersPanelList');
+        if (!root) return;
+        const active = canvas.getActiveObject();
+        const objects = [...canvas.getObjects()].reverse();
+        root.innerHTML = '';
+
+        if (!objects.length) {
+            root.innerHTML = '<div class="template-card"><div class="template-card-title">ยังไม่มี Layer</div><div class="template-card-desc">เพิ่มวัตถุลง Canvas ก่อน</div></div>';
+            return;
+        }
+
+        objects.forEach((obj, i) => {
+            const item = document.createElement('div');
+            item.className = `layer-item${active === obj ? ' active' : ''}`;
+            const locked = !!obj.data?.locked;
+            const hidden = obj.visible === false;
+            item.innerHTML = `
+                <div class="layer-title">${getLayerLabel(obj, objects.length - 1 - i)}</div>
+                <div class="layer-actions">
+                    <button class="layer-btn" data-action="toggleLock" title="Lock/Unlock">${locked ? '🔒' : '🔓'}</button>
+                    <button class="layer-btn" data-action="toggleVisible" title="Show/Hide">${hidden ? '🙈' : '👁'}</button>
+                    <button class="layer-btn" data-action="up" title="Bring Forward">▲</button>
+                    <button class="layer-btn" data-action="down" title="Send Backward">▼</button>
+                </div>`;
+
+            item.addEventListener('click', (e) => {
+                if (e.target?.classList?.contains('layer-btn')) return;
+                canvas.setActiveObject(obj);
+                canvas.requestRenderAll();
+                renderLayersPanel();
+            });
+
+            item.querySelector('[data-action="toggleLock"]')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const nextLocked = !obj.data?.locked;
+                obj.set({
+                    selectable: !nextLocked,
+                    evented: !nextLocked,
+                    lockMovementX: nextLocked,
+                    lockMovementY: nextLocked,
+                    lockRotation: nextLocked,
+                    lockScalingX: nextLocked,
+                    lockScalingY: nextLocked,
+                    hasControls: !nextLocked,
+                });
+                obj.data = { ...(obj.data || {}), locked: nextLocked };
+                canvas.requestRenderAll();
+                markSaving();
+                renderLayersPanel();
+            });
+
+            item.querySelector('[data-action="toggleVisible"]')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                obj.visible = obj.visible === false;
+                canvas.requestRenderAll();
+                markSaving();
+                renderLayersPanel();
+            });
+
+            item.querySelector('[data-action="up"]')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                canvas.bringForward(obj);
+                canvas.requestRenderAll();
+                markSaving();
+                renderLayersPanel();
+            });
+
+            item.querySelector('[data-action="down"]')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                canvas.sendBackwards(obj);
+                canvas.requestRenderAll();
+                markSaving();
+                renderLayersPanel();
+            });
+
+            root.appendChild(item);
+        });
+    }
+
+    function getRandomInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function addMathProblems() {
+        const type = (window.prompt('ประเภทโจทย์: +, -, *, /', '+') || '+').trim();
+        const digits = Math.min(3, Math.max(1, Number(window.prompt('จำนวนหลัก (1-3)', '2')) || 2));
+        const count = Math.min(40, Math.max(4, Number(window.prompt('จำนวนข้อ', '12')) || 12));
+        const max = Number(`1${'0'.repeat(digits)}`) - 1;
+        const min = digits === 1 ? 1 : Number(`1${'0'.repeat(digits - 1)}`);
+
+        const col = 3;
+        const gapX = 220;
+        const gapY = 68;
+        for (let i = 0; i < count; i++) {
+            const a = getRandomInt(min, max);
+            let b = getRandomInt(min, max);
+            if (type === '/') b = Math.max(1, b);
+            let expr = `${a} ${type} ${b} = _____`;
+            if (type === '/') {
+                const ans = getRandomInt(2, 9);
+                const div = getRandomInt(2, 12);
+                expr = `${ans * div} ÷ ${div} = [${ans}]`;
+            }
+            const x = 80 + (i % col) * gapX;
+            const y = 120 + Math.floor(i / col) * gapY;
+            const t = new fabric.IText(`${i + 1}) ${expr}`, {
+                left: x,
+                top: y,
+                fontFamily: 'Sarabun',
+                fontSize: 22,
+                fill: document.getElementById('colorText')?.value || '#1e293b',
+            });
+            canvas.add(t);
+        }
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('สร้างโจทย์คณิตศาสตร์แล้ว');
+    }
+
+    function generateWordSearchGrid(words, size = 10) {
+        const grid = Array.from({ length: size }, () => Array.from({ length: size }, () => ''));
+        const dirs = [
+            [1, 0],
+            [0, 1],
+            [1, 1],
+            [-1, 1],
+        ];
+
+        words.forEach(word => {
+            const clean = String(word || '').toUpperCase().replace(/[^A-Z]/g, '');
+            if (!clean) return;
+            let placed = false;
+            for (let attempt = 0; attempt < 60 && !placed; attempt++) {
+                const [dx, dy] = dirs[getRandomInt(0, dirs.length - 1)];
+                const sx = getRandomInt(0, size - 1);
+                const sy = getRandomInt(0, size - 1);
+                const ex = sx + dx * (clean.length - 1);
+                const ey = sy + dy * (clean.length - 1);
+                if (ex < 0 || ey < 0 || ex >= size || ey >= size) continue;
+                let can = true;
+                for (let i = 0; i < clean.length; i++) {
+                    const x = sx + dx * i;
+                    const y = sy + dy * i;
+                    const existing = grid[y][x];
+                    if (existing && existing !== clean[i]) {
+                        can = false;
+                        break;
+                    }
+                }
+                if (!can) continue;
+                for (let i = 0; i < clean.length; i++) {
+                    const x = sx + dx * i;
+                    const y = sy + dy * i;
+                    grid[y][x] = clean[i];
+                }
+                placed = true;
+            }
+        });
+
+        for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+                if (!grid[y][x]) grid[y][x] = String.fromCharCode(65 + getRandomInt(0, 25));
+            }
+        }
+        return grid;
+    }
+
+    function addWordSearch() {
+        const raw = window.prompt('ใส่คำศัพท์ (คั่นด้วย comma) เช่น CAT,DOG,BIRD', 'CAT,DOG,BIRD,SCHOOL,MATH');
+        if (!raw) return;
+        const words = raw.split(',').map(w => w.trim()).filter(Boolean).slice(0, 12);
+        const size = Math.min(14, Math.max(8, Number(window.prompt('ขนาดตาราง (8-14)', '10')) || 10));
+        const grid = generateWordSearchGrid(words, size);
+
+        const startX = 90;
+        const startY = 160;
+        const cell = 42;
+        canvas.add(new fabric.IText('Word Search', { left: startX, top: 84, fontFamily: 'Fredoka', fontSize: 34, fill: '#1e293b' }));
+        for (let r = 0; r <= size; r++) {
+            const y = startY + r * cell;
+            canvas.add(new fabric.Line([startX, y, startX + size * cell, y], { stroke: '#334155', strokeWidth: 1.6, selectable: false, evented: false }));
+        }
+        for (let c = 0; c <= size; c++) {
+            const x = startX + c * cell;
+            canvas.add(new fabric.Line([x, startY, x, startY + size * cell], { stroke: '#334155', strokeWidth: 1.6, selectable: false, evented: false }));
+        }
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                canvas.add(new fabric.IText(grid[r][c], {
+                    left: startX + c * cell + 13,
+                    top: startY + r * cell + 8,
+                    fontFamily: 'Fredoka',
+                    fontSize: 20,
+                    fill: '#0f172a',
+                }));
+            }
+        }
+        canvas.add(new fabric.IText(`Find: ${words.join(', ')}`, { left: startX, top: startY + size * cell + 20, fontFamily: 'Sarabun', fontSize: 18, fill: '#334155' }));
+        canvas.requestRenderAll();
+        markSaving();
+    }
+
+    function addCrossword() {
+        const raw = window.prompt('ใส่คำศัพท์ crossword (comma) เช่น CAT,DOG,SUN,MAP', 'CAT,DOG,SUN,MAP,TREE,BOOK');
+        if (!raw) return;
+        const words = raw.split(',').map(w => w.trim().toUpperCase().replace(/[^A-Z]/g, '')).filter(Boolean).slice(0, 8);
+        if (!words.length) return;
+
+        const startX = 90;
+        const startY = 160;
+        const cell = 44;
+        const maxWord = Math.max(...words.map(w => w.length));
+        const rows = Math.max(8, words.length + 2);
+        const cols = Math.max(10, maxWord + 4);
+
+        canvas.add(new fabric.IText('Crossword', { left: startX, top: 84, fontFamily: 'Fredoka', fontSize: 34, fill: '#1e293b' }));
+        for (let r = 0; r <= rows; r++) {
+            canvas.add(new fabric.Line([startX, startY + r * cell, startX + cols * cell, startY + r * cell], { stroke: '#334155', strokeWidth: 1.4, selectable: false, evented: false }));
+        }
+        for (let c = 0; c <= cols; c++) {
+            canvas.add(new fabric.Line([startX + c * cell, startY, startX + c * cell, startY + rows * cell], { stroke: '#334155', strokeWidth: 1.4, selectable: false, evented: false }));
+        }
+
+        words.forEach((word, i) => {
+            const horizontal = i % 2 === 0;
+            const row = 1 + i;
+            const col = horizontal ? 1 : 2 + Math.floor(cols / 2);
+            for (let j = 0; j < word.length; j++) {
+                const x = horizontal ? col + j : col;
+                const y = horizontal ? row : row + j;
+                if (x >= cols || y >= rows) break;
+                canvas.add(new fabric.IText('[ ]', {
+                    left: startX + x * cell + 10,
+                    top: startY + y * cell + 10,
+                    fontFamily: 'Sarabun',
+                    fontSize: 18,
+                    fill: '#0f172a',
+                }));
+            }
+            canvas.add(new fabric.IText(`${i + 1}. ${word}`, {
+                left: startX + cols * cell + 20,
+                top: startY + i * 34,
+                fontFamily: 'Sarabun',
+                fontSize: 18,
+                fill: '#334155',
+            }));
+        });
+        canvas.requestRenderAll();
+        markSaving();
+    }
+
+    function openSavedDb() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(SAVED_DB, 1);
+            req.onupgradeneeded = () => {
+                const db = req.result;
+                if (!db.objectStoreNames.contains(SAVED_STORE)) {
+                    db.createObjectStore(SAVED_STORE, { keyPath: 'id', autoIncrement: true });
+                }
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function saveCurrentSelectionAsElement() {
+        const active = canvas.getActiveObject();
+        if (!active) {
+            window.showToast?.('เลือกวัตถุก่อนบันทึก');
+            return;
+        }
+
+        const name = window.prompt('ชื่อ element ที่จะบันทึก', `element-${Date.now()}`);
+        if (!name) return;
+
+        const json = JSON.stringify(active.toObject(['data', 'id', 'name']));
+        const preview = canvas.toDataURL({ format: 'png', quality: 0.8, multiplier: 0.2 });
+        const db = await openSavedDb();
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(SAVED_STORE, 'readwrite');
+            tx.objectStore(SAVED_STORE).add({ name, json, preview, createdAt: Date.now() });
+            tx.oncomplete = resolve;
+            tx.onerror = () => reject(tx.error);
+        });
+        db.close();
+        renderSavedElements();
+        markSaving();
+        window.showToast?.('บันทึก element แล้ว');
+    }
+
+    async function getSavedElements() {
+        const db = await openSavedDb();
+        const items = await new Promise((resolve, reject) => {
+            const tx = db.transaction(SAVED_STORE, 'readonly');
+            const req = tx.objectStore(SAVED_STORE).getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
+        db.close();
+        return (items || []).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    }
+
+    async function deleteSavedElement(id) {
+        const db = await openSavedDb();
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(SAVED_STORE, 'readwrite');
+            tx.objectStore(SAVED_STORE).delete(id);
+            tx.oncomplete = resolve;
+            tx.onerror = () => reject(tx.error);
+        });
+        db.close();
+    }
+
+    function reviveObjectFromJson(raw) {
+        return new Promise((resolve) => {
+            const parsed = JSON.parse(raw || '{}');
+            fabric.util.enlivenObjects([parsed], (objects) => {
+                resolve(objects?.[0] || null);
+            });
+        });
+    }
+
+    async function renderSavedElements() {
+        const root = document.getElementById('savedElementsGrid');
+        if (!root) return;
+        let items = [];
+        try {
+            items = await getSavedElements();
+        } catch {
+            root.innerHTML = '<div class="template-card"><div class="template-card-title">IndexedDB ใช้งานไม่ได้</div></div>';
+            return;
+        }
+
+        root.innerHTML = '';
+        if (!items.length) {
+            root.innerHTML = '<div class="template-card"><div class="template-card-title">ยังไม่มี Saved Element</div><div class="template-card-desc">เลือกวัตถุแล้วกด Save Selection</div></div>';
+            return;
+        }
+
+        items.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'upload-thumb';
+            card.innerHTML = `<img src="${item.preview}" alt="${item.name}"><div class="template-card-desc">${item.name}</div>`;
+
+            card.addEventListener('click', async () => {
+                const obj = await reviveObjectFromJson(item.json);
+                if (!obj) return;
+                obj.set({ left: canvas.width * 0.5 - 80, top: canvas.height * 0.5 - 80 });
+                canvas.add(obj);
+                canvas.setActiveObject(obj);
+                canvas.requestRenderAll();
+                markSaving();
+            });
+
+            card.addEventListener('contextmenu', async (e) => {
+                e.preventDefault();
+                if (!window.confirm(`ลบ ${item.name} ?`)) return;
+                await deleteSavedElement(item.id);
+                await renderSavedElements();
+            });
+
+            root.appendChild(card);
+        });
+    }
+
     async function renderPageManager() {
         const grid = document.getElementById('pageThumbGrid');
         if (!grid || !window.wbGetPageThumbnails) return;
@@ -693,6 +1066,24 @@
         document.getElementById('btnMaskRounded')?.addEventListener('click', () => applyMask('rounded'));
         document.getElementById('btnResetMask')?.addEventListener('click', () => applyMask('reset'));
         document.getElementById('btnAddQR')?.addEventListener('click', addQrCode);
+        document.getElementById('btnTableAddRow')?.addEventListener('click', () => window.wbAddTableRow?.());
+        document.getElementById('btnTableRemoveRow')?.addEventListener('click', () => window.wbRemoveTableRow?.());
+        document.getElementById('btnTableAddCol')?.addEventListener('click', () => window.wbAddTableCol?.());
+        document.getElementById('btnTableRemoveCol')?.addEventListener('click', () => window.wbRemoveTableCol?.());
+        document.getElementById('btnApplyWritingPreset')?.addEventListener('click', () => {
+            const style = document.getElementById('writingLineStyle')?.value || 'primary';
+            const spacing = Number(document.getElementById('writingLineSpacing')?.value || 46);
+            window.wbSetWritingLinesConfig?.({ style, spacing });
+            window.showToast?.('อัปเดต Writing preset แล้ว');
+        });
+
+        document.getElementById('btnGenMath')?.addEventListener('click', addMathProblems);
+        document.getElementById('btnGenWordSearch')?.addEventListener('click', addWordSearch);
+        document.getElementById('btnGenCrossword')?.addEventListener('click', addCrossword);
+        document.getElementById('btnGenerateAnswerKey')?.addEventListener('click', () => window.wbGenerateAnswerKeyPage?.());
+
+        document.getElementById('btnRefreshLayers')?.addEventListener('click', renderLayersPanel);
+        document.getElementById('btnSaveElement')?.addEventListener('click', saveCurrentSelectionAsElement);
 
         document.getElementById('btnPageManager')?.addEventListener('click', async () => {
             showPageManager(true);
@@ -719,9 +1110,21 @@
             document.getElementById(id)?.addEventListener('input', (e) => pushDocColor(e.target.value));
         });
 
-        canvas.on('object:added', markSaving);
-        canvas.on('object:modified', markSaving);
-        canvas.on('object:removed', markSaving);
+        canvas.on('object:added', () => {
+            markSaving();
+            renderLayersPanel();
+        });
+        canvas.on('object:modified', () => {
+            markSaving();
+            renderLayersPanel();
+        });
+        canvas.on('object:removed', () => {
+            markSaving();
+            renderLayersPanel();
+        });
+        canvas.on('selection:created', renderLayersPanel);
+        canvas.on('selection:updated', renderLayersPanel);
+        canvas.on('selection:cleared', renderLayersPanel);
 
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey && !e.shiftKey && (e.key === 'g' || e.key === 'G')) {
@@ -775,6 +1178,8 @@
     setupUploads();
     renderUploadGallery();
     renderDocColors();
+    renderLayersPanel();
+    renderSavedElements();
     setupEvents();
     setupPan();
     setSaveIndicator('saved');
