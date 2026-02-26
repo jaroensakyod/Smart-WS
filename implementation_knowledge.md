@@ -314,3 +314,66 @@
   - ใช้ object store เดียว (`elements`) เก็บ `name`, `json`, `preview`, `createdAt`
   - revive object กลับเข้า canvas ผ่าน `fabric.util.enlivenObjects`
   - รองรับ CRUD เบื้องต้น: save, list, insert, delete
+
+## 23) Bugfix Round (Paper + Missing Templates + Jump Page + Bilingual Labels)
+
+- Root-cause mapping ที่มีประสิทธิภาพสูงสุดในรอบนี้:
+  - UI มีค่า option แล้ว แต่ engine preset ไม่มี key ตรงกัน → fallback เงียบกลับ `a4`
+  - UI มี template key ครบ แต่ `applyTemplate(type)` ไม่มี branch ตรง key นั้น → หน้าโดน clear แต่ไม่เกิด object ใหม่
+  - มี input + button ครบ แต่ไม่ bind event → feature ดูเหมือนมีแต่ใช้งานจริงไม่ได้
+- บทเรียนสำคัญ: ต้องตรวจครบ 3 ชั้นทุกฟีเจอร์เสมอ
+  1) HTML control (`id`, `value`)
+  2) event wiring (`addEventListener`)
+  3) engine handler (`switch/if` ที่รองรับ key)
+
+- Paper preset compatibility:
+  - เพิ่ม `a4_landscape` และ `presentation_16_9` ลง `PAPER_PRESETS`
+  - หลักคิดคือ "UI option ต้องมี config ตัวจริง" เพื่อปิดช่อง fallback ผิดความคาดหวัง
+  - การคง integration กับ zoom เดิม (`wbSetZoom`, `wbGetZoom`) ช่วยลดผลกระทบ chain กับระบบอื่น
+
+- Template completion strategy (6 templates):
+  - เติมเคส `timeline`, `fishbone`, `labreport`, `musicsheet`, `flashcards`, `sudoku`
+  - ยึดรูปแบบเดิมของระบบ: ใช้ `PAPER_W/PAPER_H` เป็นแกนคำนวณ และจบด้วย `renderAll + saveHistory + toast`
+  - โครงคิดที่ใช้ซ้ำได้:
+    - diagram templates: backbone + branches + label boxes
+    - worksheet forms: section blocks + heading
+    - grid templates: loop เส้น + ความหนาเส้นตามระดับ (เช่น Sudoku 3x3 subgrid)
+
+- Jump page hardening:
+  - เพิ่มฟังก์ชันกลางสำหรับ parse/validate ก่อนเรียก `goToPage()`
+  - รองรับทั้ง click (`btnJumpPage`) และ Enter key ใน input
+  - sync ค่าช่อง jump ใน `updatePageIndicator()` ทำให้ state ไม่หลุดเมื่อเปลี่ยนหน้าด้วยวิธีอื่น
+
+- Bilingual UX consistency:
+  - ใช้รูปแบบเดียว `EN (TH)` ทั้ง dropdown และ template cards
+  - คง `value` keys เดิม 100% เพื่อไม่ทำลาย compatibility กับ logic/ไฟล์เดิม
+  - บทเรียน: แปลเฉพาะ "label" ไม่แตะ "key" จะปลอดภัยสุด
+
+- Regression checklist ที่ควรทำซ้ำทุกรอบ:
+  - เปลี่ยน paper preset ทุกตัวแล้วดูสัดส่วน canvas
+  - apply template จาก dropdown และ card gallery อย่างน้อยตัวละ 1 ครั้ง
+  - jump page ด้วยค่าปกติ/ผิดรูปแบบ
+  - ตรวจว่า history, autosave status, และ page indicator ยังทำงานต่อเนื่อง
+
+## 24) Export Reliability Round (PDF Multi-page + PPTX)
+
+- Root cause ที่เจอจริง:
+  - `btnExportPPTX` ไม่มี event handler ใน `export.js` ทำให้กดปุ่มแล้วไม่เกิด action
+  - `newtab.html` อ้าง `vendor/pptxgen.min.js` แต่ไฟล์ไม่มีในโปรเจกต์
+  - PDF หลายหน้าใช้แนวทางเก็บทุกหน้าเป็น dataURL ไว้ใน array ก่อนสร้างไฟล์ → peak memory สูงมากบนเครื่องสเปกต่ำ
+
+- สิ่งที่อิงจากข้อมูลเว็บและนำมาใช้:
+  - MDN ระบุว่า `canvas.toDataURL()` ใช้หน่วยความจำสูงสำหรับภาพใหญ่ เพราะเข้ารหัสเป็น string ทั้งก้อนใน memory
+  - PptxGenJS docs แนะนำการใช้งานใน browser ด้วย global `PptxGenJS` + `writeFile()`
+  - PptxGenJS docs ระบุว่าการใช้ `addImage({ data: base64... })` เป็นแนวทางที่รองรับและเหมาะกับ performance กว่าอ่านไฟล์เพิ่ม
+
+- แนวทางแก้ที่ลงระบบ:
+  - เปลี่ยน export pipeline เป็น "ประมวลผลทีละหน้า" (stream-like) แล้วใส่ลง PDF/PPTX ทันที
+  - เพิ่ม adaptive render profile ตามจำนวนหน้า (small doc = quality สูง, large doc = memory saver)
+  - เพิ่ม handler สำหรับ `btnExportPPTX` และทำ dependency check ชัดเจน
+  - เพิ่มไฟล์ `vendor/pptxgen.bundle.js` (รวม JSZip) ให้ทำงานใน extension ได้จริงโดยไม่พึ่ง network runtime
+
+- Unit tests ที่เพิ่ม:
+  - `tests/export.utils.test.js`
+  - ครอบคลุม: page-count normalization, profile selection, PDF page spec, PPTX layout conversion
+  - คำสั่งรัน: `node --test tests/export.utils.test.js`

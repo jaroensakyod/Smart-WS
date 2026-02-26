@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="vendor/katex/katex.min.css" />
     <script src="vendor/fabric.min.js"></script>
     <script src="vendor/jspdf.umd.min.js"></script>
-    <script src="vendor/pptxgen.min.js"></script>
+    <script src="vendor/pptxgen.bundle.js"></script>
     <script src="vendor/katex/katex.min.js"></script>
 </head>
 
@@ -100,10 +100,10 @@
                 <summary class="action-btn load-btn" title="มุมมอง">🧭 มุมมอง ▾</summary>
                 <div class="toolbar-menu-list">
                     <select id="pageSizeSelect" class="toolbar-select" title="ขนาดกระดาษ">
-                        <option value="a4">A4 Portrait</option>
-                        <option value="a4_landscape">A4 Landscape</option>
-                        <option value="letter">US Letter</option>
-                        <option value="presentation_16_9">16:9 Presentation</option>
+                        <option value="a4">A4 Portrait (A4 แนวตั้ง)</option>
+                        <option value="a4_landscape">A4 Landscape (A4 แนวนอน)</option>
+                        <option value="letter">US Letter (เลตเตอร์)</option>
+                        <option value="presentation_16_9">16:9 Presentation (งานนำเสนอ 16:9)</option>
                     </select>
                     <div class="toolbar-mini-grid">
                         <button class="tool-btn" id="btnToggleGrid" title="เปิด/ปิด Grid">#</button>
@@ -137,51 +137,51 @@
             <div class="sidebar-tab-content active" id="templatesTab">
                 <div class="panel-search-wrap">
                     <select id="templateSelect" class="toolbar-select" title="เทมเพลต" style="width:100%">
-                        <option value="">Template...</option>
+                        <option value="">Template (เทมเพลต)...</option>
                         <optgroup label="General & Layouts">
-                            <option value="graphpaper">Graph Paper</option>
-                            <option value="handwriting">Handwriting Lines</option>
-                            <option value="foldable">Foldable / Flipbook</option>
-                            <option value="mindmap">Mind Map</option>
-                            <option value="timeline">Timeline</option>
-                            <option value="venn">Venn Diagram</option>
-                            <option value="frayer">Frayer Model</option>
-                            <option value="kwl">KWL Chart</option>
-                            <option value="fishbone">Fishbone</option>
+                            <option value="graphpaper">Graph Paper (กระดาษกราฟ)</option>
+                            <option value="handwriting">Handwriting Lines (เส้นคัดลายมือ)</option>
+                            <option value="foldable">Foldable / Flipbook (ใบงานพับ)</option>
+                            <option value="mindmap">Mind Map (แผนผังความคิด)</option>
+                            <option value="timeline">Timeline (ไทม์ไลน์)</option>
+                            <option value="venn">Venn Diagram (แผนภาพเวนน์)</option>
+                            <option value="frayer">Frayer Model (โมเดลเฟรเยอร์)</option>
+                            <option value="kwl">KWL Chart (ตาราง KWL)</option>
+                            <option value="fishbone">Fishbone (ก้างปลา)</option>
                         </optgroup>
                         <optgroup label="Math & Science">
-                            <option value="numberline">Number Line</option>
-                            <option value="fractionpies">Fraction Pies</option>
-                            <option value="sudoku">Sudoku</option>
-                            <option value="labreport">Science Lab Report</option>
+                            <option value="numberline">Number Line (เส้นจำนวน)</option>
+                            <option value="fractionpies">Fraction Pies (วงกลมเศษส่วน)</option>
+                            <option value="sudoku">Sudoku (ซูโดกุ)</option>
+                            <option value="labreport">Science Lab Report (รายงานทดลอง)</option>
                         </optgroup>
                         <optgroup label="Language & Arts">
-                            <option value="comicstrip">Comic Strip</option>
-                            <option value="wordsearch10">Word Search 10x10</option>
-                            <option value="musicsheet">Music Sheet</option>
+                            <option value="comicstrip">Comic Strip (คอมิกสตริป)</option>
+                            <option value="wordsearch10">Word Search 10x10 (ค้นหาคำ 10x10)</option>
+                            <option value="musicsheet">Music Sheet (กระดาษโน้ต)</option>
                         </optgroup>
                         <optgroup label="Games & Activities">
-                            <option value="bingo">Bingo 5x5</option>
-                            <option value="bingo3">Bingo 3x3</option>
-                            <option value="boardgame">Board Game Path</option>
-                            <option value="maze">Maze</option>
+                            <option value="bingo">Bingo 5x5 (บิงโก 5x5)</option>
+                            <option value="bingo3">Bingo 3x3 (บิงโก 3x3)</option>
+                            <option value="boardgame">Board Game Path (เส้นทางบอร์ดเกม)</option>
+                            <option value="maze">Maze (เขาวงกต)</option>
                         </optgroup>
                         <optgroup label="Assessments & Cards">
-                            <option value="mcq">Multiple Choice</option>
-                            <option value="quiz">Quiz MCQ</option>
-                            <option value="matching">Matching</option>
-                            <option value="matchingColumns">Matching Columns</option>
-                            <option value="fillblank">Fill in the Blank</option>
-                            <option value="taskcards4">Task Cards 4</option>
-                            <option value="taskcards8">Task Cards 8</option>
-                            <option value="flashcards">Flashcards</option>
-                            <option value="exitticket">Exit Tickets</option>
+                            <option value="mcq">Multiple Choice (ปรนัย)</option>
+                            <option value="quiz">Quiz MCQ (แบบทดสอบปรนัย)</option>
+                            <option value="matching">Matching (จับคู่)</option>
+                            <option value="matchingColumns">Matching Columns (จับคู่คอลัมน์)</option>
+                            <option value="fillblank">Fill in the Blank (เติมคำ)</option>
+                            <option value="taskcards4">Task Cards 4 (การ์ดงาน 4)</option>
+                            <option value="taskcards8">Task Cards 8 (การ์ดงาน 8)</option>
+                            <option value="flashcards">Flashcards (แฟลชการ์ด)</option>
+                            <option value="exitticket">Exit Tickets (บัตรท้ายคาบ)</option>
                         </optgroup>
                         <optgroup label="Teacher Tools & Presentation">
-                            <option value="teacherplanner">Teacher Planner</option>
-                            <option value="certificate">Certificate</option>
-                            <option value="presTitle">Presentation Title</option>
-                            <option value="presTwoCol">Presentation Two-Column</option>
+                            <option value="teacherplanner">Teacher Planner (แผนสอนครู)</option>
+                            <option value="certificate">Certificate (เกียรติบัตร)</option>
+                            <option value="presTitle">Presentation Title (สไลด์หน้าปก)</option>
+                            <option value="presTwoCol">Presentation Two-Column (สไลด์สองคอลัมน์)</option>
                         </optgroup>
                     </select>
                 </div>
@@ -612,6 +612,7 @@
     <script src="panel.js"></script>
     <script src="toolbar.js"></script>
     <script src="proFeatures.js"></script>
+    <script src="export.utils.js"></script>
     <script src="export.js"></script>
     <script src="equation.js"></script>
     <script src="clipboard.js"></script>

@@ -529,9 +529,18 @@ input[type="color"] {
 
 .page-shadow {
     position: relative;
+    width: var(--paper-w);
+    height: var(--paper-h);
+    background: #ffffff;
+    overflow: hidden;
     box-shadow: 0 8px 48px rgba(0, 0, 0, .7), 0 0 0 1px rgba(255, 255, 255, .05);
     border-radius: 2px;
     flex-shrink: 0;
+}
+
+.page-shadow .canvas-container {
+    width: var(--paper-w) !important;
+    height: var(--paper-h) !important;
 }
 
 .page-grid,

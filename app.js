@@ -6,7 +6,9 @@
 /* ── 1. CANVAS INIT ─────────────────────────────────────────── */
 const PAPER_PRESETS = {
     a4: { key: 'a4', label: 'A4', width: 794, height: 1123, mmW: 210, mmH: 297, marginIn: 0.5 },
+    a4_landscape: { key: 'a4_landscape', label: 'A4 Landscape', width: 1123, height: 794, mmW: 297, mmH: 210, marginIn: 0.5 },
     letter: { key: 'letter', label: 'US Letter', width: 816, height: 1056, mmW: 215.9, mmH: 279.4, marginIn: 0.5 },
+    presentation_16_9: { key: 'presentation_16_9', label: '16:9 Presentation', width: 1280, height: 720, mmW: 338.67, mmH: 190.5, marginIn: 0.35 },
 };
 let paperSize = 'a4';
 let gridEnabled = false;
@@ -103,6 +105,13 @@ function updatePageIndicator() {
     const indicator = document.getElementById('pageIndicator');
     if (indicator) indicator.textContent = `หน้า ${activePageIndex + 1} / ${workbook.pages.length}`;
 
+    const jumpInput = document.getElementById('jumpPageInput');
+    if (jumpInput) {
+        jumpInput.min = '1';
+        jumpInput.max = String(Math.max(1, workbook.pages.length));
+        jumpInput.value = String(activePageIndex + 1);
+    }
+
     const prevBtn = document.getElementById('btnPrevPage');
     const nextBtn = document.getElementById('btnNextPage');
     if (prevBtn) prevBtn.disabled = activePageIndex <= 0;
@@ -141,6 +150,33 @@ async function goToPage(index) {
     clearPropsPanel();
     updatePageIndicator();
     return true;
+}
+
+async function jumpToPageFromInput() {
+    const input = document.getElementById('jumpPageInput');
+    if (!input) return false;
+
+    const raw = String(input.value || '').trim();
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) {
+        showToast('กรอกเลขหน้าเป็นตัวเลขเท่านั้น');
+        input.value = String(activePageIndex + 1);
+        return false;
+    }
+
+    const pageNumber = Math.floor(parsed);
+    const pageCount = workbook.pages.length;
+    if (pageNumber < 1 || pageNumber > pageCount) {
+        showToast(`เลขหน้าต้องอยู่ระหว่าง 1 - ${pageCount}`);
+        input.value = String(activePageIndex + 1);
+        return false;
+    }
+
+    const changed = await goToPage(pageNumber - 1);
+    if (!changed && pageNumber - 1 === activePageIndex) {
+        showToast('คุณอยู่หน้านี้อยู่แล้ว');
+    }
+    return changed;
 }
 
 async function addPageAndGo() {
@@ -750,6 +786,191 @@ function applyTemplate(type) {
         days.forEach((d, i) => {
             canvas.add(new fabric.IText(d, { left: left + i * colW + 12, top: top + 8, fontFamily: 'Fredoka', fontSize: 22, fill: txColor }));
         });
+    }
+    if (type === 'timeline') {
+        canvas.add(new fabric.IText('Timeline', { left: 70, top: 44, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const left = 90;
+        const right = PAPER_W - 90;
+        const centerY = PAPER_H * 0.52;
+        const points = 6;
+        canvas.add(new fabric.Line([left, centerY, right, centerY], { stroke: txColor, strokeWidth: 3 }));
+        for (let i = 0; i < points; i++) {
+            const x = left + ((right - left) / (points - 1)) * i;
+            const boxW = Math.min(180, (right - left) / points - 12);
+            const boxH = 92;
+            const up = i % 2 === 0;
+            const boxTop = up ? centerY - 170 : centerY + 70;
+            const lineY = up ? boxTop + boxH : boxTop;
+            canvas.add(new fabric.Circle({ left: x - 8, top: centerY - 8, radius: 8, fill: '#ffffff', stroke: txColor, strokeWidth: 2 }));
+            canvas.add(new fabric.Line([x, centerY, x, lineY], { stroke: txColor, strokeWidth: 1.6, strokeDashArray: [6, 5] }));
+            canvas.add(new fabric.Rect({ left: x - boxW / 2, top: boxTop, width: boxW, height: boxH, fill: '#ffffff', stroke: txColor, strokeWidth: 1.8, rx: 8, ry: 8 }));
+            canvas.add(new fabric.IText(`เหตุการณ์ ${i + 1}`, { left: x - boxW / 2 + 10, top: boxTop + 10, fontFamily: 'Sarabun', fontSize: 20, fill: txColor }));
+        }
+    }
+    if (type === 'fishbone') {
+        canvas.add(new fabric.IText('Fishbone Diagram', { left: 70, top: 44, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const startX = 120;
+        const endX = PAPER_W - 220;
+        const centerY = PAPER_H * 0.53;
+        canvas.add(new fabric.Line([startX, centerY, endX, centerY], { stroke: txColor, strokeWidth: 3.2 }));
+        canvas.add(new fabric.Triangle({ left: endX + 18, top: centerY, width: 64, height: 56, angle: 90, originX: 'center', originY: 'center', fill: '#ffffff', stroke: txColor, strokeWidth: 2 }));
+        canvas.add(new fabric.IText('ปัญหาหลัก', { left: endX + 54, top: centerY - 18, fontFamily: 'Sarabun', fontSize: 22, fill: txColor }));
+
+        const bones = 4;
+        const span = endX - startX - 100;
+        for (let i = 0; i < bones; i++) {
+            const x = startX + 60 + (span / (bones - 1)) * i;
+            const upY = centerY - 95;
+            const downY = centerY + 95;
+            canvas.add(new fabric.Line([x, centerY, x - 70, upY], { stroke: txColor, strokeWidth: 2 }));
+            canvas.add(new fabric.Line([x, centerY, x - 70, downY], { stroke: txColor, strokeWidth: 2 }));
+            canvas.add(new fabric.IText(`สาเหตุ ${i + 1}`, { left: x - 170, top: upY - 28, fontFamily: 'Sarabun', fontSize: 18, fill: txColor }));
+            canvas.add(new fabric.IText(`สาเหตุ ${i + 5}`, { left: x - 170, top: downY + 6, fontFamily: 'Sarabun', fontSize: 18, fill: txColor }));
+        }
+    }
+    if (type === 'labreport') {
+        canvas.add(new fabric.IText('Science Lab Report', { left: 70, top: 38, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const left = 70;
+        const width = PAPER_W - 140;
+        const sectionTop = 108;
+        const heights = [66, 72, 72, 92, 154, 156, 120];
+        const labels = ['Title', 'Objective', 'Hypothesis', 'Materials', 'Procedure', 'Data / Observation', 'Conclusion'];
+        let y = sectionTop;
+        for (let i = 0; i < labels.length; i++) {
+            const h = heights[i];
+            canvas.add(new fabric.Rect({ left, top: y, width, height: h, fill: '#ffffff', stroke: txColor, strokeWidth: 1.8, rx: 6, ry: 6 }));
+            canvas.add(new fabric.IText(labels[i], { left: left + 10, top: y + 8, fontFamily: 'Fredoka', fontSize: 20, fill: txColor }));
+            y += h + 10;
+        }
+    }
+    if (type === 'musicsheet') {
+        canvas.add(new fabric.IText('Music Sheet', { left: 70, top: 42, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const left = 80;
+        const right = PAPER_W - 80;
+        const firstY = 130;
+        const staffs = Math.max(5, Math.floor((PAPER_H - 170) / 120));
+        const lineGap = 12;
+        for (let s = 0; s < staffs; s++) {
+            const baseY = firstY + s * 120;
+            for (let line = 0; line < 5; line++) {
+                const y = baseY + line * lineGap;
+                canvas.add(new fabric.Line([left, y, right, y], { stroke: txColor, strokeWidth: 1.6 }));
+            }
+            canvas.add(new fabric.IText('𝄞', { left: left + 8, top: baseY - 14, fontFamily: 'Georgia', fontSize: 42, fill: txColor }));
+            canvas.add(new fabric.Line([left + 36, baseY, left + 36, baseY + lineGap * 4], { stroke: txColor, strokeWidth: 1.6 }));
+        }
+    }
+    if (type === 'flashcards') {
+        canvas.add(new fabric.IText('Flashcards', { left: 70, top: 40, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const marginX = 66;
+        const marginY = 112;
+        const cols = 2;
+        const rows = 4;
+        const gapX = 18;
+        const gapY = 18;
+        const cardW = (PAPER_W - marginX * 2 - gapX) / cols;
+        const cardH = (PAPER_H - marginY * 2 - gapY * (rows - 1)) / rows;
+        let n = 1;
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const left = marginX + c * (cardW + gapX);
+                const top = marginY + r * (cardH + gapY);
+                canvas.add(new fabric.Rect({ left, top, width: cardW, height: cardH, fill: '#ffffff', stroke: txColor, strokeWidth: 2, rx: 8, ry: 8 }));
+                canvas.add(new fabric.IText(`Card ${n++}`, { left: left + 10, top: top + 8, fontFamily: 'Sarabun', fontSize: 20, fill: txColor }));
+            }
+        }
+        const cutX = PAPER_W / 2;
+        canvas.add(new fabric.Line([cutX, marginY - 16, cutX, PAPER_H - marginY + 16], { stroke: txColor, strokeWidth: 1.2, strokeDashArray: [8, 7] }));
+    }
+    if (type === 'sudoku') {
+        canvas.add(new fabric.IText('Sudoku 9x9', { left: 70, top: 40, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const size = Math.min(PAPER_W - 160, PAPER_H - 220);
+        const left = (PAPER_W - size) / 2;
+        const top = 120;
+        const cell = size / 9;
+        canvas.add(new fabric.Rect({ left, top, width: size, height: size, fill: '#ffffff', stroke: txColor, strokeWidth: 2.8 }));
+        for (let i = 1; i < 9; i++) {
+            const thick = i % 3 === 0;
+            const strokeWidth = thick ? 2.6 : 1.1;
+            const offset = i * cell;
+            canvas.add(new fabric.Line([left + offset, top, left + offset, top + size], { stroke: txColor, strokeWidth }));
+            canvas.add(new fabric.Line([left, top + offset, left + size, top + offset], { stroke: txColor, strokeWidth }));
+        }
+    }
+    if (type === 'maze') {
+        canvas.add(new fabric.IText('Maze', { left: 70, top: 40, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const size = Math.min(PAPER_W - 180, PAPER_H - 230);
+        const left = (PAPER_W - size) / 2;
+        const top = 120;
+        const cols = 12;
+        const rows = 12;
+        const cellW = size / cols;
+        const cellH = size / rows;
+
+        canvas.add(new fabric.Rect({ left, top, width: size, height: size, fill: '#ffffff', stroke: txColor, strokeWidth: 2.4 }));
+
+        for (let c = 1; c < cols; c++) {
+            const x = left + c * cellW;
+            if (c % 3 !== 0) {
+                canvas.add(new fabric.Line([x, top, x, top + size], { stroke: txColor, strokeWidth: 1.2 }));
+            }
+        }
+        for (let r = 1; r < rows; r++) {
+            const y = top + r * cellH;
+            if (r % 3 !== 0) {
+                canvas.add(new fabric.Line([left, y, left + size, y], { stroke: txColor, strokeWidth: 1.2 }));
+            }
+        }
+
+        const blockers = [
+            [1, 0, 1, 4], [1, 5, 1, 10],
+            [3, 2, 3, 7], [4, 8, 4, 11],
+            [6, 0, 6, 3], [6, 4, 6, 9],
+            [8, 1, 8, 6], [9, 7, 9, 11],
+            [0, 2, 4, 2], [5, 2, 10, 2],
+            [2, 5, 7, 5], [8, 5, 11, 5],
+            [0, 8, 3, 8], [4, 8, 9, 8],
+            [2, 10, 6, 10], [7, 10, 11, 10],
+        ];
+        blockers.forEach(([x1, y1, x2, y2]) => {
+            canvas.add(new fabric.Line([
+                left + x1 * cellW,
+                top + y1 * cellH,
+                left + x2 * cellW,
+                top + y2 * cellH,
+            ], { stroke: txColor, strokeWidth: 2.6 }));
+        });
+
+        canvas.add(new fabric.Circle({ left: left + 8, top: top + 8, radius: 10, fill: '#22c55e', stroke: txColor, strokeWidth: 1.2 }));
+        canvas.add(new fabric.IText('Start', { left: left + 26, top: top + 4, fontFamily: 'Sarabun', fontSize: 18, fill: txColor }));
+        canvas.add(new fabric.Circle({ left: left + size - 22, top: top + size - 22, radius: 10, fill: '#ef4444', stroke: txColor, strokeWidth: 1.2 }));
+        canvas.add(new fabric.IText('Finish', { left: left + size - 82, top: top + size - 42, fontFamily: 'Sarabun', fontSize: 18, fill: txColor }));
+    }
+    if (type === 'presTitle') {
+        canvas.add(new fabric.Rect({ left: 0, top: 0, width: PAPER_W, height: PAPER_H, fill: '#ffffff', stroke: 'transparent' }));
+        canvas.add(new fabric.Rect({ left: 56, top: 56, width: PAPER_W - 112, height: PAPER_H - 112, fill: 'transparent', stroke: txColor, strokeWidth: 2.2, rx: 12, ry: 12 }));
+        canvas.add(new fabric.IText('Presentation Title', { left: 90, top: PAPER_H * 0.28, fontFamily: 'Fredoka', fontSize: Math.max(44, Math.floor(PAPER_W * 0.05)), fill: txColor }));
+        canvas.add(new fabric.IText('Subtitle / Topic', { left: 92, top: PAPER_H * 0.43, fontFamily: 'Sarabun', fontSize: Math.max(24, Math.floor(PAPER_W * 0.024)), fill: txColor }));
+        canvas.add(new fabric.Line([92, PAPER_H * 0.55, PAPER_W - 92, PAPER_H * 0.55], { stroke: txColor, strokeWidth: 2, strokeDashArray: [10, 7] }));
+        canvas.add(new fabric.IText('Presenter • Date', { left: 92, top: PAPER_H * 0.60, fontFamily: 'Sarabun', fontSize: 20, fill: txColor }));
+    }
+    if (type === 'presTwoCol') {
+        canvas.add(new fabric.IText('Two-Column Slide', { left: 70, top: 38, fontFamily: 'Fredoka', fontSize: 42, fill: txColor }));
+        const margin = 70;
+        const top = 110;
+        const gap = 22;
+        const titleBandH = 74;
+        const bodyH = PAPER_H - top - 54;
+        const bodyY = top + titleBandH;
+        const colW = (PAPER_W - margin * 2 - gap) / 2;
+
+        canvas.add(new fabric.Rect({ left: margin, top, width: PAPER_W - margin * 2, height: titleBandH - 10, fill: '#ffffff', stroke: txColor, strokeWidth: 2, rx: 8, ry: 8 }));
+        canvas.add(new fabric.IText('Section Title', { left: margin + 14, top: top + 14, fontFamily: 'Sarabun', fontSize: 24, fill: txColor }));
+
+        canvas.add(new fabric.Rect({ left: margin, top: bodyY, width: colW, height: bodyH - titleBandH, fill: '#ffffff', stroke: txColor, strokeWidth: 2, rx: 8, ry: 8 }));
+        canvas.add(new fabric.Rect({ left: margin + colW + gap, top: bodyY, width: colW, height: bodyH - titleBandH, fill: '#ffffff', stroke: txColor, strokeWidth: 2, rx: 8, ry: 8 }));
+        canvas.add(new fabric.IText('Left Column', { left: margin + 12, top: bodyY + 10, fontFamily: 'Fredoka', fontSize: 24, fill: txColor }));
+        canvas.add(new fabric.IText('Right Column', { left: margin + colW + gap + 12, top: bodyY + 10, fontFamily: 'Fredoka', fontSize: 24, fill: txColor }));
     }
     canvas.renderAll();
     saveHistory();
@@ -1502,6 +1723,15 @@ document.getElementById('btnClearPage')?.addEventListener('click', () => {
 });
 document.getElementById('btnPrevPage')?.addEventListener('click', () => goToPage(activePageIndex - 1));
 document.getElementById('btnNextPage')?.addEventListener('click', () => goToPage(activePageIndex + 1));
+document.getElementById('btnJumpPage')?.addEventListener('click', () => {
+    jumpToPageFromInput();
+});
+document.getElementById('jumpPageInput')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        jumpToPageFromInput();
+    }
+});
 document.getElementById('pageSizeSelect')?.addEventListener('change', (e) => {
     applyPaperLayout(e.target.value || 'a4');
     showToast(`📄 เปลี่ยนกระดาษเป็น ${getPaperConfig().label}`);
