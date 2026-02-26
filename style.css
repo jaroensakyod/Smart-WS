@@ -464,6 +464,12 @@ input[type="color"] {
     padding-top: 2px;
 }
 
+.template-telemetry-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
 .template-result-summary {
     color: var(--muted);
     font-size: 11px;

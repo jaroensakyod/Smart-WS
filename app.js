@@ -62,6 +62,10 @@ function getTelemetrySnapshot() {
     return readTelemetryState();
 }
 
+function clearTelemetryState() {
+    writeTelemetryState({ counts: {}, events: [], lastUpdatedAt: Date.now() });
+}
+
 function getPaperConfig(size = paperSize) {
     return PAPER_PRESETS[size] || PAPER_PRESETS.a4;
 }
@@ -2278,6 +2282,7 @@ window.wbSetPaperSize = (size) => applyPaperLayout(size);
 window.wbApplyTemplate = applyTemplate;
 window.wbTrackTelemetry = trackTelemetry;
 window.wbGetTelemetrySnapshot = getTelemetrySnapshot;
+window.wbClearTelemetry = clearTelemetryState;
 window.wbToggleWorksheetMode = () => {
     worksheetMode = worksheetMode === 'student' ? 'answer' : 'student';
     syncUiToggles();

@@ -243,6 +243,22 @@
         window.wbTrackTelemetry?.(eventName, payload);
     }
 
+    function downloadTelemetrySnapshot(snapshot) {
+        const payload = {
+            exportedAt: Date.now(),
+            templateTelemetry: snapshot || { counts: {}, events: [], lastUpdatedAt: 0 },
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `smartws-telemetry-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
     const borderCards = [
         { key: 'simple', title: 'Simple Border', desc: 'กรอบเส้นเดี่ยวเรียบง่าย', group: 'Basic' },
         { key: 'double', title: 'Double Border', desc: 'กรอบเส้นคู่ยอดนิยม', group: 'Basic' },
@@ -2157,6 +2173,22 @@
             resetTemplateFilters();
             emitTelemetry('template_filters_reset', { source: 'clear_button' });
             refreshTemplateGallery();
+        });
+        document.getElementById('btnTemplateTelemetryDump')?.addEventListener('click', () => {
+            const snapshot = window.wbGetTelemetrySnapshot?.() || { counts: {}, events: [], lastUpdatedAt: 0 };
+            downloadTelemetrySnapshot(snapshot);
+            emitTelemetry('template_telemetry_dump', {
+                totalEvents: Array.isArray(snapshot.events) ? snapshot.events.length : 0,
+            });
+            window.showToast?.('📦 Telemetry JSON ถูกดาวน์โหลดแล้ว');
+        });
+        document.getElementById('btnTemplateTelemetryClear')?.addEventListener('click', () => {
+            const ok = window.confirm('ล้าง telemetry ทั้งหมดใช่หรือไม่?');
+            if (!ok) return;
+            window.wbClearTelemetry?.();
+            emitTelemetry('template_telemetry_cleared', { source: 'template_panel' });
+            refreshTemplateGallery();
+            window.showToast?.('🧹 ล้าง telemetry แล้ว');
         });
         document.querySelectorAll('#templateSegments .template-segment').forEach(btn => {
             btn.addEventListener('click', () => {
