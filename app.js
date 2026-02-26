@@ -1047,6 +1047,159 @@ function applyTemplate(type) {
             canvas.add(new fabric.Line([left + 12, y, left + width - 12, y], { stroke: '#94a3b8', strokeWidth: 1.1 }));
         }
     }
+    if (type === 'criticalReadingEvidence') {
+        canvas.add(new fabric.IText('Critical Reading + Evidence', { left: 70, top: 38, fontFamily: 'Fredoka', fontSize: 32, fill: txColor }));
+        const left = 70;
+        const width = PAPER_W - 140;
+        canvas.add(new fabric.Rect({ left, top: 102, width, height: 260, fill: '#fff', stroke: txColor, strokeWidth: 1.8, rx: 8, ry: 8 }));
+        canvas.add(new fabric.IText('Passage / Excerpt', { left: left + 12, top: 114, fontFamily: 'Fredoka', fontSize: 20, fill: txColor }));
+        canvas.add(new fabric.Rect({ left, top: 376, width, height: 390, fill: '#fff', stroke: txColor, strokeWidth: 1.8, rx: 8, ry: 8 }));
+        canvas.add(new fabric.IText('Claim - Evidence - Reasoning', { left: left + 12, top: 388, fontFamily: 'Fredoka', fontSize: 20, fill: txColor }));
+    }
+    if (type === 'argumentEssayPlanner') {
+        canvas.add(new fabric.IText('Argument Essay Planner', { left: 70, top: 38, fontFamily: 'Fredoka', fontSize: 32, fill: txColor }));
+        const sections = ['Thesis Statement', 'Reason 1 + Evidence', 'Reason 2 + Evidence', 'Counterargument + Rebuttal', 'Conclusion'];
+        const left = 70;
+        const width = PAPER_W - 140;
+        let y = 102;
+        sections.forEach((label, idx) => {
+            const h = idx === 0 ? 110 : 150;
+            canvas.add(new fabric.Rect({ left, top: y, width, height: h, fill: '#fff', stroke: txColor, strokeWidth: 1.7, rx: 8, ry: 8 }));
+            canvas.add(new fabric.IText(label, { left: left + 12, top: y + 10, fontFamily: 'Fredoka', fontSize: 20, fill: txColor }));
+            y += h + 10;
+        });
+    }
+    if (type === 'algebraWorkspace' || type === 'dataInterpretation' || type === 'practicalNumeracy') {
+        const titleMap = {
+            algebraWorkspace: 'Algebra Workspace',
+            dataInterpretation: 'Data Interpretation',
+            practicalNumeracy: 'Practical Numeracy',
+        };
+        canvas.add(new fabric.IText(titleMap[type], { left: 70, top: 38, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const left = 70;
+        const width = PAPER_W - 140;
+        for (let i = 0; i < 7; i++) {
+            const y = 108 + i * 96;
+            canvas.add(new fabric.Rect({ left, top: y, width, height: 82, fill: '#fff', stroke: txColor, strokeWidth: 1.5, rx: 8, ry: 8 }));
+            canvas.add(new fabric.IText(`${i + 1}. _________________________________`, { left: left + 10, top: y + 24, fontFamily: 'Sarabun', fontSize: 20, fill: txColor }));
+        }
+    }
+    if (type === 'cerFramework' || type === 'sourceAnalysis') {
+        const titleMap = {
+            cerFramework: 'CER Framework',
+            sourceAnalysis: 'Source Analysis Sheet',
+        };
+        canvas.add(new fabric.IText(titleMap[type], { left: 70, top: 40, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const left = 70;
+        const width = PAPER_W - 140;
+        const labels = type === 'cerFramework'
+            ? ['Claim', 'Evidence', 'Reasoning']
+            : ['Source Details', 'Main Claim', 'Bias/Perspective', 'Reliability Notes'];
+        let y = 108;
+        labels.forEach((label) => {
+            const h = 160;
+            canvas.add(new fabric.Rect({ left, top: y, width, height: h, fill: '#fff', stroke: txColor, strokeWidth: 1.7, rx: 8, ry: 8 }));
+            canvas.add(new fabric.IText(label, { left: left + 12, top: y + 12, fontFamily: 'Fredoka', fontSize: 20, fill: txColor }));
+            y += h + 10;
+        });
+    }
+    if (type === 'advancedTimeline') {
+        canvas.add(new fabric.IText('Advanced Timeline', { left: 70, top: 40, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const left = 90;
+        const right = PAPER_W - 90;
+        const centerY = PAPER_H * 0.5;
+        const points = 8;
+        canvas.add(new fabric.Line([left, centerY, right, centerY], { stroke: txColor, strokeWidth: 3 }));
+        for (let i = 0; i < points; i++) {
+            const x = left + ((right - left) / (points - 1)) * i;
+            const up = i % 2 === 0;
+            const boxTop = up ? centerY - 160 : centerY + 64;
+            canvas.add(new fabric.Circle({ left: x - 7, top: centerY - 7, radius: 7, fill: '#fff', stroke: txColor, strokeWidth: 2 }));
+            canvas.add(new fabric.Line([x, centerY, x, up ? boxTop + 94 : boxTop], { stroke: txColor, strokeWidth: 1.4, strokeDashArray: [6, 5] }));
+            canvas.add(new fabric.Rect({ left: x - 68, top: boxTop, width: 136, height: 94, fill: '#fff', stroke: txColor, strokeWidth: 1.6, rx: 8, ry: 8 }));
+        }
+    }
+    if (type === 'debatePrep' || type === 'communicationRoleplay' || type === 'workplaceReading') {
+        const titleMap = {
+            debatePrep: 'Debate Prep Sheet',
+            communicationRoleplay: 'Communication Role-play',
+            workplaceReading: 'Workplace Reading Worksheet',
+        };
+        canvas.add(new fabric.IText(titleMap[type], { left: 70, top: 40, fontFamily: 'Fredoka', fontSize: 32, fill: txColor }));
+        const left = 70;
+        const width = PAPER_W - 140;
+        canvas.add(new fabric.Rect({ left, top: 108, width, height: 140, fill: '#fff', stroke: txColor, strokeWidth: 1.7, rx: 8, ry: 8 }));
+        canvas.add(new fabric.IText('Scenario / Prompt', { left: left + 12, top: 120, fontFamily: 'Fredoka', fontSize: 20, fill: txColor }));
+        for (let i = 0; i < 5; i++) {
+            const y = 262 + i * 106;
+            canvas.add(new fabric.Rect({ left, top: y, width, height: 92, fill: '#fff', stroke: txColor, strokeWidth: 1.4, rx: 8, ry: 8 }));
+            canvas.add(new fabric.IText(`${i + 1}. ________________________________`, { left: left + 10, top: y + 30, fontFamily: 'Sarabun', fontSize: 18, fill: txColor }));
+        }
+    }
+    if (type === 'analyticRubric' || type === 'competencyRubric' || type === 'skillsSelfAssessment') {
+        const titleMap = {
+            analyticRubric: 'Analytic Rubric',
+            competencyRubric: 'Competency Rubric',
+            skillsSelfAssessment: 'Skills Self-assessment',
+        };
+        canvas.add(new fabric.IText(titleMap[type], { left: 70, top: 40, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const left = 64;
+        const top = 112;
+        const width = PAPER_W - 128;
+        const height = PAPER_H - 182;
+        const headerHeight = 72;
+        const rows = 6;
+        const criteriaW = Math.round(width * 0.35);
+        const levelW = (width - criteriaW) / 4;
+        canvas.add(new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke: txColor, strokeWidth: 2 }));
+        canvas.add(new fabric.Line([left, top + headerHeight, left + width, top + headerHeight], { stroke: txColor, strokeWidth: 2 }));
+        canvas.add(new fabric.Line([left + criteriaW, top, left + criteriaW, top + height], { stroke: txColor, strokeWidth: 2 }));
+        for (let c = 1; c < 4; c++) {
+            const x = left + criteriaW + levelW * c;
+            canvas.add(new fabric.Line([x, top, x, top + height], { stroke: txColor, strokeWidth: 1.6 }));
+        }
+        for (let r = 1; r <= rows; r++) {
+            const y = top + headerHeight + ((height - headerHeight) / rows) * r;
+            canvas.add(new fabric.Line([left, y, left + width, y], { stroke: '#94a3b8', strokeWidth: 1.2 }));
+        }
+    }
+    if (type === 'examReviewTracker' || type === 'goalActionTracker' || type === 'procedureChecklist' || type === 'jobTaskWorksheet') {
+        const titleMap = {
+            examReviewTracker: 'Exam Review Tracker',
+            goalActionTracker: 'Goal-Action Tracker',
+            procedureChecklist: 'Procedure Checklist',
+            jobTaskWorksheet: 'Job Task Worksheet',
+        };
+        canvas.add(new fabric.IText(titleMap[type], { left: 70, top: 40, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const left = 70;
+        const width = PAPER_W - 140;
+        const top = 112;
+        const height = PAPER_H - 182;
+        canvas.add(new fabric.Rect({ left, top, width, height, fill: '#fff', stroke: txColor, strokeWidth: 2 }));
+        canvas.add(new fabric.Line([left + width * 0.4, top, left + width * 0.4, top + height], { stroke: txColor, strokeWidth: 1.4 }));
+        canvas.add(new fabric.Line([left + width * 0.7, top, left + width * 0.7, top + height], { stroke: txColor, strokeWidth: 1.4 }));
+        for (let i = 1; i <= 11; i++) {
+            const y = top + i * (height / 12);
+            canvas.add(new fabric.Line([left, y, left + width, y], { stroke: '#94a3b8', strokeWidth: 1.1 }));
+        }
+    }
+    if (type === 'researchNotes' || type === 'problemSolvingCanvas' || type === 'portfolioEvidence' || type === 'reflectionLog') {
+        const titleMap = {
+            researchNotes: 'Research Notes Organizer',
+            problemSolvingCanvas: 'Problem-solving Canvas',
+            portfolioEvidence: 'Portfolio Evidence Sheet',
+            reflectionLog: 'Reflection Log',
+        };
+        canvas.add(new fabric.IText(titleMap[type], { left: 70, top: 40, fontFamily: 'Fredoka', fontSize: 33, fill: txColor }));
+        const left = 70;
+        const width = PAPER_W - 140;
+        let y = 106;
+        for (let i = 0; i < 5; i++) {
+            const h = i === 0 ? 98 : 128;
+            canvas.add(new fabric.Rect({ left, top: y, width, height: h, fill: '#fff', stroke: txColor, strokeWidth: 1.7, rx: 8, ry: 8 }));
+            y += h + 10;
+        }
+    }
     if (type === 'timeline') {
         canvas.add(new fabric.IText('Timeline', { left: 70, top: 44, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
         const left = 90;
