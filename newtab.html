@@ -142,6 +142,8 @@
                         <optgroup label="General & Layouts">
                             <option value="graphpaper">Graph Paper (กระดาษกราฟ)</option>
                             <option value="handwriting">Handwriting Lines (เส้นคัดลายมือ)</option>
+                            <option value="cornellNotes">Cornell Notes (โน้ตคอร์เนลล์)</option>
+                            <option value="tchart">T-Chart (ตารางเปรียบเทียบ 2 ฝั่ง)</option>
                             <option value="foldable">Foldable / Flipbook (ใบงานพับ)</option>
                             <option value="mindmap">Mind Map (แผนผังความคิด)</option>
                             <option value="timeline">Timeline (ไทม์ไลน์)</option>
@@ -170,6 +172,7 @@
                         <optgroup label="Assessments & Cards">
                             <option value="mcq">Multiple Choice (ปรนัย)</option>
                             <option value="quiz">Quiz MCQ (แบบทดสอบปรนัย)</option>
+                            <option value="rubric4">Rubric 4-Level (ตารางประเมิน 4 ระดับ)</option>
                             <option value="matching">Matching (จับคู่)</option>
                             <option value="matchingColumns">Matching Columns (จับคู่คอลัมน์)</option>
                             <option value="fillblank">Fill in the Blank (เติมคำ)</option>
@@ -179,12 +182,57 @@
                             <option value="exitticket">Exit Tickets (บัตรท้ายคาบ)</option>
                         </optgroup>
                         <optgroup label="Teacher Tools & Presentation">
+                            <option value="lessonPlan">Lesson Plan (แผนการสอน)</option>
+                            <option value="readingComprehension">Reading Comprehension (อ่านจับใจความ)</option>
                             <option value="teacherplanner">Teacher Planner (แผนสอนครู)</option>
                             <option value="certificate">Certificate (เกียรติบัตร)</option>
                             <option value="presTitle">Presentation Title (สไลด์หน้าปก)</option>
                             <option value="presTwoCol">Presentation Two-Column (สไลด์สองคอลัมน์)</option>
                         </optgroup>
                     </select>
+                </div>
+                <div class="panel-search-wrap template-filter-toolbar">
+                    <input type="text" id="templateSearch" class="panel-search" placeholder="🔎 ค้นหา template..." />
+                    <div class="template-filter-grid">
+                        <select id="templateGradeBand" class="toolbar-select" title="ระดับชั้น" style="width:100%">
+                            <option value="all">All Bands (ทุกระดับ)</option>
+                            <option value="elementary">Elementary</option>
+                            <option value="middle">Middle School</option>
+                            <option value="high">High School</option>
+                            <option value="adult">Adult Education</option>
+                        </select>
+                        <select id="templateGrade" class="toolbar-select" title="ชั้นเรียน" style="width:100%">
+                            <option value="all">All Grades (ทุกชั้น)</option>
+                        </select>
+                        <select id="templateDifficulty" class="toolbar-select" title="ความยาก" style="width:100%">
+                            <option value="all">Any Difficulty</option>
+                            <option value="beginner">Beginner</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                        </select>
+                        <select id="templateFormat" class="toolbar-select" title="รูปแบบ" style="width:100%">
+                            <option value="all">Any Format</option>
+                            <option value="worksheet">Worksheet</option>
+                            <option value="organizer">Organizer</option>
+                            <option value="assessment">Assessment</option>
+                            <option value="planner">Planner</option>
+                            <option value="activity">Activity</option>
+                        </select>
+                    </div>
+                    <div class="template-chip-label">Subjects</div>
+                    <div id="templateSubjectChips" class="template-chip-wrap"></div>
+                    <div class="template-chip-label">Skills</div>
+                    <div id="templateSkillChips" class="template-chip-wrap"></div>
+                    <div class="template-segments" id="templateSegments">
+                        <button class="template-segment active" data-segment="all">All</button>
+                        <button class="template-segment" data-segment="featured">Featured</button>
+                        <button class="template-segment" data-segment="popular">Popular</button>
+                        <button class="template-segment" data-segment="new">New</button>
+                    </div>
+                    <div class="template-filter-actions">
+                        <button class="action-btn load-btn" id="btnTemplateClearFilters" style="width:100%">ล้างตัวกรอง</button>
+                    </div>
+                    <div class="template-result-summary" id="templateResultSummary">แสดงทั้งหมด</div>
                 </div>
                 <div class="panel-upload">
                     <button class="action-btn load-btn" id="btnApplyTemplate" style="width:100%">ใช้ Template</button>

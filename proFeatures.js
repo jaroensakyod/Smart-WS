@@ -13,16 +13,19 @@
     const SAVED_DB = 'smartws_saved_elements_v1';
     const SAVED_STORE = 'elements';
 
-    const templateCards = [
+    const baseTemplateCards = [
         { key: 'taskcards4', title: 'Task Cards 4 (การ์ดงาน 4)', desc: 'การ์ดงาน 4 ช่องพร้อมเส้นตัด' },
         { key: 'taskcards8', title: 'Task Cards 8 (การ์ดงาน 8)', desc: 'การ์ดงาน 8 ช่องสำหรับกิจกรรมเร็ว' },
         { key: 'frayer', title: 'Frayer Model (โมเดลเฟรเยอร์)', desc: 'Definition / Characteristics / Examples / Non-examples' },
         { key: 'kwl', title: 'KWL Chart (ตาราง KWL)', desc: 'Know / Want to know / Learned' },
+        { key: 'cornellNotes', title: 'Cornell Notes (โน้ตคอร์เนลล์)', desc: 'ช่องคำใบ้, ช่องจดโน้ต และสรุปท้ายหน้า' },
+        { key: 'tchart', title: 'T-Chart (ตารางเปรียบเทียบ 2 ฝั่ง)', desc: 'ตารางเปรียบเทียบสองคอลัมน์พร้อมหัวข้อ' },
         { key: 'venn', title: 'Venn Diagram (แผนภาพเวนน์)', desc: 'วงเวนน์ 2 วงสำหรับเปรียบเทียบ' },
         { key: 'graphpaper', title: 'Graph Paper (กระดาษกราฟ)', desc: 'กระดาษกราฟคณิตศาสตร์' },
         { key: 'numberline', title: 'Number Line (เส้นจำนวน)', desc: 'เส้นจำนวนพร้อมตำแหน่งหลัก' },
         { key: 'fractionpies', title: 'Fraction Pies (วงกลมเศษส่วน)', desc: 'วงกลมเศษส่วน 2,3,4,6,8 ส่วน' },
         { key: 'quiz', title: 'Quiz MCQ (แบบทดสอบปรนัย)', desc: 'ข้อสอบปรนัยพร้อมคำตอบ ก ข ค ง' },
+        { key: 'rubric4', title: 'Rubric 4-Level (ตารางประเมิน 4 ระดับ)', desc: 'เกณฑ์ประเมิน 4 ระดับพร้อมช่องให้คะแนน' },
         { key: 'matchingColumns', title: 'Matching Columns (จับคู่คอลัมน์)', desc: 'จับคู่คอลัมน์ซ้ายและขวา' },
         { key: 'handwriting', title: 'Handwriting Lines (เส้นคัดลายมือ)', desc: 'เส้นคัดลายมือแบบทึบ-ประ-ทึบ' },
         { key: 'comicstrip', title: 'Comic Strip (คอมิกสตริป)', desc: 'ช่องวาดการ์ตูนพร้อมบรรยาย' },
@@ -43,7 +46,135 @@
         { key: 'maze', title: 'Maze (เขาวงกต)', desc: 'เทมเพลตเขาวงกตสำหรับตรรกะ' },
         { key: 'presTitle', title: 'Presentation Title (สไลด์หน้าปก)', desc: 'สไลด์หน้าปก 16:9' },
         { key: 'presTwoCol', title: 'Presentation Two-Column (สไลด์สองคอลัมน์)', desc: 'สไลด์ 2 คอลัมน์สำหรับเนื้อหา' },
+        { key: 'lessonPlan', title: 'Lesson Plan (แผนการสอน)', desc: 'แผนการสอนพร้อมส่วน Objective/Procedure/Assessment' },
+        { key: 'readingComprehension', title: 'Reading Comprehension (อ่านจับใจความ)', desc: 'บทอ่าน คำศัพท์ คำถาม และสรุปท้ายเรื่อง' },
     ];
+
+    const SUBJECTS = [
+        { key: 'language', label: 'Language' },
+        { key: 'math', label: 'Math' },
+        { key: 'science', label: 'Science' },
+        { key: 'social', label: 'Social' },
+        { key: 'assessment', label: 'Assessment' },
+        { key: 'planning', label: 'Planning' },
+        { key: 'project', label: 'Project' },
+    ];
+
+    const SKILLS = [
+        { key: 'reading', label: 'Reading' },
+        { key: 'writing', label: 'Writing' },
+        { key: 'vocabulary', label: 'Vocabulary' },
+        { key: 'computation', label: 'Computation' },
+        { key: 'reasoning', label: 'Reasoning' },
+        { key: 'analysis', label: 'Analysis' },
+        { key: 'communication', label: 'Communication' },
+        { key: 'reflection', label: 'Reflection' },
+    ];
+
+    const GRADES_BY_BAND = {
+        all: [
+            { value: 'preschool', label: 'Preschool' },
+            { value: 'kindergarten', label: 'Kindergarten' },
+            { value: 'g1', label: '1st Grade' },
+            { value: 'g2', label: '2nd Grade' },
+            { value: 'g3', label: '3rd Grade' },
+            { value: 'g4', label: '4th Grade' },
+            { value: 'g5', label: '5th Grade' },
+            { value: 'g6', label: '6th Grade' },
+            { value: 'g7', label: '7th Grade' },
+            { value: 'g8', label: '8th Grade' },
+            { value: 'g9', label: '9th Grade' },
+            { value: 'g10', label: '10th Grade' },
+            { value: 'g11', label: '11th Grade' },
+            { value: 'g12', label: '12th Grade' },
+            { value: 'adult', label: 'Adult Education' },
+        ],
+        elementary: [
+            { value: 'preschool', label: 'Preschool' },
+            { value: 'kindergarten', label: 'Kindergarten' },
+            { value: 'g1', label: '1st Grade' },
+            { value: 'g2', label: '2nd Grade' },
+            { value: 'g3', label: '3rd Grade' },
+            { value: 'g4', label: '4th Grade' },
+            { value: 'g5', label: '5th Grade' },
+        ],
+        middle: [
+            { value: 'g6', label: '6th Grade' },
+            { value: 'g7', label: '7th Grade' },
+            { value: 'g8', label: '8th Grade' },
+        ],
+        high: [
+            { value: 'g9', label: '9th Grade' },
+            { value: 'g10', label: '10th Grade' },
+            { value: 'g11', label: '11th Grade' },
+            { value: 'g12', label: '12th Grade' },
+        ],
+        adult: [
+            { value: 'adult', label: 'Adult Education' },
+        ],
+    };
+
+    const templateMetaMap = {
+        taskcards4: { gradeBands: ['elementary', 'middle'], grades: ['g2', 'g3', 'g4', 'g5', 'g6', 'g7'], subjects: ['assessment'], skills: ['reasoning'], difficulty: 'beginner', format: 'assessment', isFeatured: true, popularityScore: 84 },
+        taskcards8: { gradeBands: ['middle', 'high'], grades: ['g6', 'g7', 'g8', 'g9', 'g10'], subjects: ['assessment'], skills: ['reasoning'], difficulty: 'intermediate', format: 'assessment', popularityScore: 74 },
+        frayer: { gradeBands: ['middle', 'high'], grades: ['g6', 'g7', 'g8', 'g9', 'g10', 'g11', 'g12'], subjects: ['language'], skills: ['vocabulary', 'analysis'], difficulty: 'intermediate', format: 'organizer', isFeatured: true, popularityScore: 76 },
+        kwl: { gradeBands: ['elementary', 'middle'], grades: ['g3', 'g4', 'g5', 'g6', 'g7', 'g8'], subjects: ['language', 'science'], skills: ['reading', 'reflection'], difficulty: 'beginner', format: 'organizer', popularityScore: 80 },
+        cornellNotes: { gradeBands: ['middle', 'high'], grades: ['g6', 'g7', 'g8', 'g9', 'g10', 'g11', 'g12'], subjects: ['language', 'social'], skills: ['reading', 'writing'], difficulty: 'intermediate', format: 'organizer', popularityScore: 70 },
+        tchart: { gradeBands: ['elementary', 'middle', 'high'], grades: ['g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10'], subjects: ['language', 'social'], skills: ['analysis'], difficulty: 'beginner', format: 'organizer', popularityScore: 72 },
+        venn: { gradeBands: ['elementary', 'middle'], grades: ['g3', 'g4', 'g5', 'g6', 'g7', 'g8'], subjects: ['science'], skills: ['analysis'], difficulty: 'beginner', format: 'organizer', popularityScore: 69 },
+        graphpaper: { gradeBands: ['elementary', 'middle'], grades: ['g3', 'g4', 'g5', 'g6', 'g7', 'g8'], subjects: ['math'], skills: ['computation'], difficulty: 'beginner', format: 'worksheet', popularityScore: 77 },
+        numberline: { gradeBands: ['elementary'], grades: ['g1', 'g2', 'g3', 'g4'], subjects: ['math'], skills: ['computation'], difficulty: 'beginner', format: 'worksheet', isFeatured: true, popularityScore: 88 },
+        fractionpies: { gradeBands: ['elementary', 'middle'], grades: ['g3', 'g4', 'g5', 'g6'], subjects: ['math'], skills: ['computation', 'reasoning'], difficulty: 'beginner', format: 'worksheet', popularityScore: 71 },
+        quiz: { gradeBands: ['middle', 'high'], grades: ['g6', 'g7', 'g8', 'g9', 'g10', 'g11', 'g12'], subjects: ['assessment'], skills: ['analysis'], difficulty: 'intermediate', format: 'assessment', popularityScore: 79 },
+        rubric4: { gradeBands: ['middle', 'high', 'adult'], grades: ['g6', 'g7', 'g8', 'g9', 'g10', 'g11', 'g12', 'adult'], subjects: ['assessment'], skills: ['analysis', 'reflection'], difficulty: 'intermediate', format: 'assessment', isFeatured: true, popularityScore: 86 },
+        handwriting: { gradeBands: ['elementary'], grades: ['preschool', 'kindergarten', 'g1', 'g2'], subjects: ['language'], skills: ['writing'], difficulty: 'beginner', format: 'worksheet', isFeatured: true, popularityScore: 93 },
+        comicstrip: { gradeBands: ['elementary', 'middle'], grades: ['g3', 'g4', 'g5', 'g6', 'g7'], subjects: ['project'], skills: ['writing', 'communication'], difficulty: 'beginner', format: 'activity', popularityScore: 66 },
+        foldable: { gradeBands: ['elementary', 'middle'], grades: ['g3', 'g4', 'g5', 'g6', 'g7'], subjects: ['project'], skills: ['communication'], difficulty: 'beginner', format: 'activity', popularityScore: 63 },
+        bingo3: { gradeBands: ['elementary'], grades: ['preschool', 'kindergarten', 'g1', 'g2', 'g3'], subjects: ['activity'], skills: ['vocabulary'], difficulty: 'beginner', format: 'activity', popularityScore: 81 },
+        wordsearch10: { gradeBands: ['elementary', 'middle'], grades: ['g3', 'g4', 'g5', 'g6', 'g7'], subjects: ['language'], skills: ['vocabulary', 'reading'], difficulty: 'beginner', format: 'activity', popularityScore: 83 },
+        boardgame: { gradeBands: ['elementary', 'middle'], grades: ['g2', 'g3', 'g4', 'g5', 'g6'], subjects: ['project'], skills: ['reasoning'], difficulty: 'beginner', format: 'activity', popularityScore: 62 },
+        exitticket: { gradeBands: ['elementary', 'middle', 'high'], grades: ['g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10', 'g11', 'g12'], subjects: ['assessment'], skills: ['reflection'], difficulty: 'beginner', format: 'assessment', popularityScore: 85 },
+        mindmap: { gradeBands: ['middle', 'high'], grades: ['g6', 'g7', 'g8', 'g9', 'g10', 'g11'], subjects: ['project'], skills: ['analysis'], difficulty: 'intermediate', format: 'organizer', popularityScore: 78 },
+        certificate: { gradeBands: ['elementary', 'middle', 'high', 'adult'], grades: ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10', 'g11', 'g12', 'adult'], subjects: ['planning'], skills: ['communication'], difficulty: 'beginner', format: 'activity', popularityScore: 59 },
+        teacherplanner: { gradeBands: ['elementary', 'middle', 'high'], grades: ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10', 'g11', 'g12'], subjects: ['planning'], skills: ['reflection'], difficulty: 'intermediate', format: 'planner', popularityScore: 73 },
+        timeline: { gradeBands: ['middle', 'high'], grades: ['g6', 'g7', 'g8', 'g9', 'g10', 'g11', 'g12'], subjects: ['social'], skills: ['analysis'], difficulty: 'intermediate', format: 'organizer', popularityScore: 75 },
+        fishbone: { gradeBands: ['middle', 'high', 'adult'], grades: ['g7', 'g8', 'g9', 'g10', 'g11', 'g12', 'adult'], subjects: ['science', 'project'], skills: ['analysis'], difficulty: 'advanced', format: 'organizer', popularityScore: 64 },
+        labreport: { gradeBands: ['middle', 'high'], grades: ['g6', 'g7', 'g8', 'g9', 'g10', 'g11', 'g12'], subjects: ['science'], skills: ['analysis', 'writing'], difficulty: 'intermediate', format: 'worksheet', isFeatured: true, popularityScore: 82 },
+        musicsheet: { gradeBands: ['elementary', 'middle'], grades: ['g3', 'g4', 'g5', 'g6', 'g7', 'g8'], subjects: ['project'], skills: ['reading'], difficulty: 'beginner', format: 'worksheet', popularityScore: 52 },
+        flashcards: { gradeBands: ['elementary', 'middle'], grades: ['g1', 'g2', 'g3', 'g4', 'g5', 'g6'], subjects: ['language'], skills: ['vocabulary'], difficulty: 'beginner', format: 'activity', popularityScore: 90 },
+        sudoku: { gradeBands: ['middle', 'high'], grades: ['g6', 'g7', 'g8', 'g9', 'g10'], subjects: ['math'], skills: ['reasoning'], difficulty: 'intermediate', format: 'activity', popularityScore: 60 },
+        maze: { gradeBands: ['elementary'], grades: ['g1', 'g2', 'g3', 'g4'], subjects: ['math'], skills: ['reasoning'], difficulty: 'beginner', format: 'activity', popularityScore: 68 },
+        presTitle: { gradeBands: ['middle', 'high', 'adult'], grades: ['g6', 'g7', 'g8', 'g9', 'g10', 'g11', 'g12', 'adult'], subjects: ['project'], skills: ['communication'], difficulty: 'intermediate', format: 'organizer', popularityScore: 51 },
+        presTwoCol: { gradeBands: ['middle', 'high', 'adult'], grades: ['g6', 'g7', 'g8', 'g9', 'g10', 'g11', 'g12', 'adult'], subjects: ['project'], skills: ['communication'], difficulty: 'intermediate', format: 'organizer', popularityScore: 55 },
+        lessonPlan: { gradeBands: ['elementary', 'middle', 'high', 'adult'], grades: ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10', 'g11', 'g12', 'adult'], subjects: ['planning'], skills: ['reflection', 'communication'], difficulty: 'intermediate', format: 'planner', isFeatured: true, isNew: true, popularityScore: 92 },
+        readingComprehension: { gradeBands: ['middle', 'high', 'adult'], grades: ['g6', 'g7', 'g8', 'g9', 'g10', 'g11', 'g12', 'adult'], subjects: ['language'], skills: ['reading', 'analysis', 'vocabulary'], difficulty: 'intermediate', format: 'worksheet', isFeatured: true, isNew: true, popularityScore: 94 },
+    };
+
+    function normalizeTemplateMeta(item) {
+        const meta = templateMetaMap[item.key] || {};
+        const normalized = {
+            ...item,
+            gradeBands: Array.isArray(meta.gradeBands) && meta.gradeBands.length ? meta.gradeBands : ['elementary', 'middle', 'high', 'adult'],
+            grades: Array.isArray(meta.grades) && meta.grades.length ? meta.grades : ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10', 'g11', 'g12'],
+            subjects: Array.isArray(meta.subjects) && meta.subjects.length ? meta.subjects : ['project'],
+            skills: Array.isArray(meta.skills) && meta.skills.length ? meta.skills : ['communication'],
+            difficulty: meta.difficulty || 'beginner',
+            format: meta.format || 'worksheet',
+            isFeatured: !!meta.isFeatured,
+            isNew: !!meta.isNew,
+            popularityScore: Number.isFinite(meta.popularityScore) ? meta.popularityScore : 50,
+        };
+        normalized.searchText = `${normalized.title} ${normalized.desc} ${normalized.subjects.join(' ')} ${normalized.skills.join(' ')} ${normalized.gradeBands.join(' ')} ${normalized.grades.join(' ')}`.toLowerCase();
+        return normalized;
+    }
+
+    const templateCards = baseTemplateCards.map(normalizeTemplateMeta);
+
+    const templateFilterState = {
+        segment: 'all',
+        subjects: new Set(),
+        skills: new Set(),
+    };
 
     const borderCards = [
         { key: 'simple', title: 'Simple Border', desc: 'กรอบเส้นเดี่ยวเรียบง่าย', group: 'Basic' },
@@ -82,6 +213,13 @@
         const root = document.getElementById(rootId);
         if (!root) return;
         root.innerHTML = '';
+        if (!cards.length) {
+            const empty = document.createElement('div');
+            empty.className = 'template-empty';
+            empty.textContent = 'ไม่พบเทมเพลตที่ตรงกับตัวกรอง ลองล้างตัวกรองหรือค้นหาด้วยคำอื่น';
+            root.appendChild(empty);
+            return;
+        }
         cards.forEach(item => {
             const el = document.createElement('div');
             el.className = 'template-card';
@@ -89,6 +227,136 @@
             el.addEventListener('click', () => onClick(item));
             root.appendChild(el);
         });
+    }
+
+    function createChipButtons(rootId, options, stateSet, onChange) {
+        const root = document.getElementById(rootId);
+        if (!root) return;
+        root.innerHTML = '';
+        options.forEach(option => {
+            const btn = document.createElement('button');
+            btn.className = 'template-chip';
+            btn.textContent = option.label;
+            if (stateSet.has(option.key)) btn.classList.add('active');
+            btn.addEventListener('click', () => {
+                if (stateSet.has(option.key)) stateSet.delete(option.key);
+                else stateSet.add(option.key);
+                createChipButtons(rootId, options, stateSet, onChange);
+                onChange();
+            });
+            root.appendChild(btn);
+        });
+    }
+
+    function syncGradeOptions() {
+        const bandSelect = document.getElementById('templateGradeBand');
+        const gradeSelect = document.getElementById('templateGrade');
+        if (!bandSelect || !gradeSelect) return;
+        const band = bandSelect.value || 'all';
+        const options = GRADES_BY_BAND[band] || GRADES_BY_BAND.all;
+        const previous = gradeSelect.value;
+        gradeSelect.innerHTML = '<option value="all">All Grades (ทุกชั้น)</option>';
+        options.forEach(opt => {
+            const el = document.createElement('option');
+            el.value = opt.value;
+            el.textContent = opt.label;
+            gradeSelect.appendChild(el);
+        });
+        const stillExists = Array.from(gradeSelect.options).some(o => o.value === previous);
+        gradeSelect.value = stillExists ? previous : 'all';
+    }
+
+    function buildTemplateFilterState() {
+        return {
+            search: (document.getElementById('templateSearch')?.value || '').trim().toLowerCase(),
+            segment: templateFilterState.segment,
+            gradeBand: document.getElementById('templateGradeBand')?.value || 'all',
+            grade: document.getElementById('templateGrade')?.value || 'all',
+            difficulty: document.getElementById('templateDifficulty')?.value || 'all',
+            format: document.getElementById('templateFormat')?.value || 'all',
+            subjects: new Set(templateFilterState.subjects),
+            skills: new Set(templateFilterState.skills),
+        };
+    }
+
+    function includesAny(itemValues, selectedSet) {
+        if (!selectedSet.size) return true;
+        return itemValues.some(value => selectedSet.has(value));
+    }
+
+    function computeTemplateRank(item, state) {
+        if (state.gradeBand !== 'all' && !item.gradeBands.includes(state.gradeBand)) return -1;
+        if (state.grade !== 'all' && !item.grades.includes(state.grade)) return -1;
+        if (state.difficulty !== 'all' && item.difficulty !== state.difficulty) return -1;
+        if (state.format !== 'all' && item.format !== state.format) return -1;
+        if (!includesAny(item.subjects, state.subjects)) return -1;
+        if (!includesAny(item.skills, state.skills)) return -1;
+        if (state.search && !item.searchText.includes(state.search)) return -1;
+        if (state.segment === 'featured' && !item.isFeatured) return -1;
+        if (state.segment === 'new' && !item.isNew) return -1;
+
+        let score = 0;
+        score += state.gradeBand !== 'all' && item.gradeBands.includes(state.gradeBand) ? 40 : 0;
+        score += state.grade !== 'all' && item.grades.includes(state.grade) ? 25 : 0;
+        score += state.subjects.size ? 20 : 0;
+        score += state.skills.size ? 15 : 0;
+        score += item.isFeatured ? 10 : 0;
+        score += item.isNew ? 6 : 0;
+        score += Math.min(10, Math.round(item.popularityScore / 10));
+        return score;
+    }
+
+    function filterAndSortTemplates(state) {
+        const ranked = templateCards
+            .map(item => ({ item, score: computeTemplateRank(item, state) }))
+            .filter(entry => entry.score >= 0);
+
+        if (state.segment === 'popular') {
+            ranked.sort((a, b) => b.item.popularityScore - a.item.popularityScore || b.score - a.score);
+        } else {
+            ranked.sort((a, b) => b.score - a.score || b.item.popularityScore - a.item.popularityScore);
+        }
+        return ranked.map(entry => entry.item);
+    }
+
+    function updateTemplateSummary(total, shown, state) {
+        const summary = document.getElementById('templateResultSummary');
+        if (!summary) return;
+        summary.textContent = `แสดง ${shown}/${total} เทมเพลต • Segment: ${state.segment}`;
+    }
+
+    function refreshTemplateGallery() {
+        const state = buildTemplateFilterState();
+        const list = filterAndSortTemplates(state);
+        buildCardGallery('templateGallery', list, (item) => {
+            const select = document.getElementById('templateSelect');
+            if (select) select.value = item.key;
+            window.wbApplyTemplate?.(item.key);
+            markSaving();
+        });
+        updateTemplateSummary(templateCards.length, list.length, state);
+    }
+
+    function resetTemplateFilters() {
+        const search = document.getElementById('templateSearch');
+        const band = document.getElementById('templateGradeBand');
+        const grade = document.getElementById('templateGrade');
+        const difficulty = document.getElementById('templateDifficulty');
+        const format = document.getElementById('templateFormat');
+        if (search) search.value = '';
+        if (band) band.value = 'all';
+        syncGradeOptions();
+        if (grade) grade.value = 'all';
+        if (difficulty) difficulty.value = 'all';
+        if (format) format.value = 'all';
+        templateFilterState.segment = 'all';
+        templateFilterState.subjects.clear();
+        templateFilterState.skills.clear();
+        document.querySelectorAll('#templateSegments .template-segment').forEach(el => {
+            el.classList.toggle('active', el.dataset.segment === 'all');
+        });
+        createChipButtons('templateSubjectChips', SUBJECTS, templateFilterState.subjects, refreshTemplateGallery);
+        createChipButtons('templateSkillChips', SKILLS, templateFilterState.skills, refreshTemplateGallery);
     }
 
     function buildBorderGallery(rootId, cards, onClick) {
@@ -1783,6 +2051,27 @@
     }
 
     function setupEvents() {
+        document.getElementById('templateSearch')?.addEventListener('input', refreshTemplateGallery);
+        document.getElementById('templateGradeBand')?.addEventListener('change', () => {
+            syncGradeOptions();
+            refreshTemplateGallery();
+        });
+        document.getElementById('templateGrade')?.addEventListener('change', refreshTemplateGallery);
+        document.getElementById('templateDifficulty')?.addEventListener('change', refreshTemplateGallery);
+        document.getElementById('templateFormat')?.addEventListener('change', refreshTemplateGallery);
+        document.getElementById('btnTemplateClearFilters')?.addEventListener('click', () => {
+            resetTemplateFilters();
+            refreshTemplateGallery();
+        });
+        document.querySelectorAll('#templateSegments .template-segment').forEach(btn => {
+            btn.addEventListener('click', () => {
+                templateFilterState.segment = btn.dataset.segment || 'all';
+                document.querySelectorAll('#templateSegments .template-segment').forEach(el => el.classList.remove('active'));
+                btn.classList.add('active');
+                refreshTemplateGallery();
+            });
+        });
+
         document.getElementById('btnAddBasicShape')?.addEventListener('click', () => {
             const type = document.getElementById('basicShapeSelect')?.value || 'square';
             addShape(type);
@@ -1904,12 +2193,10 @@
     }
 
     function setupTemplateGallery() {
-        buildCardGallery('templateGallery', templateCards, (item) => {
-            const select = document.getElementById('templateSelect');
-            if (select) select.value = item.key;
-            window.wbApplyTemplate?.(item.key);
-            markSaving();
-        });
+        syncGradeOptions();
+        createChipButtons('templateSubjectChips', SUBJECTS, templateFilterState.subjects, refreshTemplateGallery);
+        createChipButtons('templateSkillChips', SKILLS, templateFilterState.skills, refreshTemplateGallery);
+        refreshTemplateGallery();
         buildBorderGallery('borderGallery', borderCards, (item) => addBorder(item.key));
     }
 
