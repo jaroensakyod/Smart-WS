@@ -84,3 +84,36 @@
 
 ---
 **Status:** ✅ Implemented (Phase 8-11 delivered)
+
+---
+
+## 📦 Release Notes (2026-02-27)
+
+### Delivered in this release train
+- ✅ Grade-based Template Discovery: Search + filters (Grade Band, Grade, Subject, Skill, Difficulty, Format)
+- ✅ Segmented template gallery: All / Featured / Popular / New
+- ✅ P0 templates complete: Lesson Plan, Reading Comprehension
+- ✅ Catalog Expansion A complete: Elementary + Middle packs
+- ✅ Catalog Expansion B complete: High + Adult packs
+- ✅ Telemetry foundation: template apply requested/cancelled/success, gallery view, filter reset, segment change
+- ✅ Telemetry report view: Dump JSON, Clear telemetry, Mini dashboard (events/last update/top events)
+
+### Quality / Stability
+- ✅ Syntax checks ผ่าน (`app.js`, `proFeatures.js`)
+- ✅ Unit tests ผ่าน (`tests/export.utils.test.js`, `tests/odl.import.utils.test.js`)
+- ✅ Working tree cleaned and sprint commits separated per scope
+
+---
+
+## ✅ Release Checklist (Final)
+
+- [x] Core features implemented per sprint scope
+- [x] High/Adult template rendering wired end-to-end
+- [x] Discovery filters + ranking + segments stable
+- [x] Telemetry hooks implemented in core and UI
+- [x] Telemetry report actions (Dump/Clear/Refresh) available in sidebar
+- [x] Regression smoke tests pass
+- [x] README updated with current capabilities
+- [x] Final documentation updated with release notes
+- [x] Local commits completed in clean history
+- [x] Ready to push/publish
