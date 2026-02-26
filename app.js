@@ -601,6 +601,36 @@ function applyTemplate(type) {
         canvas.add(new fabric.IText('W\nWant to know', { left: left + width / 3 + 20, top: top + 12, fontFamily: 'Fredoka', fontSize: 28, fill: txColor }));
         canvas.add(new fabric.IText('L\nLearned', { left: left + (width / 3) * 2 + 20, top: top + 12, fontFamily: 'Fredoka', fontSize: 28, fill: txColor }));
     }
+    if (type === 'letterTracing') {
+        canvas.add(new fabric.IText('Letter Tracing', { left: 70, top: 40, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const left = 70;
+        const width = PAPER_W - 140;
+        const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        for (let i = 0; i < letters.length; i++) {
+            const y = 120 + i * 112;
+            canvas.add(new fabric.Line([left, y + 72, left + width, y + 72], { stroke: '#64748b', strokeWidth: 1.8 }));
+            canvas.add(new fabric.Line([left, y + 36, left + width, y + 36], { stroke: '#94a3b8', strokeWidth: 1.1, strokeDashArray: [4, 5] }));
+            canvas.add(new fabric.Line([left, y, left + width, y], { stroke: '#64748b', strokeWidth: 1.8 }));
+            canvas.add(new fabric.IText(`${letters[i]}  ${letters[i]}  ${letters[i]}  ${letters[i]}`, { left: left + 10, top: y + 8, fontFamily: 'Sarabun', fontSize: 28, fill: txColor, opacity: 0.55 }));
+        }
+    }
+    if (type === 'storySequence') {
+        canvas.add(new fabric.IText('Story Sequence', { left: 70, top: 42, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const left = 70;
+        const width = PAPER_W - 140;
+        const stepW = (width - 24) / 3;
+        const boxY = 130;
+        const boxH = 350;
+        ['Beginning', 'Middle', 'End'].forEach((label, idx) => {
+            const x = left + idx * (stepW + 12);
+            canvas.add(new fabric.Rect({ left: x, top: boxY, width: stepW, height: boxH, fill: '#fff', stroke: txColor, strokeWidth: 2, rx: 10, ry: 10 }));
+            canvas.add(new fabric.IText(label, { left: x + 10, top: boxY + 10, fontFamily: 'Fredoka', fontSize: 22, fill: txColor }));
+            canvas.add(new fabric.Rect({ left: x + 8, top: boxY + 50, width: stepW - 16, height: 180, fill: 'transparent', stroke: '#94a3b8', strokeWidth: 1.2, strokeDashArray: [6, 5], rx: 8, ry: 8 }));
+            canvas.add(new fabric.Line([x + 10, boxY + 252, x + stepW - 10, boxY + 252], { stroke: '#94a3b8', strokeWidth: 1.2 }));
+            canvas.add(new fabric.Line([x + 10, boxY + 288, x + stepW - 10, boxY + 288], { stroke: '#94a3b8', strokeWidth: 1.2 }));
+            canvas.add(new fabric.Line([x + 10, boxY + 324, x + stepW - 10, boxY + 324], { stroke: '#94a3b8', strokeWidth: 1.2 }));
+        });
+    }
     if (type === 'cornellNotes') {
         canvas.add(new fabric.IText('Cornell Notes', { left: 70, top: 40, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
         const left = 70;
@@ -629,6 +659,21 @@ function applyTemplate(type) {
         canvas.add(new fabric.IText('ด้านซ้าย', { left: left + 16, top: top + 18, fontFamily: 'Sarabun', fontSize: 24, fill: txColor }));
         canvas.add(new fabric.IText('ด้านขวา', { left: left + width / 2 + 16, top: top + 18, fontFamily: 'Sarabun', fontSize: 24, fill: txColor }));
     }
+    if (type === 'causeEffect') {
+        canvas.add(new fabric.IText('Cause-Effect Organizer', { left: 70, top: 42, fontFamily: 'Fredoka', fontSize: 32, fill: txColor }));
+        const centerX = PAPER_W / 2;
+        const top = 160;
+        const rowH = 180;
+        for (let i = 0; i < 3; i++) {
+            const y = top + i * rowH;
+            canvas.add(new fabric.Rect({ left: 82, top: y, width: 260, height: 120, fill: '#fff', stroke: txColor, strokeWidth: 2, rx: 10, ry: 10 }));
+            canvas.add(new fabric.Rect({ left: PAPER_W - 342, top: y, width: 260, height: 120, fill: '#fff', stroke: txColor, strokeWidth: 2, rx: 10, ry: 10 }));
+            canvas.add(new fabric.Line([342, y + 60, PAPER_W - 342, y + 60], { stroke: txColor, strokeWidth: 2, strokeDashArray: [8, 6] }));
+            canvas.add(new fabric.Triangle({ left: centerX, top: y + 60, width: 18, height: 14, angle: 90, originX: 'center', originY: 'center', fill: txColor, stroke: 'transparent' }));
+            canvas.add(new fabric.IText(`Cause ${i + 1}`, { left: 96, top: y + 10, fontFamily: 'Fredoka', fontSize: 20, fill: txColor }));
+            canvas.add(new fabric.IText(`Effect ${i + 1}`, { left: PAPER_W - 328, top: y + 10, fontFamily: 'Fredoka', fontSize: 20, fill: txColor }));
+        }
+    }
     if (type === 'graphpaper') {
         canvas.add(new fabric.IText('Graph Paper', { left: 70, top: 40, fontFamily: 'Fredoka', fontSize: 30, fill: txColor }));
         const left = 70;
@@ -656,6 +701,20 @@ function applyTemplate(type) {
             canvas.add(new fabric.IText(String(i), { left: x - 7, top: y + 18, fontFamily: 'Sarabun', fontSize: 18, fill: txColor }));
         }
     }
+    if (type === 'addSubPractice') {
+        canvas.add(new fabric.IText('Add/Sub Practice', { left: 70, top: 48, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const columns = 2;
+        const colW = (PAPER_W - 170) / columns;
+        let n = 1;
+        for (let r = 0; r < 10; r++) {
+            for (let c = 0; c < columns; c++) {
+                const x = 70 + c * (colW + 30);
+                const y = 130 + r * 92;
+                canvas.add(new fabric.IText(`${n++}.  ___ + ___ = ___`, { left: x, top: y, fontFamily: 'Sarabun', fontSize: 24, fill: txColor }));
+                canvas.add(new fabric.IText(`    ___ - ___ = ___`, { left: x, top: y + 36, fontFamily: 'Sarabun', fontSize: 24, fill: txColor }));
+            }
+        }
+    }
     if (type === 'fractionpies') {
         canvas.add(new fabric.IText('Fraction Pies', { left: 70, top: 54, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
         const centers = [
@@ -675,6 +734,23 @@ function applyTemplate(type) {
             }
             canvas.add(new fabric.IText(`/${item.parts}`, { left: item.x - 16, top: item.y + 104, fontFamily: 'Sarabun', fontSize: 20, fill: txColor }));
         });
+    }
+    if (type === 'ratioFraction') {
+        canvas.add(new fabric.IText('Ratio & Fraction Practice', { left: 70, top: 44, fontFamily: 'Fredoka', fontSize: 32, fill: txColor }));
+        const left = 70;
+        const width = PAPER_W - 140;
+        const rows = 8;
+        const rowH = 102;
+        canvas.add(new fabric.Rect({ left, top: 116, width, height: rows * rowH, fill: 'transparent', stroke: txColor, strokeWidth: 2 }));
+        canvas.add(new fabric.Line([left + width * 0.5, 116, left + width * 0.5, 116 + rows * rowH], { stroke: txColor, strokeWidth: 2 }));
+        canvas.add(new fabric.IText('Ratio Form', { left: left + 14, top: 124, fontFamily: 'Fredoka', fontSize: 20, fill: txColor }));
+        canvas.add(new fabric.IText('Equivalent Fraction', { left: left + width * 0.5 + 14, top: 124, fontFamily: 'Fredoka', fontSize: 20, fill: txColor }));
+        for (let i = 1; i < rows; i++) {
+            const y = 116 + i * rowH;
+            canvas.add(new fabric.Line([left, y, left + width, y], { stroke: '#94a3b8', strokeWidth: 1.2 }));
+            canvas.add(new fabric.IText(`${i}.  ___ : ___`, { left: left + 16, top: y + 30, fontFamily: 'Sarabun', fontSize: 24, fill: txColor }));
+            canvas.add(new fabric.IText(`___ / ___`, { left: left + width * 0.5 + 16, top: y + 30, fontFamily: 'Sarabun', fontSize: 24, fill: txColor }));
+        }
     }
     if (type === 'quiz') {
         canvas.add(new fabric.IText('Quiz', { left: 70, top: 44, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
@@ -888,6 +964,88 @@ function applyTemplate(type) {
         const summaryTop = qTop + questionsH + 10;
         canvas.add(new fabric.Rect({ left, top: summaryTop, width, height: summaryH, fill: '#ffffff', stroke: txColor, strokeWidth: 1.8, rx: 8, ry: 8 }));
         canvas.add(new fabric.IText('Summary', { left: left + 12, top: summaryTop + 10, fontFamily: 'Fredoka', fontSize: 20, fill: txColor }));
+    }
+    if (type === 'phonicsMatch') {
+        canvas.add(new fabric.IText('Phonics Match', { left: 70, top: 44, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        for (let i = 0; i < 8; i++) {
+            const y = 126 + i * 96;
+            canvas.add(new fabric.IText(`${i + 1}.  □  /${String.fromCharCode(97 + i)}/`, { left: 86, top: y + 10, fontFamily: 'Sarabun', fontSize: 24, fill: txColor }));
+            canvas.add(new fabric.Rect({ left: 330, top: y, width: 360, height: 70, fill: '#fff', stroke: txColor, strokeWidth: 1.6, rx: 8, ry: 8 }));
+            canvas.add(new fabric.IText('word / picture clue', { left: 346, top: y + 18, fontFamily: 'Sarabun', fontSize: 20, fill: '#94a3b8' }));
+        }
+    }
+    if (type === 'pictureVocabulary') {
+        canvas.add(new fabric.IText('Picture Vocabulary', { left: 70, top: 44, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const cols = 2;
+        const rows = 4;
+        const cardW = (PAPER_W - 170) / cols;
+        const cardH = 205;
+        let n = 1;
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const x = 70 + c * (cardW + 30);
+                const y = 120 + r * (cardH + 14);
+                canvas.add(new fabric.Rect({ left: x, top: y, width: cardW, height: cardH, fill: '#fff', stroke: txColor, strokeWidth: 1.8, rx: 10, ry: 10 }));
+                canvas.add(new fabric.Rect({ left: x + 10, top: y + 10, width: cardW - 20, height: 128, fill: 'transparent', stroke: '#94a3b8', strokeWidth: 1.2, strokeDashArray: [6, 5], rx: 8, ry: 8 }));
+                canvas.add(new fabric.IText(`${n++}. ___________________`, { left: x + 12, top: y + 154, fontFamily: 'Sarabun', fontSize: 20, fill: txColor }));
+            }
+        }
+    }
+    if (type === 'contextClues') {
+        canvas.add(new fabric.IText('Context Clues Vocabulary', { left: 70, top: 42, fontFamily: 'Fredoka', fontSize: 32, fill: txColor }));
+        const left = 70;
+        const width = PAPER_W - 140;
+        const rowH = 150;
+        for (let i = 0; i < 6; i++) {
+            const y = 112 + i * (rowH + 10);
+            canvas.add(new fabric.Rect({ left, top: y, width, height: rowH, fill: '#fff', stroke: txColor, strokeWidth: 1.6, rx: 8, ry: 8 }));
+            canvas.add(new fabric.IText(`${i + 1}. Target Word: ____________`, { left: left + 12, top: y + 10, fontFamily: 'Sarabun', fontSize: 20, fill: txColor }));
+            canvas.add(new fabric.Line([left + 12, y + 54, left + width - 12, y + 54], { stroke: '#94a3b8', strokeWidth: 1.2 }));
+            canvas.add(new fabric.IText('Sentence Context: __________________________________________', { left: left + 12, top: y + 62, fontFamily: 'Sarabun', fontSize: 18, fill: '#94a3b8' }));
+            canvas.add(new fabric.IText('Meaning from context: _________________________', { left: left + 12, top: y + 102, fontFamily: 'Sarabun', fontSize: 18, fill: txColor }));
+        }
+    }
+    if (type === 'reflectionJournal') {
+        canvas.add(new fabric.IText('Reflection Journal', { left: 70, top: 38, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
+        const sections = ['What I learned today', 'What was challenging', 'How I can improve next time'];
+        const left = 70;
+        const width = PAPER_W - 140;
+        let y = 106;
+        sections.forEach((label) => {
+            const h = 250;
+            canvas.add(new fabric.Rect({ left, top: y, width, height: h, fill: '#fff', stroke: txColor, strokeWidth: 1.8, rx: 8, ry: 8 }));
+            canvas.add(new fabric.IText(label, { left: left + 12, top: y + 10, fontFamily: 'Fredoka', fontSize: 20, fill: txColor }));
+            for (let i = 0; i < 5; i++) {
+                const lineY = y + 58 + i * 34;
+                canvas.add(new fabric.Line([left + 12, lineY, left + width - 12, lineY], { stroke: '#94a3b8', strokeWidth: 1.1 }));
+            }
+            y += h + 12;
+        });
+    }
+    if (type === 'projectPlanning') {
+        canvas.add(new fabric.IText('Project Planning Sheet', { left: 70, top: 38, fontFamily: 'Fredoka', fontSize: 32, fill: txColor }));
+        const left = 70;
+        const width = PAPER_W - 140;
+        const top = 106;
+        canvas.add(new fabric.Rect({ left, top, width, height: 108, fill: '#fff', stroke: txColor, strokeWidth: 1.8, rx: 8, ry: 8 }));
+        canvas.add(new fabric.IText('Project Goal', { left: left + 12, top: top + 10, fontFamily: 'Fredoka', fontSize: 20, fill: txColor }));
+
+        const timelineTop = top + 122;
+        canvas.add(new fabric.Rect({ left, top: timelineTop, width, height: 330, fill: '#fff', stroke: txColor, strokeWidth: 1.8, rx: 8, ry: 8 }));
+        canvas.add(new fabric.IText('Timeline / Milestones', { left: left + 12, top: timelineTop + 10, fontFamily: 'Fredoka', fontSize: 20, fill: txColor }));
+        for (let i = 0; i < 4; i++) {
+            const y = timelineTop + 58 + i * 66;
+            canvas.add(new fabric.Line([left + 12, y, left + width - 12, y], { stroke: '#94a3b8', strokeWidth: 1.1 }));
+        }
+
+        const roleTop = timelineTop + 344;
+        canvas.add(new fabric.Rect({ left, top: roleTop, width, height: 250, fill: '#fff', stroke: txColor, strokeWidth: 1.8, rx: 8, ry: 8 }));
+        canvas.add(new fabric.IText('Roles / Task Owners', { left: left + 12, top: roleTop + 10, fontFamily: 'Fredoka', fontSize: 20, fill: txColor }));
+        canvas.add(new fabric.Line([left + width * 0.55, roleTop + 44, left + width * 0.55, roleTop + 234], { stroke: txColor, strokeWidth: 1.5 }));
+        for (let i = 0; i < 4; i++) {
+            const y = roleTop + 44 + i * 47;
+            canvas.add(new fabric.Line([left + 12, y, left + width - 12, y], { stroke: '#94a3b8', strokeWidth: 1.1 }));
+        }
     }
     if (type === 'timeline') {
         canvas.add(new fabric.IText('Timeline', { left: 70, top: 44, fontFamily: 'Fredoka', fontSize: 34, fill: txColor }));
