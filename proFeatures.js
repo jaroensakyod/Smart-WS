@@ -259,6 +259,24 @@
         URL.revokeObjectURL(url);
     }
 
+    function updateTelemetryPanel() {
+        const meta = document.getElementById('templateTelemetryMeta');
+        const top = document.getElementById('templateTelemetryTop');
+        if (!meta || !top) return;
+        const snapshot = window.wbGetTelemetrySnapshot?.() || { counts: {}, events: [], lastUpdatedAt: 0 };
+        const total = Array.isArray(snapshot.events) ? snapshot.events.length : 0;
+        const last = snapshot.lastUpdatedAt
+            ? new Date(snapshot.lastUpdatedAt).toLocaleString('th-TH')
+            : '-';
+        const topEvents = Object.entries(snapshot.counts || {})
+            .sort((a, b) => Number(b[1]) - Number(a[1]))
+            .slice(0, 3)
+            .map(([name, count]) => `${name}:${count}`)
+            .join(' • ');
+        meta.textContent = `events: ${total} • last: ${last}`;
+        top.textContent = `top events: ${topEvents || '-'}`;
+    }
+
     const borderCards = [
         { key: 'simple', title: 'Simple Border', desc: 'กรอบเส้นเดี่ยวเรียบง่าย', group: 'Basic' },
         { key: 'double', title: 'Double Border', desc: 'กรอบเส้นคู่ยอดนิยม', group: 'Basic' },
@@ -443,8 +461,10 @@
             emitTelemetry('template_apply_requested', { source: 'template_gallery', template: item.key });
             window.wbApplyTemplate?.(item.key);
             markSaving();
+            updateTelemetryPanel();
         });
         updateTemplateSummary(templateCards.length, list.length, state);
+        updateTelemetryPanel();
     }
 
     function resetTemplateFilters() {
@@ -2180,6 +2200,7 @@
             emitTelemetry('template_telemetry_dump', {
                 totalEvents: Array.isArray(snapshot.events) ? snapshot.events.length : 0,
             });
+            updateTelemetryPanel();
             window.showToast?.('📦 Telemetry JSON ถูกดาวน์โหลดแล้ว');
         });
         document.getElementById('btnTemplateTelemetryClear')?.addEventListener('click', () => {
@@ -2188,7 +2209,12 @@
             window.wbClearTelemetry?.();
             emitTelemetry('template_telemetry_cleared', { source: 'template_panel' });
             refreshTemplateGallery();
+            updateTelemetryPanel();
             window.showToast?.('🧹 ล้าง telemetry แล้ว');
+        });
+        document.getElementById('btnTemplateTelemetryRefresh')?.addEventListener('click', () => {
+            updateTelemetryPanel();
+            window.showToast?.('🔄 รีเฟรช telemetry แล้ว');
         });
         document.querySelectorAll('#templateSegments .template-segment').forEach(btn => {
             btn.addEventListener('click', () => {
