@@ -16,6 +16,51 @@ let snapEnabled = true;
 let worksheetMode = 'student'; // student | answer
 const GRID_SIZE = 24;
 const SNAP_TOLERANCE = 8;
+const TELEMETRY_KEY = 'smartws_telemetry_v1';
+const TELEMETRY_MAX_EVENTS = 120;
+
+function readTelemetryState() {
+    try {
+        const raw = localStorage.getItem(TELEMETRY_KEY);
+        if (!raw) return { counts: {}, events: [], lastUpdatedAt: 0 };
+        const parsed = JSON.parse(raw);
+        return {
+            counts: parsed && typeof parsed.counts === 'object' ? parsed.counts : {},
+            events: Array.isArray(parsed?.events) ? parsed.events : [],
+            lastUpdatedAt: Number(parsed?.lastUpdatedAt) || 0,
+        };
+    } catch {
+        return { counts: {}, events: [], lastUpdatedAt: 0 };
+    }
+}
+
+function writeTelemetryState(state) {
+    try {
+        localStorage.setItem(TELEMETRY_KEY, JSON.stringify(state));
+    } catch {
+        return;
+    }
+}
+
+function trackTelemetry(eventName, payload = {}) {
+    if (!eventName) return;
+    const state = readTelemetryState();
+    state.counts[eventName] = (state.counts[eventName] || 0) + 1;
+    state.events.push({
+        event: eventName,
+        at: Date.now(),
+        payload: payload && typeof payload === 'object' ? payload : {},
+    });
+    if (state.events.length > TELEMETRY_MAX_EVENTS) {
+        state.events.splice(0, state.events.length - TELEMETRY_MAX_EVENTS);
+    }
+    state.lastUpdatedAt = Date.now();
+    writeTelemetryState(state);
+}
+
+function getTelemetrySnapshot() {
+    return readTelemetryState();
+}
 
 function getPaperConfig(size = paperSize) {
     return PAPER_PRESETS[size] || PAPER_PRESETS.a4;
@@ -502,7 +547,10 @@ function generateAnswerKeyPage() {
 
 function applyTemplate(type) {
     if (!type) return;
-    if (!window.confirm('ใช้เทมเพลตนี้และล้างหน้าปัจจุบัน?')) return;
+    if (!window.confirm('ใช้เทมเพลตนี้และล้างหน้าปัจจุบัน?')) {
+        trackTelemetry('template_apply_cancelled', { template: type });
+        return;
+    }
     canvas.clear();
     canvas.setBackgroundColor('#ffffff', canvas.renderAll.bind(canvas));
     const txColor = document.getElementById('colorText')?.value || '#1e293b';
@@ -1387,6 +1435,7 @@ function applyTemplate(type) {
     }
     canvas.renderAll();
     saveHistory();
+    trackTelemetry('template_apply_success', { template: type, objectCount: canvas.getObjects().length });
     showToast('📄 ใส่เทมเพลตแล้ว');
 }
 
@@ -2168,6 +2217,7 @@ document.getElementById('toolAutoNumber')?.addEventListener('click', () => {
 });
 document.getElementById('btnApplyTemplate')?.addEventListener('click', () => {
     const value = document.getElementById('templateSelect')?.value || '';
+    trackTelemetry('template_apply_requested', { source: 'template_select_button', template: value || 'none' });
     applyTemplate(value);
 });
 document.getElementById('propAnswerOnly')?.addEventListener('change', (e) => {
@@ -2226,6 +2276,8 @@ window.wbGetLineSettings = () => ({ ...lineSettings });
 window.wbGetPaperConfig = () => ({ ...getPaperConfig() });
 window.wbSetPaperSize = (size) => applyPaperLayout(size);
 window.wbApplyTemplate = applyTemplate;
+window.wbTrackTelemetry = trackTelemetry;
+window.wbGetTelemetrySnapshot = getTelemetrySnapshot;
 window.wbToggleWorksheetMode = () => {
     worksheetMode = worksheetMode === 'student' ? 'answer' : 'student';
     syncUiToggles();

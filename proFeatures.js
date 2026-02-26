@@ -237,6 +237,11 @@
         subjects: new Set(),
         skills: new Set(),
     };
+    let lastTemplateViewSignature = '';
+
+    function emitTelemetry(eventName, payload = {}) {
+        window.wbTrackTelemetry?.(eventName, payload);
+    }
 
     const borderCards = [
         { key: 'simple', title: 'Simple Border', desc: 'กรอบเส้นเดี่ยวเรียบง่าย', group: 'Basic' },
@@ -390,9 +395,36 @@
     function refreshTemplateGallery() {
         const state = buildTemplateFilterState();
         const list = filterAndSortTemplates(state);
+        const signature = [
+            state.segment,
+            state.gradeBand,
+            state.grade,
+            state.difficulty,
+            state.format,
+            state.search,
+            [...state.subjects].sort().join(','),
+            [...state.skills].sort().join(','),
+            list.length,
+        ].join('|');
+        if (signature !== lastTemplateViewSignature) {
+            lastTemplateViewSignature = signature;
+            emitTelemetry('template_gallery_view', {
+                shown: list.length,
+                total: templateCards.length,
+                segment: state.segment,
+                gradeBand: state.gradeBand,
+                grade: state.grade,
+                difficulty: state.difficulty,
+                format: state.format,
+                hasSearch: !!state.search,
+                subjectCount: state.subjects.size,
+                skillCount: state.skills.size,
+            });
+        }
         buildCardGallery('templateGallery', list, (item) => {
             const select = document.getElementById('templateSelect');
             if (select) select.value = item.key;
+            emitTelemetry('template_apply_requested', { source: 'template_gallery', template: item.key });
             window.wbApplyTemplate?.(item.key);
             markSaving();
         });
@@ -2123,6 +2155,7 @@
         document.getElementById('templateFormat')?.addEventListener('change', refreshTemplateGallery);
         document.getElementById('btnTemplateClearFilters')?.addEventListener('click', () => {
             resetTemplateFilters();
+            emitTelemetry('template_filters_reset', { source: 'clear_button' });
             refreshTemplateGallery();
         });
         document.querySelectorAll('#templateSegments .template-segment').forEach(btn => {
@@ -2130,6 +2163,7 @@
                 templateFilterState.segment = btn.dataset.segment || 'all';
                 document.querySelectorAll('#templateSegments .template-segment').forEach(el => el.classList.remove('active'));
                 btn.classList.add('active');
+                emitTelemetry('template_segment_changed', { segment: templateFilterState.segment });
                 refreshTemplateGallery();
             });
         });
