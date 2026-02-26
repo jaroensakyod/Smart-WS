@@ -34,16 +34,34 @@
         { key: 'mindmap', title: 'Mind Map', desc: 'แผนผังความคิดแตกแขนง 4 ทิศ' },
         { key: 'certificate', title: 'Certificate', desc: 'เทมเพลตเกียรติบัตรพร้อมกรอบ' },
         { key: 'teacherplanner', title: 'Teacher Planner', desc: 'ตารางวางแผนการสอนรายสัปดาห์' },
+        { key: 'timeline', title: 'Timeline', desc: 'เส้นเวลาพร้อมกล่องเหตุการณ์สลับบนล่าง' },
+        { key: 'fishbone', title: 'Fishbone', desc: 'แผนผังก้างปลาเพื่อวิเคราะห์สาเหตุ' },
+        { key: 'labreport', title: 'Lab Report', desc: 'ใบงานทดลองวิทย์พร้อมหัวข้อครบ' },
+        { key: 'musicsheet', title: 'Music Sheet', desc: 'บรรทัด 5 เส้นพร้อมกุญแจซอล' },
+        { key: 'flashcards', title: 'Flashcards', desc: 'การ์ดคำศัพท์พร้อมเส้นตัด' },
+        { key: 'sudoku', title: 'Sudoku', desc: 'ตารางซูโดกุ 9x9 พร้อมเส้นหนา/บาง' },
+        { key: 'maze', title: 'Maze', desc: 'เทมเพลตเขาวงกตสำหรับตรรกะ' },
+        { key: 'presTitle', title: 'Presentation Title', desc: 'สไลด์หน้าปก 16:9' },
+        { key: 'presTwoCol', title: 'Presentation Two-Column', desc: 'สไลด์ 2 คอลัมน์สำหรับเนื้อหา' },
     ];
 
     const borderCards = [
-        { key: 'simple', title: 'Simple Border', desc: 'กรอบเส้นเดี่ยวเรียบง่าย' },
-        { key: 'double', title: 'Double Border', desc: 'กรอบเส้นคู่ยอดนิยม' },
-        { key: 'dashed', title: 'Dashed Border', desc: 'กรอบเส้นประแบบ Worksheet' },
-        { key: 'dotted', title: 'Dotted Border', desc: 'กรอบจุดสไตล์น่ารัก' },
-        { key: 'geo', title: 'Geometric Border', desc: 'กรอบลายเรขาคณิต' },
-        { key: 'doodle', title: 'Doodle Border', desc: 'กรอบวาดมือ (hand-drawn)' },
-        { key: 'corners', title: 'Corner Accent', desc: 'ตกแต่งเฉพาะมุมกระดาษ' },
+        { key: 'simple', title: 'Simple Border', desc: 'กรอบเส้นเดี่ยวเรียบง่าย', group: 'Basic' },
+        { key: 'double', title: 'Double Border', desc: 'กรอบเส้นคู่ยอดนิยม', group: 'Basic' },
+        { key: 'triple', title: 'Triple Border', desc: 'กรอบเส้นสามชั้น', group: 'Basic' },
+        { key: 'dashed', title: 'Dashed Border', desc: 'กรอบเส้นประแบบ Worksheet', group: 'Basic' },
+        { key: 'dotted', title: 'Dotted Border', desc: 'กรอบจุดสไตล์น่ารัก', group: 'Basic' },
+        { key: 'wavy', title: 'Wavy Border', desc: 'กรอบเส้นคลื่น', group: 'Basic' },
+        { key: 'zigzag', title: 'Zigzag Border', desc: 'กรอบซิกแซกแบบกิจกรรม', group: 'Basic' },
+        { key: 'stitch', title: 'Stitch Border', desc: 'กรอบเย็บผ้าแบบเส้นสั้น', group: 'Basic' },
+        { key: 'geo', title: 'Geometric Border', desc: 'กรอบลายเรขาคณิต', group: 'Decorative' },
+        { key: 'doodle', title: 'Doodle Border', desc: 'กรอบวาดมือ (hand-drawn)', group: 'Decorative' },
+        { key: 'stars', title: 'Star Border', desc: 'กรอบประดับดาว', group: 'Decorative' },
+        { key: 'ribbon', title: 'Ribbon Border', desc: 'กรอบริบบิ้นสองชั้น', group: 'Decorative' },
+        { key: 'scallop', title: 'Scallop Border', desc: 'กรอบโค้งลูกไม้', group: 'Decorative' },
+        { key: 'corners', title: 'Corner Accent', desc: 'ตกแต่งเฉพาะมุมกระดาษ', group: 'Corner' },
+        { key: 'cornerDots', title: 'Corner Dots', desc: 'จุดมุมกระดาษ', group: 'Corner' },
+        { key: 'cornerBrackets', title: 'Corner Brackets', desc: 'วงเล็บมุมเอกสาร', group: 'Corner' },
     ];
 
     function setupTabs() {
@@ -70,6 +88,36 @@
             el.innerHTML = `<div class="template-card-title">${item.title}</div><div class="template-card-desc">${item.desc}</div>`;
             el.addEventListener('click', () => onClick(item));
             root.appendChild(el);
+        });
+    }
+
+    function buildBorderGallery(rootId, cards, onClick) {
+        const root = document.getElementById(rootId);
+        if (!root) return;
+        root.innerHTML = '';
+        const grouped = cards.reduce((acc, item) => {
+            const key = item.group || 'Other';
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(item);
+            return acc;
+        }, {});
+
+        Object.entries(grouped).forEach(([group, items]) => {
+            const heading = document.createElement('div');
+            heading.className = 'template-card';
+            heading.style.cursor = 'default';
+            heading.style.fontWeight = '700';
+            heading.style.background = 'var(--surface)';
+            heading.textContent = `หมวด: ${group}`;
+            root.appendChild(heading);
+
+            items.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'template-card';
+                el.innerHTML = `<div class="template-card-title">${item.title}</div><div class="template-card-desc">${item.desc}</div>`;
+                el.addEventListener('click', () => onClick(item));
+                root.appendChild(el);
+            });
         });
     }
 
@@ -116,6 +164,11 @@
             const outer = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 2, selectable: false, evented: false });
             const inner = new fabric.Rect({ left: left + 10, top: top + 10, width: width - 20, height: height - 20, fill: 'transparent', stroke, strokeWidth: 1.4, selectable: false, evented: false });
             border = new fabric.Group([outer, inner], { objectCaching: false });
+        } else if (kind === 'triple') {
+            const outer = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 2.4, selectable: false, evented: false });
+            const mid = new fabric.Rect({ left: left + 8, top: top + 8, width: width - 16, height: height - 16, fill: 'transparent', stroke, strokeWidth: 1.2, selectable: false, evented: false });
+            const inner = new fabric.Rect({ left: left + 16, top: top + 16, width: width - 32, height: height - 32, fill: 'transparent', stroke, strokeWidth: 2, selectable: false, evented: false });
+            border = new fabric.Group([outer, mid, inner], { objectCaching: false });
         } else if (kind === 'dashed') {
             border = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 2, strokeDashArray: [12, 8] });
         } else if (kind === 'dotted') {
@@ -146,6 +199,108 @@
                 new fabric.Path(`M ${left + len} ${top + height} L ${left} ${top + height} L ${left} ${top + height - len}`, { fill: 'transparent', stroke, strokeWidth: 4 }),
             ];
             border = new fabric.Group(corners, { objectCaching: false });
+        } else if (kind === 'stars') {
+            const base = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 1.2 });
+            const starPath = 'M 0 -5 L 1.6 -1.6 L 5 -1.6 L 2.5 0.8 L 3.4 4.9 L 0 2.9 L -3.4 4.9 L -2.5 0.8 L -5 -1.6 L -1.6 -1.6 Z';
+            const deco = [];
+            const topCount = Math.max(8, Math.floor(width / 80));
+            const sideCount = Math.max(6, Math.floor(height / 80));
+            for (let i = 0; i <= topCount; i++) {
+                const x = left + (width * i) / topCount;
+                deco.push(new fabric.Path(starPath, { left: x - 5, top: top - 7, fill: stroke, stroke: 'transparent', selectable: false, evented: false }));
+                deco.push(new fabric.Path(starPath, { left: x - 5, top: top + height - 7, fill: stroke, stroke: 'transparent', selectable: false, evented: false }));
+            }
+            for (let i = 1; i < sideCount; i++) {
+                const y = top + (height * i) / sideCount;
+                deco.push(new fabric.Path(starPath, { left: left - 7, top: y - 5, fill: stroke, stroke: 'transparent', selectable: false, evented: false }));
+                deco.push(new fabric.Path(starPath, { left: left + width - 7, top: y - 5, fill: stroke, stroke: 'transparent', selectable: false, evented: false }));
+            }
+            border = new fabric.Group([base, ...deco], { objectCaching: false });
+        } else if (kind === 'wavy') {
+            const waveTop = [];
+            const waveBottom = [];
+            const waveLeft = [];
+            const waveRight = [];
+            const stepsX = Math.max(12, Math.floor(width / 40));
+            const stepsY = Math.max(10, Math.floor(height / 40));
+            const amp = 8;
+            for (let i = 0; i <= stepsX; i++) {
+                const x = left + (width * i) / stepsX;
+                const yOffset = (i % 2 === 0) ? -amp : amp;
+                waveTop.push(`${i === 0 ? 'M' : 'L'} ${x} ${top + yOffset}`);
+                waveBottom.push(`${i === 0 ? 'M' : 'L'} ${x} ${top + height - yOffset}`);
+            }
+            for (let i = 0; i <= stepsY; i++) {
+                const y = top + (height * i) / stepsY;
+                const xOffset = (i % 2 === 0) ? -amp : amp;
+                waveLeft.push(`${i === 0 ? 'M' : 'L'} ${left + xOffset} ${y}`);
+                waveRight.push(`${i === 0 ? 'M' : 'L'} ${left + width - xOffset} ${y}`);
+            }
+            border = new fabric.Group([
+                new fabric.Path(waveTop.join(' '), { fill: 'transparent', stroke, strokeWidth: 2 }),
+                new fabric.Path(waveBottom.join(' '), { fill: 'transparent', stroke, strokeWidth: 2 }),
+                new fabric.Path(waveLeft.join(' '), { fill: 'transparent', stroke, strokeWidth: 2 }),
+                new fabric.Path(waveRight.join(' '), { fill: 'transparent', stroke, strokeWidth: 2 }),
+            ], { objectCaching: false });
+        } else if (kind === 'zigzag') {
+            const mkZig = (x1, y1, x2, y2, steps = 18, amp = 7, vertical = false) => {
+                const segments = [];
+                for (let i = 0; i <= steps; i++) {
+                    const t = i / steps;
+                    const x = x1 + (x2 - x1) * t + (vertical ? ((i % 2 === 0) ? -amp : amp) : 0);
+                    const y = y1 + (y2 - y1) * t + (!vertical ? ((i % 2 === 0) ? -amp : amp) : 0);
+                    segments.push(`${i === 0 ? 'M' : 'L'} ${x} ${y}`);
+                }
+                return new fabric.Path(segments.join(' '), { fill: 'transparent', stroke, strokeWidth: 2 });
+            };
+            border = new fabric.Group([
+                mkZig(left, top, left + width, top),
+                mkZig(left, top + height, left + width, top + height),
+                mkZig(left, top, left, top + height, 18, 7, true),
+                mkZig(left + width, top, left + width, top + height, 18, 7, true),
+            ], { objectCaching: false });
+        } else if (kind === 'stitch') {
+            border = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 2, strokeDashArray: [7, 7] });
+        } else if (kind === 'ribbon') {
+            const outer = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 2.2 });
+            const inner = new fabric.Rect({ left: left + 14, top: top + 14, width: width - 28, height: height - 28, fill: 'transparent', stroke, strokeWidth: 1.4, strokeDashArray: [10, 8] });
+            border = new fabric.Group([outer, inner], { objectCaching: false });
+        } else if (kind === 'scallop') {
+            const circles = [];
+            const radius = 6;
+            const step = 16;
+            for (let x = left; x <= left + width; x += step) {
+                circles.push(new fabric.Circle({ left: x - radius, top: top - radius, radius, fill: 'transparent', stroke, strokeWidth: 1.5 }));
+                circles.push(new fabric.Circle({ left: x - radius, top: top + height - radius, radius, fill: 'transparent', stroke, strokeWidth: 1.5 }));
+            }
+            for (let y = top + step; y < top + height; y += step) {
+                circles.push(new fabric.Circle({ left: left - radius, top: y - radius, radius, fill: 'transparent', stroke, strokeWidth: 1.5 }));
+                circles.push(new fabric.Circle({ left: left + width - radius, top: y - radius, radius, fill: 'transparent', stroke, strokeWidth: 1.5 }));
+            }
+            border = new fabric.Group(circles, { objectCaching: false });
+        } else if (kind === 'cornerDots') {
+            const makeDots = (cx, cy) => {
+                const dots = [];
+                for (let i = 0; i < 4; i++) {
+                    dots.push(new fabric.Circle({ left: cx + i * 10, top: cy, radius: 2.5, fill: stroke, stroke: 'transparent' }));
+                    dots.push(new fabric.Circle({ left: cx, top: cy + i * 10, radius: 2.5, fill: stroke, stroke: 'transparent' }));
+                }
+                return dots;
+            };
+            border = new fabric.Group([
+                ...makeDots(left, top),
+                ...makeDots(left + width - 30, top),
+                ...makeDots(left, top + height - 30),
+                ...makeDots(left + width - 30, top + height - 30),
+            ], { objectCaching: false });
+        } else if (kind === 'cornerBrackets') {
+            const len = 56;
+            border = new fabric.Group([
+                new fabric.Path(`M ${left} ${top + len} L ${left} ${top} L ${left + len} ${top}`, { fill: 'transparent', stroke, strokeWidth: 3 }),
+                new fabric.Path(`M ${left + width - len} ${top} L ${left + width} ${top} L ${left + width} ${top + len}`, { fill: 'transparent', stroke, strokeWidth: 3 }),
+                new fabric.Path(`M ${left + width} ${top + height - len} L ${left + width} ${top + height} L ${left + width - len} ${top + height}`, { fill: 'transparent', stroke, strokeWidth: 3 }),
+                new fabric.Path(`M ${left + len} ${top + height} L ${left} ${top + height} L ${left} ${top + height - len}`, { fill: 'transparent', stroke, strokeWidth: 3 }),
+            ], { objectCaching: false });
         } else {
             border = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 2 });
         }
@@ -231,23 +386,23 @@
     let zoom = 1;
     window.wbGetZoom = () => zoom;
     window.wbSetZoom = setZoom;
-    
+
     function setZoom(nextZoom) {
         zoom = Math.min(3, Math.max(0.25, nextZoom));
-        
+
         const paper = window.wbGetPaperConfig?.() || { width: 794, height: 1123 };
-        
+
         canvas.setWidth(paper.width * zoom);
         canvas.setHeight(paper.height * zoom);
         canvas.setZoom(zoom);
         canvas.calcOffset();
-        
+
         const root = document.documentElement;
         root.style.setProperty('--paper-w', `${paper.width * zoom}px`);
         root.style.setProperty('--paper-h', `${paper.height * zoom}px`);
         root.style.setProperty('--grid-size', `${24 * zoom}px`);
         root.style.setProperty('--safe-margin', `${Math.round((paper.marginIn || 0.5) * 96) * zoom}px`);
-        
+
         canvas.requestRenderAll();
         const el = document.getElementById('zoomIndicator');
         if (el) el.textContent = `${Math.round(zoom * 100)}%`;
@@ -257,10 +412,10 @@
         const pageShadow = document.querySelector('.page-shadow');
         const canvasArea = document.querySelector('.canvas-area');
         if (!pageShadow || !canvasArea) return;
-        
+
         const paper = window.wbGetPaperConfig?.() || { width: 794, height: 1123 };
         const areaRect = canvasArea.getBoundingClientRect();
-        
+
         const scaleW = (areaRect.width - 60) / paper.width;
         const scaleH = (areaRect.height - 60) / paper.height;
         setZoom(Math.min(scaleW, scaleH, 1));
@@ -274,7 +429,7 @@
     function setupPan() {
         const area = document.querySelector('.canvas-area');
         const wrapper = document.querySelector('.canvas-wrapper');
-        
+
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
                 if (!spacePressed) {
@@ -634,6 +789,474 @@
         window.showToast?.('สร้างโจทย์คณิตศาสตร์แล้ว');
     }
 
+    async function addAdvancedMathProblems() {
+        const modeRaw = (window.prompt('โหมด: quadratic, cubic, exponent, decimal, negative, mixed', 'mixed') || 'mixed').trim().toLowerCase();
+        const mode = ['quadratic', 'cubic', 'exponent', 'decimal', 'negative', 'mixed'].includes(modeRaw) ? modeRaw : 'mixed';
+        const count = Math.min(24, Math.max(4, Number(window.prompt('จำนวนข้อ', '10')) || 10));
+        const fill = document.getElementById('colorText')?.value || '#1e293b';
+        const col = 2;
+        const gapX = 390;
+        const gapY = 70;
+        const types = ['quadratic', 'cubic', 'exponent', 'decimal', 'negative'];
+
+        for (let i = 0; i < count; i++) {
+            const type = mode === 'mixed' ? types[i % types.length] : mode;
+            let latex = '';
+            if (type === 'quadratic') {
+                const a = getRandomInt(1, 5) * (Math.random() < 0.25 ? -1 : 1);
+                const b = getRandomInt(-12, 12);
+                const c = getRandomInt(-20, 20);
+                const aTerm = a === 1 ? 'x^{2}' : a === -1 ? '-x^{2}' : `${a}x^{2}`;
+                const bTerm = b === 0 ? '' : b > 0 ? `+ ${b}x` : `- ${Math.abs(b)}x`;
+                const cTerm = c === 0 ? '' : c > 0 ? `+ ${c}` : `- ${Math.abs(c)}`;
+                latex = `${aTerm} ${bTerm} ${cTerm} = 0`;
+            } else if (type === 'cubic') {
+                const a = getRandomInt(1, 3);
+                const b = getRandomInt(-8, 8);
+                const c = getRandomInt(-12, 12);
+                const d = getRandomInt(-15, 15);
+                const aTerm = a === 1 ? 'x^{3}' : `${a}x^{3}`;
+                const bTerm = b === 0 ? '' : b > 0 ? `+ ${b}x^{2}` : `- ${Math.abs(b)}x^{2}`;
+                const cTerm = c === 0 ? '' : c > 0 ? `+ ${c}x` : `- ${Math.abs(c)}x`;
+                const dTerm = d === 0 ? '' : d > 0 ? `+ ${d}` : `- ${Math.abs(d)}`;
+                latex = `${aTerm} ${bTerm} ${cTerm} ${dTerm} = 0`;
+            } else if (type === 'exponent') {
+                const base = getRandomInt(2, 9);
+                const p = getRandomInt(2, 6);
+                const q = getRandomInt(2, 6);
+                const op = Math.random() < 0.5 ? '\\times' : '\\div';
+                latex = `${base}^{${p}} ${op} ${base}^{${q}} = \\underline{\\phantom{000}}`;
+            } else if (type === 'decimal') {
+                const a = (Math.random() * 100).toFixed(2);
+                const b = (Math.random() * 100).toFixed(2);
+                const ops = ['+', '-', '\\times', '\\div'];
+                latex = `${a} ${ops[getRandomInt(0, ops.length - 1)]} ${b} = \\underline{\\phantom{000}}`;
+            } else {
+                const a = getRandomInt(-30, 30);
+                const b = getRandomInt(-30, 30);
+                const ops = ['+', '-', '\\times', '\\div'];
+                const op = ops[getRandomInt(0, ops.length - 1)];
+                const leftA = a < 0 ? `(${a})` : `${a}`;
+                const leftB = b < 0 ? `(${b})` : `${b}`;
+                latex = `${leftA} ${op} ${leftB} = \\underline{\\phantom{000}}`;
+            }
+
+            const left = 80 + (i % col) * gapX;
+            const top = 120 + Math.floor(i / col) * gapY;
+            if (typeof window.addMathTextToCanvas === 'function') {
+                const expr = `${i + 1}) $${latex}$`;
+                await window.addMathTextToCanvas(expr, {
+                    left,
+                    top,
+                    pureLatex: false,
+                    fontSize: 22,
+                    scale: 1.03,
+                    color: fill,
+                });
+            } else {
+                canvas.add(new fabric.IText(`${i + 1}) ${latex}`, {
+                    left,
+                    top,
+                    fontFamily: 'Sarabun',
+                    fontSize: 22,
+                    fill,
+                }));
+            }
+        }
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('สร้างโจทย์ Advanced Math แล้ว');
+    }
+
+    async function addFractionProblems() {
+        const count = Math.min(24, Math.max(4, Number(window.prompt('จำนวนข้อเศษส่วน', '12')) || 12));
+        const ops = [
+            { sign: '+', latex: '+' },
+            { sign: '-', latex: '-' },
+            { sign: '×', latex: '\\times' },
+            { sign: '÷', latex: '\\div' },
+        ];
+        const col = 2;
+        const gapX = 380;
+        const gapY = 56;
+        for (let i = 0; i < count; i++) {
+            const a = getRandomInt(1, 9);
+            const b = getRandomInt(2, 12);
+            const c = getRandomInt(1, 9);
+            const d = getRandomInt(2, 12);
+            const op = ops[getRandomInt(0, ops.length - 1)];
+            const expr = `${i + 1}) $\\frac{${a}}{${b}}$ ${op.sign} $\\frac{${c}}{${d}}$ = ____`;
+            const left = 80 + (i % col) * gapX;
+            const top = 120 + Math.floor(i / col) * gapY;
+            if (typeof window.addMathTextToCanvas === 'function') {
+                await window.addMathTextToCanvas(expr, {
+                    left,
+                    top,
+                    pureLatex: false,
+                    fontSize: 22,
+                    scale: 1.05,
+                    color: document.getElementById('colorText')?.value || '#1e293b',
+                });
+            } else {
+                canvas.add(new fabric.IText(`${i + 1}) ${a}/${b} ${op.sign} ${c}/${d} = ____`, {
+                    left,
+                    top,
+                    fontFamily: 'Sarabun',
+                    fontSize: 24,
+                    fill: document.getElementById('colorText')?.value || '#1e293b',
+                }));
+            }
+        }
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('เพิ่ม Fraction generator แล้ว');
+    }
+
+    function addAlgebraProblems() {
+        const count = Math.min(24, Math.max(4, Number(window.prompt('จำนวนข้อสมการ', '10')) || 10));
+        const col = 2;
+        const gapX = 380;
+        const gapY = 56;
+        for (let i = 0; i < count; i++) {
+            const xVal = getRandomInt(1, 12);
+            const a = getRandomInt(1, 9);
+            const b = getRandomInt(-12, 12);
+            const c = a * xVal + b;
+            const sign = b >= 0 ? `+ ${b}` : `- ${Math.abs(b)}`;
+            const expr = `${i + 1}) ${a}x ${sign} = ${c}    x = [ ]`;
+            canvas.add(new fabric.IText(expr, {
+                left: 80 + (i % col) * gapX,
+                top: 120 + Math.floor(i / col) * gapY,
+                fontFamily: 'Sarabun',
+                fontSize: 24,
+                fill: document.getElementById('colorText')?.value || '#1e293b',
+                data: { generator: 'algebra', answerOnly: false, answer: xVal },
+            }));
+        }
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('เพิ่ม Algebra generator แล้ว');
+    }
+
+    function addGeometryProblems() {
+        const count = Math.min(8, Math.max(2, Number(window.prompt('จำนวนโจทย์เรขาคณิต', '4')) || 4));
+        const modeRaw = (window.prompt('ชนิดรูป: rectangle, triangle, circle, cube, cylinder, sphere, mixed', 'mixed') || 'mixed').trim().toLowerCase();
+        const mode = ['rectangle', 'triangle', 'circle', 'cube', 'cylinder', 'sphere', 'mixed'].includes(modeRaw) ? modeRaw : 'mixed';
+        const modes = ['rectangle', 'triangle', 'circle', 'cube', 'cylinder', 'sphere'];
+        const col = 2;
+        const gapX = 430;
+        const gapY = 200;
+        for (let i = 0; i < count; i++) {
+            const x = 90 + (i % col) * gapX;
+            const y = 120 + Math.floor(i / col) * gapY;
+            const shapeType = mode === 'mixed' ? modes[i % modes.length] : mode;
+
+            if (shapeType === 'rectangle') {
+                const w = getRandomInt(80, 160);
+                const h = getRandomInt(70, 140);
+                canvas.add(new fabric.Rect({ left: x, top: y + 20, width: w, height: h, fill: 'transparent', stroke: '#1e293b', strokeWidth: 2 }));
+                canvas.add(new fabric.IText(`${w} cm`, { left: x + w / 2 - 20, top: y + h + 30, fontFamily: 'Sarabun', fontSize: 18, fill: '#1e293b' }));
+                canvas.add(new fabric.IText(`${h} cm`, { left: x + w + 10, top: y + h / 2, fontFamily: 'Sarabun', fontSize: 18, fill: '#1e293b' }));
+                canvas.add(new fabric.IText(`A = ____ cm²`, { left: x + 4, top: y - 6, fontFamily: 'Sarabun', fontSize: 20, fill: '#1e293b' }));
+            }
+
+            if (shapeType === 'triangle') {
+                const base = getRandomInt(90, 170);
+                const height = getRandomInt(70, 140);
+                const tri = new fabric.Triangle({ left: x + 10, top: y + 24, width: base, height: height, fill: 'transparent', stroke: '#1e293b', strokeWidth: 2 });
+                canvas.add(tri);
+                canvas.add(new fabric.IText(`b = ${base} cm`, { left: x + 8, top: y + height + 34, fontFamily: 'Sarabun', fontSize: 18, fill: '#1e293b' }));
+                canvas.add(new fabric.IText(`h = ${height} cm`, { left: x + base + 24, top: y + height / 2, fontFamily: 'Sarabun', fontSize: 18, fill: '#1e293b' }));
+                canvas.add(new fabric.IText(`A = ____ cm²`, { left: x + 4, top: y - 6, fontFamily: 'Sarabun', fontSize: 20, fill: '#1e293b' }));
+            }
+
+            if (shapeType === 'circle') {
+                const r = getRandomInt(40, 78);
+                canvas.add(new fabric.Circle({ left: x + 18, top: y + 18, radius: r, fill: 'transparent', stroke: '#1e293b', strokeWidth: 2 }));
+                canvas.add(new fabric.Line([x + 18 + r, y + 18 + r, x + 18 + r * 2, y + 18 + r], { stroke: '#1e293b', strokeWidth: 2 }));
+                canvas.add(new fabric.IText(`r = ${r} cm`, { left: x + r * 2 + 30, top: y + r + 6, fontFamily: 'Sarabun', fontSize: 18, fill: '#1e293b' }));
+                canvas.add(new fabric.IText(`A = ____ cm²`, { left: x + 4, top: y - 6, fontFamily: 'Sarabun', fontSize: 20, fill: '#1e293b' }));
+            }
+
+            if (shapeType === 'cube') {
+                const s = getRandomInt(56, 92);
+                const d = Math.round(s * 0.36);
+                canvas.add(new fabric.Rect({ left: x + 10, top: y + 26, width: s, height: s, fill: 'transparent', stroke: '#1e293b', strokeWidth: 2 }));
+                canvas.add(new fabric.Rect({ left: x + 10 + d, top: y + 26 - d, width: s, height: s, fill: 'transparent', stroke: '#1e293b', strokeWidth: 2 }));
+                canvas.add(new fabric.Line([x + 10, y + 26, x + 10 + d, y + 26 - d], { stroke: '#1e293b', strokeWidth: 2 }));
+                canvas.add(new fabric.Line([x + 10 + s, y + 26, x + 10 + s + d, y + 26 - d], { stroke: '#1e293b', strokeWidth: 2 }));
+                canvas.add(new fabric.Line([x + 10, y + 26 + s, x + 10 + d, y + 26 + s - d], { stroke: '#1e293b', strokeWidth: 2 }));
+                canvas.add(new fabric.Line([x + 10 + s, y + 26 + s, x + 10 + s + d, y + 26 + s - d], { stroke: '#1e293b', strokeWidth: 2 }));
+                canvas.add(new fabric.IText(`s = ${s} cm`, { left: x + 16, top: y + s + 40, fontFamily: 'Sarabun', fontSize: 18, fill: '#1e293b' }));
+                canvas.add(new fabric.IText(`SA = ____ cm²`, { left: x + 4, top: y - 22, fontFamily: 'Sarabun', fontSize: 18, fill: '#1e293b' }));
+                canvas.add(new fabric.IText(`V = ____ cm³`, { left: x + 130, top: y - 22, fontFamily: 'Sarabun', fontSize: 18, fill: '#1e293b' }));
+            }
+
+            if (shapeType === 'cylinder') {
+                const r = getRandomInt(26, 42);
+                const h = getRandomInt(76, 120);
+                const eTop = y + 26;
+                canvas.add(new fabric.Ellipse({ left: x + 20, top: eTop, rx: r, ry: r * 0.35, fill: 'transparent', stroke: '#1e293b', strokeWidth: 2 }));
+                canvas.add(new fabric.Ellipse({ left: x + 20, top: eTop + h, rx: r, ry: r * 0.35, fill: 'transparent', stroke: '#1e293b', strokeWidth: 2 }));
+                canvas.add(new fabric.Line([x + 20, eTop + r * 0.35, x + 20, eTop + h + r * 0.35], { stroke: '#1e293b', strokeWidth: 2 }));
+                canvas.add(new fabric.Line([x + 20 + r * 2, eTop + r * 0.35, x + 20 + r * 2, eTop + h + r * 0.35], { stroke: '#1e293b', strokeWidth: 2 }));
+                canvas.add(new fabric.IText(`r = ${r} cm`, { left: x + r * 2 + 44, top: y + 36, fontFamily: 'Sarabun', fontSize: 18, fill: '#1e293b' }));
+                canvas.add(new fabric.IText(`h = ${h} cm`, { left: x + r * 2 + 44, top: y + 80, fontFamily: 'Sarabun', fontSize: 18, fill: '#1e293b' }));
+                canvas.add(new fabric.IText(`SA = ____ cm²`, { left: x + 4, top: y - 22, fontFamily: 'Sarabun', fontSize: 18, fill: '#1e293b' }));
+                canvas.add(new fabric.IText(`V = ____ cm³`, { left: x + 130, top: y - 22, fontFamily: 'Sarabun', fontSize: 18, fill: '#1e293b' }));
+            }
+
+            if (shapeType === 'sphere') {
+                const r = getRandomInt(40, 66);
+                const cx = x + 26;
+                const cy = y + 26;
+                canvas.add(new fabric.Circle({ left: cx, top: cy, radius: r, fill: 'transparent', stroke: '#1e293b', strokeWidth: 2 }));
+                canvas.add(new fabric.Ellipse({ left: cx, top: cy + r - r * 0.34, rx: r, ry: r * 0.34, fill: 'transparent', stroke: '#1e293b', strokeWidth: 1.8, strokeDashArray: [6, 5] }));
+                canvas.add(new fabric.Line([cx + r, cy + r, cx + r * 2, cy + r], { stroke: '#1e293b', strokeWidth: 2 }));
+                canvas.add(new fabric.IText(`r = ${r} cm`, { left: cx + r * 2 + 12, top: cy + r + 6, fontFamily: 'Sarabun', fontSize: 18, fill: '#1e293b' }));
+                canvas.add(new fabric.IText(`SA = ____ cm²`, { left: x + 4, top: y - 22, fontFamily: 'Sarabun', fontSize: 18, fill: '#1e293b' }));
+                canvas.add(new fabric.IText(`V = ____ cm³`, { left: x + 130, top: y - 22, fontFamily: 'Sarabun', fontSize: 18, fill: '#1e293b' }));
+            }
+        }
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('เพิ่ม Geometry generator แล้ว');
+    }
+
+    function addNumberLineGenerator() {
+        const min = Number(window.prompt('ค่าเริ่มต้นเส้นจำนวน', '-10'));
+        const max = Number(window.prompt('ค่าสูงสุดเส้นจำนวน', '10'));
+        const step = Math.max(1, Number(window.prompt('ระยะห่าง step', '1')) || 1);
+        const paper = window.wbGetPaperConfig?.() || { width: canvas.width || 900 };
+        const left = 120;
+        const right = Math.max(left + 260, (paper.width || 900) - 120);
+        const y = 220;
+        canvas.add(new fabric.IText('Number Line', { left, top: y - 70, fontFamily: 'Fredoka', fontSize: 34, fill: '#1e293b' }));
+        canvas.add(new fabric.Line([left, y, right, y], { stroke: '#1e293b', strokeWidth: 3 }));
+        const total = Math.max(1, Math.floor((max - min) / step));
+        for (let i = 0; i <= total; i++) {
+            const x = left + ((right - left) * i) / total;
+            canvas.add(new fabric.Line([x, y - 12, x, y + 12], { stroke: '#1e293b', strokeWidth: 2 }));
+            canvas.add(new fabric.IText(String(min + i * step), { left: x - 14, top: y + 16, fontFamily: 'Sarabun', fontSize: 16, fill: '#1e293b' }));
+        }
+        canvas.requestRenderAll();
+        markSaving();
+    }
+
+    function computeLineSegmentInBounds(m, c, minX, maxX, minY, maxY) {
+        const points = [];
+        const addPoint = (x, y) => {
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+            const exists = points.some(p => Math.abs(p.x - x) < 1e-6 && Math.abs(p.y - y) < 1e-6);
+            if (!exists) points.push({ x, y });
+        };
+        const yAtMinX = m * minX + c;
+        if (yAtMinX >= minY && yAtMinX <= maxY) addPoint(minX, yAtMinX);
+        const yAtMaxX = m * maxX + c;
+        if (yAtMaxX >= minY && yAtMaxX <= maxY) addPoint(maxX, yAtMaxX);
+        if (Math.abs(m) > 1e-9) {
+            const xAtMinY = (minY - c) / m;
+            if (xAtMinY >= minX && xAtMinY <= maxX) addPoint(xAtMinY, minY);
+            const xAtMaxY = (maxY - c) / m;
+            if (xAtMaxY >= minX && xAtMaxY <= maxX) addPoint(xAtMaxY, maxY);
+        }
+        if (points.length < 2) return null;
+        return [points[0], points[1]];
+    }
+
+    function addGraphGenerator() {
+        const raw = (window.prompt('กรอกสมการเส้นตรงรูปแบบ m,c เช่น 2,1 สำหรับ y = 2x + 1', '2,1') || '').trim();
+        if (!raw) return;
+        const [mStr, cStr] = raw.split(',').map(v => v?.trim());
+        const m = Number(mStr);
+        const c = Number(cStr);
+        if (!Number.isFinite(m) || !Number.isFinite(c)) {
+            window.showToast?.('รูปแบบไม่ถูกต้อง ใช้ m,c เช่น 2,1');
+            return;
+        }
+
+        const size = 420;
+        const left = 120;
+        const top = 120;
+        const center = size / 2;
+        const step = size / 20;
+
+        const parts = [];
+        for (let i = 0; i <= 20; i++) {
+            const p = i * step;
+            parts.push(new fabric.Line([p, 0, p, size], { stroke: '#cbd5e1', strokeWidth: 1, selectable: false, evented: false }));
+            parts.push(new fabric.Line([0, p, size, p], { stroke: '#cbd5e1', strokeWidth: 1, selectable: false, evented: false }));
+        }
+        parts.push(new fabric.Line([center, 0, center, size], { stroke: '#0f172a', strokeWidth: 2, selectable: false, evented: false }));
+        parts.push(new fabric.Line([0, center, size, center], { stroke: '#0f172a', strokeWidth: 2, selectable: false, evented: false }));
+
+        const segment = computeLineSegmentInBounds(m, c, -10, 10, -10, 10);
+        if (!segment) {
+            window.showToast?.('เส้นไม่ตัดพื้นที่กราฟในช่วงที่กำหนด');
+            return;
+        }
+        const [p1, p2] = segment;
+        const px1 = center + p1.x * step;
+        const py1 = center - p1.y * step;
+        const px2 = center + p2.x * step;
+        const py2 = center - p2.y * step;
+        parts.push(new fabric.Line([px1, py1, px2, py2], { stroke: '#dc2626', strokeWidth: 3, selectable: false, evented: false }));
+
+        const eqText = `y = ${m === 1 ? '' : m === -1 ? '-' : m}x ${c > 0 ? '+ ' + c : c < 0 ? '- ' + Math.abs(c) : ''}`.trim();
+        parts.push(new fabric.IText(eqText, { left: 14, top: 12, fontFamily: 'Sarabun', fontSize: 20, fill: '#dc2626', selectable: false, evented: false }));
+        parts.push(new fabric.IText('x', { left: size - 18, top: center + 6, fontFamily: 'Sarabun', fontSize: 16, fill: '#0f172a', selectable: false, evented: false }));
+        parts.push(new fabric.IText('y', { left: center + 8, top: 6, fontFamily: 'Sarabun', fontSize: 16, fill: '#0f172a', selectable: false, evented: false }));
+
+        const group = new fabric.Group(parts, { left, top, objectCaching: false });
+        canvas.add(group);
+        canvas.setActiveObject(group);
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('เพิ่มกราฟเส้นแล้ว');
+    }
+
+    function addParabolaGenerator() {
+        const raw = (window.prompt('กรอกพาราโบลาแบบ a,b,c เช่น 1,0,0 สำหรับ y = x^2', '1,0,0') || '').trim();
+        if (!raw) return;
+        const [aStr, bStr, cStr] = raw.split(',').map(v => v?.trim());
+        const a = Number(aStr);
+        const b = Number(bStr);
+        const c = Number(cStr);
+        if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(c) || Math.abs(a) < 1e-9) {
+            window.showToast?.('รูปแบบไม่ถูกต้อง ใช้ a,b,c และ a ต้องไม่เป็น 0');
+            return;
+        }
+
+        const size = 420;
+        const left = 120;
+        const top = 120;
+        const center = size / 2;
+        const step = size / 20;
+
+        const parts = [];
+        for (let i = 0; i <= 20; i++) {
+            const p = i * step;
+            parts.push(new fabric.Line([p, 0, p, size], { stroke: '#cbd5e1', strokeWidth: 1, selectable: false, evented: false }));
+            parts.push(new fabric.Line([0, p, size, p], { stroke: '#cbd5e1', strokeWidth: 1, selectable: false, evented: false }));
+        }
+        parts.push(new fabric.Line([center, 0, center, size], { stroke: '#0f172a', strokeWidth: 2, selectable: false, evented: false }));
+        parts.push(new fabric.Line([0, center, size, center], { stroke: '#0f172a', strokeWidth: 2, selectable: false, evented: false }));
+
+        const pts = [];
+        for (let x = -10; x <= 10; x += 0.2) {
+            const y = a * x * x + b * x + c;
+            if (y < -10 || y > 10) continue;
+            const px = center + x * step;
+            const py = center - y * step;
+            pts.push(`${pts.length === 0 ? 'M' : 'L'} ${px} ${py}`);
+        }
+        if (pts.length < 2) {
+            window.showToast?.('กราฟอยู่นอกช่วงแสดงผล ลองปรับค่าสมการ');
+            return;
+        }
+        parts.push(new fabric.Path(pts.join(' '), { fill: 'transparent', stroke: '#ea580c', strokeWidth: 3, selectable: false, evented: false }));
+
+        const eqText = `y = ${a === 1 ? '' : a === -1 ? '-' : a}x² ${b > 0 ? '+ ' + b + 'x' : b < 0 ? '- ' + Math.abs(b) + 'x' : ''} ${c > 0 ? '+ ' + c : c < 0 ? '- ' + Math.abs(c) : ''}`.replace(/\s+/g, ' ').trim();
+        parts.push(new fabric.IText(eqText, { left: 14, top: 12, fontFamily: 'Sarabun', fontSize: 20, fill: '#ea580c', selectable: false, evented: false }));
+        parts.push(new fabric.IText('x', { left: size - 18, top: center + 6, fontFamily: 'Sarabun', fontSize: 16, fill: '#0f172a', selectable: false, evented: false }));
+        parts.push(new fabric.IText('y', { left: center + 8, top: 6, fontFamily: 'Sarabun', fontSize: 16, fill: '#0f172a', selectable: false, evented: false }));
+
+        const group = new fabric.Group(parts, { left, top, objectCaching: false });
+        canvas.add(group);
+        canvas.setActiveObject(group);
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('เพิ่มกราฟพาราโบลาแล้ว');
+    }
+
+    function addCoordinatePlaneGenerator() {
+        const left = 120;
+        const top = 120;
+        const size = Math.min(520, Math.max(360, Math.floor((canvas.width || 900) * 0.5)));
+        const centerX = left + size / 2;
+        const centerY = top + size / 2;
+        const step = size / 10;
+        canvas.add(new fabric.IText('Coordinate Plane', { left, top: 64, fontFamily: 'Fredoka', fontSize: 34, fill: '#1e293b' }));
+        for (let i = 0; i <= 10; i++) {
+            const x = left + i * step;
+            const y = top + i * step;
+            canvas.add(new fabric.Line([x, top, x, top + size], { stroke: '#94a3b8', strokeWidth: 1 }));
+            canvas.add(new fabric.Line([left, y, left + size, y], { stroke: '#94a3b8', strokeWidth: 1 }));
+        }
+        canvas.add(new fabric.Line([left, centerY, left + size, centerY], { stroke: '#1e293b', strokeWidth: 2.4 }));
+        canvas.add(new fabric.Line([centerX, top, centerX, top + size], { stroke: '#1e293b', strokeWidth: 2.4 }));
+        canvas.add(new fabric.Circle({ left: centerX + step * 2 - 4, top: centerY - step * 3 - 4, radius: 4, fill: '#dc2626', stroke: '#dc2626', strokeWidth: 1 }));
+        canvas.add(new fabric.IText('(2, 3)', { left: centerX + step * 2 + 8, top: centerY - step * 3 - 18, fontFamily: 'Sarabun', fontSize: 16, fill: '#dc2626' }));
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('เพิ่ม Coordinate plane แล้ว');
+    }
+
+    let slideshowActive = false;
+    let slideshowHandler = null;
+    let slideshowSnapshot = null;
+
+    function setSlideshowUi(active) {
+        document.body.classList.toggle('is-slideshow', !!active);
+        const btn = document.getElementById('btnPlaySlideshow');
+        if (btn) btn.textContent = active ? '⏹ Exit' : '▶ Play';
+    }
+
+    function exitSlideshow() {
+        if (!slideshowActive) return;
+        slideshowActive = false;
+        if (slideshowHandler) {
+            document.removeEventListener('keydown', slideshowHandler);
+            slideshowHandler = null;
+        }
+        if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => { });
+        }
+        setSlideshowUi(false);
+        if (slideshowSnapshot) {
+            window.wbGoToPage?.(slideshowSnapshot.pageIndex);
+            window.wbSetZoom?.(slideshowSnapshot.zoom);
+            slideshowSnapshot = null;
+        }
+    }
+
+    function startSlideshow() {
+        if (slideshowActive) {
+            exitSlideshow();
+            return;
+        }
+        slideshowActive = true;
+        slideshowSnapshot = {
+            pageIndex: window.wbGetActivePageIndex?.() || 0,
+            zoom: window.wbGetZoom?.() || 1,
+        };
+        setSlideshowUi(true);
+        const host = document.querySelector('.canvas-area') || document.documentElement;
+        host.requestFullscreen?.().catch(() => { });
+        window.wbSetZoom?.(1);
+        slideshowHandler = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                exitSlideshow();
+                return;
+            }
+            if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                const idx = window.wbGetActivePageIndex?.() || 0;
+                window.wbGoToPage?.(idx + 1);
+            }
+            if (e.key === 'ArrowLeft' || e.key === 'Backspace') {
+                e.preventDefault();
+                const idx = window.wbGetActivePageIndex?.() || 0;
+                window.wbGoToPage?.(idx - 1);
+            }
+        };
+        document.addEventListener('keydown', slideshowHandler);
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement && slideshowActive) exitSlideshow();
+        }, { once: true });
+    }
+
     function generateWordSearchGrid(words, size = 10) {
         const grid = Array.from({ length: size }, () => Array.from({ length: size }, () => ''));
         const dirs = [
@@ -718,52 +1341,162 @@
     }
 
     function addCrossword() {
-        const raw = window.prompt('ใส่คำศัพท์ crossword (comma) เช่น CAT,DOG,SUN,MAP', 'CAT,DOG,SUN,MAP,TREE,BOOK');
+        const raw = window.prompt('ใส่คำศัพท์ crossword (comma) เช่น CAT,DOG,SUN,MAP', 'CAT,DOG,SUN,MAP,TREE,BOOK,PLANT,HOUSE');
         if (!raw) return;
-        const words = raw.split(',').map(w => w.trim().toUpperCase().replace(/[^A-Z]/g, '')).filter(Boolean).slice(0, 8);
-        if (!words.length) return;
+        const sourceWords = raw
+            .split(',')
+            .map(w => w.trim().toUpperCase().replace(/[^A-Z]/g, ''))
+            .filter(Boolean)
+            .filter((w, i, arr) => arr.indexOf(w) === i)
+            .slice(0, 12)
+            .sort((a, b) => b.length - a.length);
+        if (!sourceWords.length) return;
 
+        const size = 15;
+        const grid = Array.from({ length: size }, () => Array.from({ length: size }, () => null));
+        const placements = [];
+
+        const setWord = (word, row, col, dir) => {
+            for (let i = 0; i < word.length; i++) {
+                const r = dir === 'v' ? row + i : row;
+                const c = dir === 'h' ? col + i : col;
+                grid[r][c] = word[i];
+            }
+            placements.push({ word, row, col, dir });
+        };
+
+        const canPlaceWord = (word, row, col, dir) => {
+            const dr = dir === 'v' ? 1 : 0;
+            const dc = dir === 'h' ? 1 : 0;
+            const endR = row + dr * (word.length - 1);
+            const endC = col + dc * (word.length - 1);
+            if (row < 0 || col < 0 || endR >= size || endC >= size) return false;
+
+            for (let i = 0; i < word.length; i++) {
+                const r = row + dr * i;
+                const c = col + dc * i;
+                const ch = grid[r][c];
+                if (ch && ch !== word[i]) return false;
+
+                if (!ch) {
+                    const sideA = dir === 'h' ? [r - 1, c] : [r, c - 1];
+                    const sideB = dir === 'h' ? [r + 1, c] : [r, c + 1];
+                    const [aR, aC] = sideA;
+                    const [bR, bC] = sideB;
+                    if (grid[aR]?.[aC]) return false;
+                    if (grid[bR]?.[bC]) return false;
+                }
+            }
+
+            const beforeR = row - dr;
+            const beforeC = col - dc;
+            const afterR = endR + dr;
+            const afterC = endC + dc;
+            if (grid[beforeR]?.[beforeC]) return false;
+            if (grid[afterR]?.[afterC]) return false;
+            return true;
+        };
+
+        const first = sourceWords[0];
+        const firstRow = Math.floor(size / 2);
+        const firstCol = Math.max(0, Math.floor((size - first.length) / 2));
+        if (!canPlaceWord(first, firstRow, firstCol, 'h')) {
+            window.showToast?.('ไม่สามารถวาง Crossword ได้');
+            return;
+        }
+        setWord(first, firstRow, firstCol, 'h');
+
+        for (let wi = 1; wi < sourceWords.length; wi++) {
+            const word = sourceWords[wi];
+            let placed = false;
+
+            for (let i = 0; i < word.length && !placed; i++) {
+                const targetCh = word[i];
+                for (const p of placements) {
+                    for (let j = 0; j < p.word.length; j++) {
+                        if (p.word[j] !== targetCh) continue;
+                        const baseR = p.dir === 'v' ? p.row + j : p.row;
+                        const baseC = p.dir === 'h' ? p.col + j : p.col;
+                        const dir = p.dir === 'h' ? 'v' : 'h';
+                        const row = dir === 'v' ? baseR - i : baseR;
+                        const col = dir === 'h' ? baseC - i : baseC;
+                        if (canPlaceWord(word, row, col, dir)) {
+                            setWord(word, row, col, dir);
+                            placed = true;
+                            break;
+                        }
+                    }
+                    if (placed) break;
+                }
+            }
+
+            if (!placed) {
+                for (let r = 0; r < size && !placed; r++) {
+                    for (let c = 0; c < size && !placed; c++) {
+                        if (canPlaceWord(word, r, c, 'h')) {
+                            setWord(word, r, c, 'h');
+                            placed = true;
+                        } else if (canPlaceWord(word, r, c, 'v')) {
+                            setWord(word, r, c, 'v');
+                            placed = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!placements.length) {
+            window.showToast?.('ไม่สามารถวาง Crossword ได้');
+            return;
+        }
+
+        let minR = size, minC = size, maxR = 0, maxC = 0;
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                if (!grid[r][c]) continue;
+                minR = Math.min(minR, r);
+                minC = Math.min(minC, c);
+                maxR = Math.max(maxR, r);
+                maxC = Math.max(maxC, c);
+            }
+        }
+
+        const rows = maxR - minR + 1;
+        const cols = maxC - minC + 1;
         const startX = 90;
         const startY = 160;
-        const cell = 44;
-        const maxWord = Math.max(...words.map(w => w.length));
-        const rows = Math.max(8, words.length + 2);
-        const cols = Math.max(10, maxWord + 4);
+        const cell = 40;
 
         canvas.add(new fabric.IText('Crossword', { left: startX, top: 84, fontFamily: 'Fredoka', fontSize: 34, fill: '#1e293b' }));
-        for (let r = 0; r <= rows; r++) {
-            canvas.add(new fabric.Line([startX, startY + r * cell, startX + cols * cell, startY + r * cell], { stroke: '#334155', strokeWidth: 1.4, selectable: false, evented: false }));
-        }
-        for (let c = 0; c <= cols; c++) {
-            canvas.add(new fabric.Line([startX + c * cell, startY, startX + c * cell, startY + rows * cell], { stroke: '#334155', strokeWidth: 1.4, selectable: false, evented: false }));
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const srcR = minR + r;
+                const srcC = minC + c;
+                if (!grid[srcR][srcC]) continue;
+                const x = startX + c * cell;
+                const y = startY + r * cell;
+                canvas.add(new fabric.Rect({ left: x, top: y, width: cell, height: cell, fill: '#fff', stroke: '#334155', strokeWidth: 1.6 }));
+            }
         }
 
-        words.forEach((word, i) => {
-            const horizontal = i % 2 === 0;
-            const row = 1 + i;
-            const col = horizontal ? 1 : 2 + Math.floor(cols / 2);
-            for (let j = 0; j < word.length; j++) {
-                const x = horizontal ? col + j : col;
-                const y = horizontal ? row : row + j;
-                if (x >= cols || y >= rows) break;
-                canvas.add(new fabric.IText('[ ]', {
-                    left: startX + x * cell + 10,
-                    top: startY + y * cell + 10,
-                    fontFamily: 'Sarabun',
-                    fontSize: 18,
-                    fill: '#0f172a',
-                }));
-            }
-            canvas.add(new fabric.IText(`${i + 1}. ${word}`, {
-                left: startX + cols * cell + 20,
-                top: startY + i * 34,
+        const clues = placements
+            .sort((a, b) => a.row - b.row || a.col - b.col)
+            .map((p, i) => `${i + 1}. ${p.dir === 'h' ? 'Across' : 'Down'} (${p.word.length} letters)`);
+        const clueX = startX + cols * cell + 24;
+        clues.forEach((line, i) => {
+            canvas.add(new fabric.IText(line, {
+                left: clueX,
+                top: startY + i * 30,
                 fontFamily: 'Sarabun',
-                fontSize: 18,
+                fontSize: 16,
                 fill: '#334155',
             }));
         });
+
         canvas.requestRenderAll();
         markSaving();
+        window.showToast?.(`สร้าง Crossword แล้ว (${placements.length} คำ)`);
     }
 
     function openSavedDb() {
@@ -1050,10 +1783,10 @@
     }
 
     function setupEvents() {
-        document.getElementById('btnAddSquare')?.addEventListener('click', () => addShape('square'));
-        document.getElementById('btnAddCircle')?.addEventListener('click', () => addShape('circle'));
-        document.getElementById('btnAddTriangle')?.addEventListener('click', () => addShape('triangle'));
-        document.getElementById('btnAddArrowShape')?.addEventListener('click', () => addShape('arrow'));
+        document.getElementById('btnAddBasicShape')?.addEventListener('click', () => {
+            const type = document.getElementById('basicShapeSelect')?.value || 'square';
+            addShape(type);
+        });
 
         document.getElementById('btnInsertHeading')?.addEventListener('click', () => addTextPreset('heading'));
         document.getElementById('btnInsertSubheading')?.addEventListener('click', () => addTextPreset('subheading'));
@@ -1078,9 +1811,18 @@
         });
 
         document.getElementById('btnGenMath')?.addEventListener('click', addMathProblems);
+        document.getElementById('btnGenAdvancedMath')?.addEventListener('click', addAdvancedMathProblems);
+        document.getElementById('btnGenFractions')?.addEventListener('click', addFractionProblems);
+        document.getElementById('btnGenAlgebra')?.addEventListener('click', addAlgebraProblems);
+        document.getElementById('btnGenGeometry')?.addEventListener('click', addGeometryProblems);
+        document.getElementById('btnGenGraph')?.addEventListener('click', addGraphGenerator);
+        document.getElementById('btnGenParabola')?.addEventListener('click', addParabolaGenerator);
+        document.getElementById('btnGenNumberLine')?.addEventListener('click', addNumberLineGenerator);
+        document.getElementById('btnGenCoordinate')?.addEventListener('click', addCoordinatePlaneGenerator);
         document.getElementById('btnGenWordSearch')?.addEventListener('click', addWordSearch);
         document.getElementById('btnGenCrossword')?.addEventListener('click', addCrossword);
         document.getElementById('btnGenerateAnswerKey')?.addEventListener('click', () => window.wbGenerateAnswerKeyPage?.());
+        document.getElementById('btnPlaySlideshow')?.addEventListener('click', startSlideshow);
 
         document.getElementById('btnRefreshLayers')?.addEventListener('click', renderLayersPanel);
         document.getElementById('btnSaveElement')?.addEventListener('click', saveCurrentSelectionAsElement);
@@ -1168,7 +1910,7 @@
             window.wbApplyTemplate?.(item.key);
             markSaving();
         });
-        buildCardGallery('borderGallery', borderCards, (item) => addBorder(item.key));
+        buildBorderGallery('borderGallery', borderCards, (item) => addBorder(item.key));
     }
 
     window.wbSetSaveIndicator = setSaveIndicator;

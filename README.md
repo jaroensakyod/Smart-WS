@@ -1,120 +1,182 @@
 # Smart WS Pro
 
-Smart WS Pro คือ Chrome new tab app สำหรับออกแบบใบงานแบบมืออาชีพ (Canva-style) โดยโฟกัสงานครูและคอนเทนต์ Teachers Pay Teachers (TpT)
+Smart WS Pro คือเครื่องมือสร้างใบงาน/สไลด์การสอนบน Chrome New Tab ที่ขับเคลื่อนด้วย Fabric.js โดยเน้น workflow สำหรับครู: สร้างเร็ว, แก้ไขง่าย, export ได้หลายรูปแบบ และรองรับโจทย์คณิต/เรขาคณิตแบบอัตโนมัติ
 
-## จุดเด่นหลัก
+## ภาพรวมระบบ
 
-- Workspace 3 ส่วน: Global top bar, contextual bar, sidebar tabs
-- Multi-page workbook พร้อม Undo/Redo แยกต่อหน้า
-- Zoom / Fit / Spacebar pan
-- Layer, Lock/Unlock, Group/Ungroup + Layers Sidebar
-- Export PNG และ PDF 300 DPI
-- Auto-save indicator
+- UI หลักอยู่ใน `newtab.html`
+- Styling อยู่ใน `style.css`
+- Canvas engine, page state, tools, snapping อยู่ใน `app.js`
+- ฟีเจอร์โปร/แกลเลอรี/generator เสริมอยู่ใน `proFeatures.js`
+- สูตรคณิต (LaTeX + Text+Math) อยู่ใน `equation.js`
+- Export อยู่ใน `export.js` (`PNG`, `PDF`, `PPTX`)
 
-## ฟีเจอร์โปรล่าสุด (Phase 6-11)
+## ฟีเจอร์หลัก
 
-- Smart guides + snapping กลางหน้า, กริด, และ object-to-object
-- Advanced page management
-  - Add / Duplicate / Delete / Clear page
-  - Page Manager modal พร้อม thumbnail และ drag reorder
-- Text effects
-  - Outline
-  - Drop shadow
-  - Curved text
-- Image finishing tools
-  - Crop image (quick crop)
-  - Circle / rounded mask
-  - Reset mask
-- QR code generator
-  - กรอก URL แล้วแทรก QR ลง canvas ได้ทันที
+### 1) เอกสารหลายหน้า (Workbook)
+- เพิ่มหน้า/ลบหน้า/ทำซ้ำหน้า
+- เปลี่ยนลำดับหน้า
+- Page/Slide indicator และ jump page
+- รองรับทั้งโหมด Worksheet และ Presentation
 
-### Smart Worksheet Elements (Phase 8)
-- Smart Table แบบแก้ไขได้
-  - เลือกขนาด Rows/Cols ตอนวาง
-  - ดับเบิลคลิกแก้ข้อความในเซลล์
-  - ปุ่มเพิ่ม/ลด Row และ Column แบบไดนามิก
-- Handwriting Lines Preset
-  - Primary / Dotted / Grid
-  - ปรับ Line spacing ได้
+### 2) เครื่องมือวาดและจัดวาง
+- Select, Text, Rect, Table, Line, Arrow, Curve, Callout
+- Lock/Unlock, Group/Ungroup
+- Bring front/back, forward/backward
+- Zoom in/out/fit
+- Grid + Snap guides
 
-### Pro Layout & Workflow (Phase 9)
-- Alignment + Distribution tools สำหรับจัดวางหลาย object
-- Layers Sidebar
-  - เลือก layer, lock/unlock, hide/show, bring forward/send backward
-- Rulers รอบ canvas + snap to grid/object
+### 3) ระบบสมการคณิตศาสตร์
+- รองรับ LaTeX ผ่าน KaTeX
+- รองรับ Text+Math (ข้อความผสมสมการ)
+- ปุ่มลัดแทรกสมการในแถบเครื่องมือ
 
-### Auto-Generators (Phase 10)
-- Math Problem Generator (สุ่มโจทย์อัตโนมัติ)
-- Word Search Generator
-- Crossword Generator
-- Generate Answer Key
-  - duplicate หน้าปัจจุบัน
-  - parse คำตอบจากรูปแบบ `[answer]`
-  - เติม watermark `ANSWER KEY`
+### 4) Sidebar สำหรับสร้างคอนเทนต์
+- Templates (จัดหมวด)
+- Elements (shape + SVG + search)
+- Borders (หลายสไตล์ + จัดหมวด)
+- Uploads / Text tools / Generators / Layers / Saved elements
 
-### Rich Assets & Library (Phase 11)
-- Borders & Frames gallery
-- Free image/icon search: Wikimedia / Flickr / Iconify
-- My Saved Elements (IndexedDB)
-  - บันทึก selection เป็น reusable element
-  - คลิกเรียกใช้งานซ้ำได้ทันที
+### 5) Generators
+- Math generator พื้นฐาน (+ - × ÷)
+- Advanced Math (quadratic, cubic, exponent, decimal, negative)
+- Fractions
+- Algebra
+- Geometry (2D + 3D)
+- Line graph และ Parabola graph
+- Number line, Coordinate plane
+- Word search, Crossword
 
-## Template library ล่าสุด (Phase 7)
+### 6) Export
+- PNG
+- PDF
+- PPTX (แก้ต่อใน PowerPoint ได้)
+- Preview
 
-เดิม:
-- MCQ, Matching, Fill in the Blank, Bingo 5x5
-- Task Cards 4/8, Venn, Frayer, KWL
-- Graph Paper, Number Line, Fraction Pies
-- Quiz, Matching Columns
+---
 
-เพิ่มใหม่:
-- Handwriting Lines
-- Comic Strip
-- Foldable / Flipbook
-- Bingo 3x3
-- Word Search 10x10
-- Board Game Path
-- Exit Tickets
-- Mind Map
-- Certificate
-- Teacher Planner
+## อธิบายฟังก์ชันสำคัญ (Function Reference)
 
-## โครงสร้างไฟล์หลัก
+## `app.js`
 
-- `newtab.html` โครง UI หลัก
-- `style.css` ธีม/เลย์เอาต์/คอมโพเนนต์
-- `app.js` canvas engine, page state, template generator, exposed APIs
-- `proFeatures.js` UX โปร, zoom-pan, uploads, text fx, image mask/crop, page manager, QR
-- `export.js` PNG/PDF export และ save/load flow
-- `panel.js`, `toolbar.js`, `clipboard.js`, `equation.js`, `webImages.js`
+### Canvas / Paper
+- `getPaperConfig(size)`
+  - คืนค่า preset ของขนาดกระดาษ/สไลด์
+- `applyPaperLayout(size)`
+  - ปรับ canvas ตาม paper preset และ sync UI
+- `syncUiToggles()`
+  - sync สถานะปุ่ม grid/snap/mode
 
-## Development notes
+### Workbook
+- `goToPage(index)`
+  - สลับไปหน้าที่กำหนด
+- `addPageAndGo()`
+  - เพิ่มหน้าใหม่และไปยังหน้าที่เพิ่ม
+- `duplicateCurrentPage()`
+  - ทำสำเนาหน้าที่กำลังเปิด
+- `deleteCurrentPage(index)`
+  - ลบหน้า
+- `clearCurrentPage()`
+  - ล้างวัตถุในหน้าปัจจุบัน
 
-- Canvas engine: Fabric.js
-- Equation render: KaTeX
-- PDF export: jsPDF
-- All state runs client-side in browser context
+### UI State
+- `updateDocumentModeUi()`
+  - เปลี่ยนข้อความปุ่มระหว่างโหมด หน้า/สไลด์
+- `updatePageIndicator()`
+  - อัปเดต `pageIndicator` และ jump input
 
-## Installation (Chrome extension)
+---
 
-1. เปิด `chrome://extensions`
+## `proFeatures.js`
+
+### Gallery / Sidebar
+- `buildCardGallery(rootId, cards, onClick)`
+  - สร้าง card list สำหรับ templates
+- `buildBorderGallery(rootId, cards, onClick)`
+  - สร้าง border gallery แบบจัดหมวด
+- `setupTemplateGallery()`
+  - bind template + border gallery
+
+### Shapes / Borders
+- `addShape(type)`
+  - เพิ่ม shape พื้นฐาน (square/circle/triangle/arrow)
+- `addBorder(kind)`
+  - เพิ่มกรอบเอกสารตามชนิด
+  - รองรับ `simple, double, triple, dashed, dotted, geo, doodle, stars, wavy, zigzag, stitch, ribbon, scallop, corners, cornerDots, cornerBrackets`
+
+### Generator (Math)
+- `addMathProblems()`
+  - สุ่มโจทย์เลขพื้นฐาน
+- `addAdvancedMathProblems()`
+  - สุ่มสมการขั้นสูง และ render ด้วย Text+Math
+- `addFractionProblems()`
+  - สุ่มโจทย์เศษส่วน
+- `addAlgebraProblems()`
+  - สุ่มโจทย์พีชคณิต 1 ตัวแปร
+- `addGeometryProblems()`
+  - สุ่มรูปเรขาคณิต 2D/3D พร้อมพื้นที่/พื้นที่ผิว/ปริมาตร
+
+### Generator (Graph)
+- `computeLineSegmentInBounds(m, c, minX, maxX, minY, maxY)`
+  - คำนวณเส้นตรงที่ถูก clip ให้อยู่ในกรอบกราฟ
+- `addGraphGenerator()`
+  - วาดกราฟเส้นตรง `y = mx + c`
+- `addParabolaGenerator()`
+  - วาดกราฟพาราโบลา `y = ax² + bx + c`
+
+### Generator (Other)
+- `addNumberLineGenerator()`
+- `addCoordinatePlaneGenerator()`
+- `addWordSearch()`
+- `addCrossword()`
+
+### Slide mode
+- `startSlideshow()` / `exitSlideshow()`
+  - เข้า/ออก fullscreen presentation และ restore สถานะเดิม
+
+### Event Wiring
+- `setupEvents()`
+  - bind ปุ่มทั้งหมดใน sidebar และ toolbar ฝั่งโปร
+
+---
+
+## `toolbar.js`
+
+- กำหนด active drawing tool ผ่าน `toolDefs`
+- bind Undo/Redo/Delete
+- bind property controls (font, bold, italic, align, opacity)
+- bind arrange tools (bring forward/backward)
+- helper จัดแนวและกระจาย spacing ของ object
+
+---
+
+## `equation.js`
+
+- จัดการโหมดสมการ (LaTeX / Mixed Text+Math)
+- parse และ render สมการลง canvas
+- expose ฟังก์ชันใช้งานร่วมกับ generators เช่น `window.addMathTextToCanvas(...)`
+
+---
+
+## `export.js`
+
+- Export canvas/page เป็น PNG
+- Export workbook เป็น PDF
+- Export presentation เป็น PPTX
+- เชื่อมกับปุ่ม export บน toolbar
+
+---
+
+## การติดตั้ง/รัน
+
+1. เปิด Chrome ไปที่ `chrome://extensions`
 2. เปิด Developer mode
-3. กด Load unpacked
-4. เลือกโฟลเดอร์ `Smart-WS`
+3. กด Load unpacked แล้วเลือกโฟลเดอร์ `Smart-WS`
+4. เปิดแท็บใหม่เพื่อใช้งาน Smart WS Pro
 
-## Host permissions ที่ใช้งาน
+---
 
-- Wikimedia
-- Flickr
-- Iconify
-- QR Server API
+## หมายเหตุการพัฒนา
 
-## Current status
-
-- Phase 1-5: เสร็จสมบูรณ์
-- Phase 6: พัฒนาแล้วตามรายการหลัก
-- Phase 7: เพิ่ม template ใหม่ครบ 10 แบบ
-- Phase 8: Smart worksheet elements เสร็จแล้ว
-- Phase 9: Layout workflow (layers + rulers + alignment) เสร็จแล้ว
-- Phase 10: Generators + Answer Key Mode เสร็จแล้ว
-- Phase 11: Asset library + Saved Elements เสร็จแล้ว
+- โครงสร้างนี้ถูกออกแบบให้แยก "engine" (`app.js`) และ "feature layer" (`proFeatures.js`) เพื่อง่ายต่อการขยายระบบ
+- แนะนำให้เพิ่มฟีเจอร์ใหม่ผ่าน `setupEvents()` + function ใหม่ใน `proFeatures.js` เพื่อไม่ให้ core engine ใน `app.js` บวมเกินไป

@@ -190,6 +190,80 @@ input[type="color"] {
     margin-left: auto;
 }
 
+.toolbar-menu {
+    position: relative;
+}
+
+.toolbar-menu>summary {
+    list-style: none;
+}
+
+.toolbar-menu>summary::-webkit-details-marker {
+    display: none;
+}
+
+.toolbar-menu[open] .action-btn,
+.toolbar-menu[open] .tool-btn {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 1px rgba(56, 139, 253, .2);
+}
+
+.toolbar-menu-list,
+.toolbar-menu-grid {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px;
+    display: none;
+    z-index: 220;
+    box-shadow: 0 8px 24px rgba(2, 6, 23, .28);
+    min-width: 170px;
+}
+
+.toolbar-menu-grid {
+    grid-template-columns: repeat(4, 34px);
+    gap: 6px;
+}
+
+.toolbar-menu-list {
+    flex-direction: column;
+    gap: 6px;
+}
+
+.context-group .toolbar-menu-grid,
+.context-group .toolbar-menu-list {
+    left: 0;
+    right: auto;
+}
+
+.context-group .toolbar-menu>summary.action-btn {
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 12px;
+}
+
+.toolbar-menu[open] .toolbar-menu-list {
+    display: flex;
+}
+
+.toolbar-menu[open] .toolbar-menu-grid {
+    display: grid;
+}
+
+.toolbar-menu-list .action-btn,
+.toolbar-menu-list .toolbar-select {
+    width: 100%;
+}
+
+.toolbar-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 34px);
+    gap: 6px;
+}
+
 .action-btn {
     padding: 7px 14px;
     border-radius: 8px;
@@ -510,6 +584,42 @@ body.show-grid .page-grid {
     color: var(--muted);
     font-size: 12px;
     font-weight: 600;
+}
+
+body.is-slideshow .global-toolbar,
+body.is-slideshow .context-bar,
+body.is-slideshow .svg-panel,
+body.is-slideshow .props-panel,
+body.is-slideshow .page-nav-bar,
+body.is-slideshow .app-footer,
+body.is-slideshow .ruler-top,
+body.is-slideshow .ruler-left {
+    display: none !important;
+}
+
+body.is-slideshow .main-layout {
+    height: 100vh;
+}
+
+body.is-slideshow .canvas-area {
+    padding: 0;
+    background: #000;
+}
+
+body.is-slideshow .canvas-wrapper {
+    width: 100vw;
+    height: 100vh;
+    justify-content: center;
+    padding: 0;
+}
+
+body.is-slideshow .page-shadow {
+    box-shadow: none;
+}
+
+body.is-slideshow .page-guides,
+body.is-slideshow .page-grid {
+    display: none !important;
 }
 
 /* ═══════════════════════ RIGHT PANEL ═══════════════════════ */
