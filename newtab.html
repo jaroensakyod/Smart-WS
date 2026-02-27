@@ -172,8 +172,10 @@
                             <option value="phonicsMatch">Phonics Match (จับคู่เสียง-ตัวอักษร)</option>
                             <option value="pictureVocabulary">Picture Vocabulary (ศัพท์จากภาพ)</option>
                             <option value="contextClues">Context Clues Vocabulary (คำศัพท์จากบริบท)</option>
-                            <option value="criticalReadingEvidence">Critical Reading + Evidence (อ่านเชิงวิจารณ์)</option>
-                            <option value="argumentEssayPlanner">Argument Essay Planner (วางแผนเรียงความโต้แย้ง)</option>
+                            <option value="criticalReadingEvidence">Critical Reading + Evidence (อ่านเชิงวิจารณ์)
+                            </option>
+                            <option value="argumentEssayPlanner">Argument Essay Planner (วางแผนเรียงความโต้แย้ง)
+                            </option>
                             <option value="sourceAnalysis">Source Analysis Sheet (วิเคราะห์แหล่งข้อมูล)</option>
                             <option value="workplaceReading">Workplace Reading (อ่านเอกสารในงาน)</option>
                             <option value="comicstrip">Comic Strip (คอมิกสตริป)</option>
@@ -262,16 +264,20 @@
                         <button class="template-segment" data-segment="new">New</button>
                     </div>
                     <div class="template-filter-actions">
-                        <button class="action-btn load-btn" id="btnTemplateClearFilters" style="width:100%">ล้างตัวกรอง</button>
+                        <button class="action-btn load-btn" id="btnTemplateClearFilters"
+                            style="width:100%">ล้างตัวกรอง</button>
                     </div>
                     <div class="template-telemetry-actions">
-                        <button class="action-btn load-btn" id="btnTemplateTelemetryDump" style="width:100%">Dump Telemetry</button>
-                        <button class="action-btn load-btn" id="btnTemplateTelemetryClear" style="width:100%">Clear Telemetry</button>
+                        <button class="action-btn load-btn" id="btnTemplateTelemetryDump" style="width:100%">Dump
+                            Telemetry</button>
+                        <button class="action-btn load-btn" id="btnTemplateTelemetryClear" style="width:100%">Clear
+                            Telemetry</button>
                     </div>
                     <div class="template-telemetry-panel" id="templateTelemetryPanel">
                         <div class="template-telemetry-header">
                             <span>Telemetry</span>
-                            <button class="action-btn load-btn" id="btnTemplateTelemetryRefresh" style="width:auto">Refresh</button>
+                            <button class="action-btn load-btn" id="btnTemplateTelemetryRefresh"
+                                style="width:auto">Refresh</button>
                         </div>
                         <div class="template-telemetry-meta" id="templateTelemetryMeta">events: 0 • last: -</div>
                         <div class="template-telemetry-top" id="templateTelemetryTop">top events: -</div>
@@ -290,7 +296,8 @@
                         <summary>🖼 Graphics & Icons</summary>
                         <div class="elements-section-body">
                             <div class="panel-search-wrap" style="padding:0 0 6px 0;">
-                                <button class="action-btn load-btn" id="toolImageSearch" style="width:100%">🖼 ค้นหารูปฟรี</button>
+                                <button class="action-btn load-btn" id="toolImageSearch" style="width:100%">🖼
+                                    ค้นหารูปฟรี</button>
                             </div>
                             <div class="panel-search-wrap" style="padding:0 0 6px 0;">
                                 <input type="text" id="svgSearch" class="panel-search" placeholder="🔍 ค้นหารูป..." />
@@ -301,14 +308,16 @@
                                     Monoline only
                                 </label>
                             </div>
-                            <div class="panel-upload" style="display:flex;gap:6px;align-items:center;padding:0 0 8px 0;">
+                            <div class="panel-upload"
+                                style="display:flex;gap:6px;align-items:center;padding:0 0 8px 0;">
                                 <select id="basicShapeSelect" class="toolbar-select" style="flex:1;">
                                     <option value="square">⬛ Square</option>
                                     <option value="circle">⚪ Circle</option>
                                     <option value="triangle">🔺 Triangle</option>
                                     <option value="arrow">➡ Arrow</option>
                                 </select>
-                                <button class="action-btn load-btn" id="btnAddBasicShape" style="padding:0 12px;">Add</button>
+                                <button class="action-btn load-btn" id="btnAddBasicShape"
+                                    style="padding:0 12px;">Add</button>
                             </div>
                             <div class="panel-upload" style="padding:0 0 8px 0;">
                                 <label class="upload-btn" for="svgFileInput">📁 นำเข้า SVG จากเครื่อง</label>
@@ -335,6 +344,8 @@
                             <button class="action-btn load-btn" id="btnGenMatching">🔗 Matching Worksheet</button>
                             <button class="action-btn load-btn" id="btnGenFillBlank">📝 Fill in the Blank</button>
                             <button class="action-btn load-btn" id="btnGenBingo">🎯 Bingo Cards</button>
+                            <button class="action-btn load-btn" id="btnGenTaskCardsQuick">🗂 Task Cards</button>
+                            <button class="action-btn load-btn" id="btnGenShapeNetsQuick">🧊 3D Shape Nets</button>
                         </div>
                     </details>
 
@@ -442,6 +453,14 @@
                         Search</button>
                     <button class="action-btn load-btn" id="btnGenCrossword" style="width:100%;margin-top:6px">🧩
                         Crossword</button>
+                    <button class="action-btn load-btn" id="btnGenTaskCards" style="width:100%;margin-top:6px">🗂
+                        Task Cards</button>
+                    <button class="action-btn load-btn" id="btnGenMazePattern" style="width:100%;margin-top:6px">🧭
+                        Maze Pattern</button>
+                    <button class="action-btn load-btn" id="btnGenShapeNets" style="width:100%;margin-top:6px">🧊
+                        3D Shape Nets</button>
+                    <button class="action-btn load-btn" id="btnGenComicStrip" style="width:100%;margin-top:6px">💬
+                        Comic Strip</button>
                     <button class="action-btn save-btn" id="btnGenerateAnswerKey" style="width:100%;margin-top:6px">🧪
                         Generate Answer Key</button>
                 </div>
@@ -743,14 +762,16 @@
         <div class="modal-box modal-box-wide">
             <div class="modal-header">
                 <span class="modal-icon">📊</span>
-                <h2 class="modal-title">Market Analysis Dashboard (TpT / KDP)</h2>
+                <h2 class="modal-title">Market Analysis Dashboard (TpT)</h2>
                 <button class="modal-close" id="marketDashboardClose">✕</button>
             </div>
             <div class="panel-search-wrap" style="padding:0">
-                <input type="text" id="marketKeywordInput" class="panel-search" placeholder="เช่น scissor skills, tracing letters, SEL worksheet" />
+                <input type="text" id="marketKeywordInput" class="panel-search"
+                    placeholder="เช่น phonics word search, task cards, 3d shape nets" />
             </div>
             <div class="section-btn-grid" style="margin-top:2px;">
-                <button class="action-btn load-btn" id="btnAnalyzeNiche">Analyze Niche</button>
+                <button class="action-btn load-btn" id="btnAnalyzeNiche">Analyze on TpT</button>
+                <button class="action-btn load-btn" id="btnOpenTpTSearch">Open in TpT</button>
                 <button class="action-btn load-btn" id="btnRefreshMarketData">Refresh Trends</button>
             </div>
 
@@ -761,6 +782,7 @@
                 </div>
                 <div class="market-card">
                     <div class="market-card-title">📈 Opportunity Score</div>
+                    <div id="marketScoreBar" class="market-score-bar"><span id="marketScoreFill"></span></div>
                     <div id="marketOpportunityResult" class="market-result">กรอกคีย์เวิร์ดแล้วกด Analyze</div>
                 </div>
                 <div class="market-card">
@@ -774,6 +796,7 @@
     <footer class="app-footer">Copyright © 2026 The Coach inc.</footer>
 
     <script src="data/svgLibrary.js"></script>
+    <script src="data/borderLibrary.js"></script>
     <script src="data/marketTrends.js"></script>
     <script src="app.js"></script>
     <script src="panel.js"></script>

@@ -300,6 +300,11 @@
         { key: 'cornerBrackets', title: 'Corner Brackets', desc: 'วงเล็บมุมเอกสาร', group: 'Corner' },
     ];
 
+    const premiumBorderCards = Array.isArray(window.SMARTWS_PREMIUM_BORDERS)
+        ? window.SMARTWS_PREMIUM_BORDERS
+        : [];
+    const allBorderCards = [...borderCards, ...premiumBorderCards];
+
     function activateSidebarTab(tabId) {
         const tabs = Array.from(document.querySelectorAll('.sidebar-tab'));
         const panels = Array.from(document.querySelectorAll('.sidebar-tab-content'));
@@ -754,6 +759,73 @@
                 new fabric.Path(`M ${left + width} ${top + height - len} L ${left + width} ${top + height} L ${left + width - len} ${top + height}`, { fill: 'transparent', stroke, strokeWidth: 3 }),
                 new fabric.Path(`M ${left + len} ${top + height} L ${left} ${top + height} L ${left} ${top + height - len}`, { fill: 'transparent', stroke, strokeWidth: 3 }),
             ], { objectCaching: false });
+        } else if (kind === 'floral') {
+            const base = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 1.4 });
+            const flowers = [];
+            const count = Math.max(8, Math.floor(width / 90));
+            for (let i = 0; i <= count; i++) {
+                const x = left + (width * i) / count;
+                flowers.push(new fabric.Circle({ left: x - 3, top: top - 3, radius: 3, fill: stroke, stroke: 'transparent' }));
+                flowers.push(new fabric.Circle({ left: x - 3, top: top + height - 3, radius: 3, fill: stroke, stroke: 'transparent' }));
+            }
+            border = new fabric.Group([base, ...flowers], { objectCaching: false });
+        } else if (kind === 'leafy') {
+            const base = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 1.4 });
+            const leaves = [];
+            const step = 42;
+            for (let x = left + 18; x < left + width - 18; x += step) {
+                leaves.push(new fabric.Path(`M ${x} ${top + 2} Q ${x + 8} ${top + 10} ${x} ${top + 18} Q ${x - 8} ${top + 10} ${x} ${top + 2}`, { fill: 'transparent', stroke, strokeWidth: 1.2 }));
+                leaves.push(new fabric.Path(`M ${x} ${top + height - 2} Q ${x + 8} ${top + height - 10} ${x} ${top + height - 18} Q ${x - 8} ${top + height - 10} ${x} ${top + height - 2}`, { fill: 'transparent', stroke, strokeWidth: 1.2 }));
+            }
+            border = new fabric.Group([base, ...leaves], { objectCaching: false });
+        } else if (kind === 'hearts') {
+            const base = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 1.2 });
+            const hearts = [];
+            const path = 'M 0 2 C 0 -3 7 -3 7 2 C 7 5 4 8 0 11 C -4 8 -7 5 -7 2 C -7 -3 0 -3 0 2 Z';
+            for (let x = left + 16; x < left + width - 10; x += 34) {
+                hearts.push(new fabric.Path(path, { left: x, top: top + 2, fill: 'transparent', stroke, strokeWidth: 1.2 }));
+                hearts.push(new fabric.Path(path, { left: x, top: top + height - 16, fill: 'transparent', stroke, strokeWidth: 1.2 }));
+            }
+            border = new fabric.Group([base, ...hearts], { objectCaching: false });
+        } else if (kind === 'snow') {
+            const base = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 1.2 });
+            const flakes = [];
+            const makeFlake = (x, y) => new fabric.Group([
+                new fabric.Line([x - 5, y, x + 5, y], { stroke, strokeWidth: 1.2 }),
+                new fabric.Line([x, y - 5, x, y + 5], { stroke, strokeWidth: 1.2 }),
+                new fabric.Line([x - 4, y - 4, x + 4, y + 4], { stroke, strokeWidth: 1.2 }),
+                new fabric.Line([x - 4, y + 4, x + 4, y - 4], { stroke, strokeWidth: 1.2 }),
+            ], { objectCaching: false });
+            for (let x = left + 18; x < left + width - 18; x += 44) {
+                flakes.push(makeFlake(x, top + 10));
+                flakes.push(makeFlake(x, top + height - 10));
+            }
+            border = new fabric.Group([base, ...flakes], { objectCaching: false });
+        } else if (kind === 'pumpkin') {
+            const base = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 1.2 });
+            const pumpkins = [];
+            for (let x = left + 16; x < left + width - 12; x += 40) {
+                pumpkins.push(new fabric.Circle({ left: x, top: top + 2, radius: 5, fill: 'transparent', stroke, strokeWidth: 1.1 }));
+                pumpkins.push(new fabric.Circle({ left: x, top: top + height - 12, radius: 5, fill: 'transparent', stroke, strokeWidth: 1.1 }));
+            }
+            border = new fabric.Group([base, ...pumpkins], { objectCaching: false });
+        } else if (kind === 'pencil') {
+            const base = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 1.2 });
+            const lines = [];
+            for (let x = left + 8; x < left + width - 8; x += 28) {
+                lines.push(new fabric.Line([x, top, x + 10, top + 12], { stroke, strokeWidth: 1.3 }));
+                lines.push(new fabric.Line([x, top + height, x + 10, top + height - 12], { stroke, strokeWidth: 1.3 }));
+            }
+            border = new fabric.Group([base, ...lines], { objectCaching: false });
+        } else if (kind === 'apple') {
+            const base = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 1.2 });
+            const apples = [];
+            const path = 'M 0 8 C -6 8 -7 1 -3 -3 C -1 -5 2 -5 4 -3 C 8 1 7 8 1 8 Z M 1 -5 L 2 -9';
+            for (let x = left + 16; x < left + width - 12; x += 40) {
+                apples.push(new fabric.Path(path, { left: x, top: top + 2, fill: 'transparent', stroke, strokeWidth: 1.1 }));
+                apples.push(new fabric.Path(path, { left: x, top: top + height - 16, fill: 'transparent', stroke, strokeWidth: 1.1 }));
+            }
+            border = new fabric.Group([base, ...apples], { objectCaching: false });
         } else {
             border = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 2 });
         }
@@ -2054,6 +2126,173 @@
         window.showToast?.('เพิ่ม Bingo cards worksheet แล้ว');
     }
 
+    function addTaskCardsWorksheet() {
+        const mode = (window.prompt('รูปแบบการ์ด: 4 หรือ 8 ใบต่อหน้า', '8') || '8').trim() === '4' ? 4 : 8;
+        const cols = mode === 4 ? 2 : 2;
+        const rows = mode === 4 ? 2 : 4;
+        const startX = 80;
+        const startY = 130;
+        const totalW = Math.max(560, (canvas.width || 900) - 160);
+        const totalH = Math.max(760, (canvas.height || 1120) - 220);
+        const cardW = totalW / cols;
+        const cardH = totalH / rows;
+        canvas.add(new fabric.IText(`Task Cards (${mode})`, { left: 90, top: 72, fontFamily: 'Fredoka', fontSize: 34, fill: '#1e293b' }));
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const idx = r * cols + c + 1;
+                const x = startX + c * cardW;
+                const y = startY + r * cardH;
+                canvas.add(new fabric.Rect({ left: x, top: y, width: cardW, height: cardH, fill: 'transparent', stroke: '#334155', strokeWidth: 1.6 }));
+                canvas.add(new fabric.IText(`Card ${idx}`, { left: x + 12, top: y + 10, fontFamily: 'Sarabun', fontSize: 16, fill: '#334155' }));
+                canvas.add(new fabric.IText('Question / Prompt', { left: x + 12, top: y + 46, fontFamily: 'Sarabun', fontSize: 20, fill: '#64748b' }));
+            }
+        }
+        for (let c = 1; c < cols; c++) {
+            const x = startX + c * cardW;
+            canvas.add(new fabric.Line([x, startY, x, startY + totalH], { stroke: '#94a3b8', strokeWidth: 1, strokeDashArray: [8, 6] }));
+        }
+        for (let r = 1; r < rows; r++) {
+            const y = startY + r * cardH;
+            canvas.add(new fabric.Line([startX, y, startX + totalW, y], { stroke: '#94a3b8', strokeWidth: 1, strokeDashArray: [8, 6] }));
+        }
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('เพิ่ม Task Cards แล้ว');
+    }
+
+    function addMazePatternWorksheet() {
+        const level = (window.prompt('ระดับความยาก: easy, medium, hard', 'medium') || 'medium').trim().toLowerCase();
+        const size = level === 'hard' ? 16 : level === 'easy' ? 10 : 13;
+        const cell = 42;
+        const startX = 90;
+        const startY = 160;
+        const walls = [];
+        const visited = Array.from({ length: size }, () => Array(size).fill(false));
+        const gridWalls = Array.from({ length: size }, () => Array.from({ length: size }, () => ({ top: true, right: true, bottom: true, left: true })));
+
+        const neighbors = (r, c) => {
+            const list = [];
+            if (r > 0 && !visited[r - 1][c]) list.push([r - 1, c, 'top']);
+            if (c < size - 1 && !visited[r][c + 1]) list.push([r, c + 1, 'right']);
+            if (r < size - 1 && !visited[r + 1][c]) list.push([r + 1, c, 'bottom']);
+            if (c > 0 && !visited[r][c - 1]) list.push([r, c - 1, 'left']);
+            return list;
+        };
+
+        const stack = [[0, 0]];
+        visited[0][0] = true;
+        while (stack.length) {
+            const [r, c] = stack[stack.length - 1];
+            const next = neighbors(r, c);
+            if (!next.length) {
+                stack.pop();
+                continue;
+            }
+            const [nr, nc, dir] = next[getRandomInt(0, next.length - 1)];
+            if (dir === 'top') {
+                gridWalls[r][c].top = false;
+                gridWalls[nr][nc].bottom = false;
+            } else if (dir === 'right') {
+                gridWalls[r][c].right = false;
+                gridWalls[nr][nc].left = false;
+            } else if (dir === 'bottom') {
+                gridWalls[r][c].bottom = false;
+                gridWalls[nr][nc].top = false;
+            } else {
+                gridWalls[r][c].left = false;
+                gridWalls[nr][nc].right = false;
+            }
+            visited[nr][nc] = true;
+            stack.push([nr, nc]);
+        }
+
+        canvas.add(new fabric.IText('Maze Pattern', { left: 90, top: 72, fontFamily: 'Fredoka', fontSize: 34, fill: '#1e293b' }));
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                const x = startX + c * cell;
+                const y = startY + r * cell;
+                const w = gridWalls[r][c];
+                if (w.top) walls.push(new fabric.Line([x, y, x + cell, y], { stroke: '#334155', strokeWidth: 2 }));
+                if (w.left) walls.push(new fabric.Line([x, y, x, y + cell], { stroke: '#334155', strokeWidth: 2 }));
+                if (r === size - 1 && w.bottom) walls.push(new fabric.Line([x, y + cell, x + cell, y + cell], { stroke: '#334155', strokeWidth: 2 }));
+                if (c === size - 1 && w.right) walls.push(new fabric.Line([x + cell, y, x + cell, y + cell], { stroke: '#334155', strokeWidth: 2 }));
+            }
+        }
+        walls.forEach(line => canvas.add(line));
+        canvas.add(new fabric.IText('START', { left: startX + 4, top: startY - 32, fontFamily: 'Sarabun', fontSize: 18, fill: '#334155' }));
+        canvas.add(new fabric.IText('FINISH', { left: startX + size * cell - 70, top: startY + size * cell + 6, fontFamily: 'Sarabun', fontSize: 18, fill: '#334155' }));
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('เพิ่ม Maze Pattern แล้ว');
+    }
+
+    function addShapeNetsWorksheet() {
+        const shape = (window.prompt('รูปทรง: cube, pyramid, cylinder', 'cube') || 'cube').trim().toLowerCase();
+        const left = 120;
+        const top = 190;
+        const s = 90;
+        canvas.add(new fabric.IText('3D Shape Nets', { left: 90, top: 72, fontFamily: 'Fredoka', fontSize: 34, fill: '#1e293b' }));
+
+        if (shape === 'pyramid') {
+            const base = new fabric.Rect({ left: left + s, top: top + s, width: s, height: s, fill: 'transparent', stroke: '#334155', strokeWidth: 2 });
+            const t1 = new fabric.Triangle({ left: left + s, top, width: s, height: s, fill: 'transparent', stroke: '#334155', strokeWidth: 2 });
+            const t2 = new fabric.Triangle({ left: left, top: top + s, width: s, height: s, fill: 'transparent', stroke: '#334155', strokeWidth: 2, angle: 270 });
+            const t3 = new fabric.Triangle({ left: left + 2 * s, top: top + s, width: s, height: s, fill: 'transparent', stroke: '#334155', strokeWidth: 2, angle: 90 });
+            const t4 = new fabric.Triangle({ left: left + s, top: top + 2 * s, width: s, height: s, fill: 'transparent', stroke: '#334155', strokeWidth: 2, angle: 180 });
+            [base, t1, t2, t3, t4].forEach(obj => canvas.add(obj));
+        } else if (shape === 'cylinder') {
+            const rect = new fabric.Rect({ left: left + 70, top: top + 60, width: s * 2.2, height: s * 1.2, fill: 'transparent', stroke: '#334155', strokeWidth: 2, strokeDashArray: [8, 6] });
+            const c1 = new fabric.Ellipse({ left: left + 90, top: top + 8, rx: 80, ry: 34, fill: 'transparent', stroke: '#334155', strokeWidth: 2 });
+            const c2 = new fabric.Ellipse({ left: left + 90, top: top + 220, rx: 80, ry: 34, fill: 'transparent', stroke: '#334155', strokeWidth: 2 });
+            [rect, c1, c2].forEach(obj => canvas.add(obj));
+        } else {
+            const coords = [
+                [left + s, top],
+                [left, top + s],
+                [left + s, top + s],
+                [left + 2 * s, top + s],
+                [left + 3 * s, top + s],
+                [left + s, top + 2 * s],
+            ];
+            coords.forEach(([x, y]) => {
+                canvas.add(new fabric.Rect({ left: x, top: y, width: s, height: s, fill: 'transparent', stroke: '#334155', strokeWidth: 2 }));
+            });
+        }
+
+        canvas.add(new fabric.IText('Solid line: cut   Dashed line: fold', { left: 90, top: 120, fontFamily: 'Sarabun', fontSize: 18, fill: '#64748b' }));
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('เพิ่ม 3D Shape Nets แล้ว');
+    }
+
+    function addComicStripWorksheet() {
+        const panels = Math.min(6, Math.max(3, Number(window.prompt('จำนวนช่องการ์ตูน (3-6)', '4')) || 4));
+        const cols = panels <= 4 ? 2 : 3;
+        const rows = Math.ceil(panels / cols);
+        const startX = 90;
+        const startY = 150;
+        const totalW = Math.max(640, (canvas.width || 900) - 180);
+        const totalH = Math.max(680, (canvas.height || 1120) - 260);
+        const panelW = totalW / cols - 16;
+        const panelH = totalH / rows - 16;
+
+        canvas.add(new fabric.IText('Comic Strip Storyboard', { left: 90, top: 72, fontFamily: 'Fredoka', fontSize: 34, fill: '#1e293b' }));
+        for (let i = 0; i < panels; i++) {
+            const r = Math.floor(i / cols);
+            const c = i % cols;
+            const x = startX + c * (panelW + 16);
+            const y = startY + r * (panelH + 16);
+            canvas.add(new fabric.Rect({ left: x, top: y, width: panelW, height: panelH, fill: 'transparent', stroke: '#334155', strokeWidth: 2 }));
+            canvas.add(new fabric.IText(`Panel ${i + 1}`, { left: x + 8, top: y + 6, fontFamily: 'Sarabun', fontSize: 15, fill: '#475569' }));
+            const bubble = new fabric.Ellipse({ left: x + panelW - 128, top: y + 14, rx: 50, ry: 24, fill: 'transparent', stroke: '#64748b', strokeWidth: 1.4 });
+            canvas.add(bubble);
+            canvas.add(new fabric.Triangle({ left: x + panelW - 46, top: y + 56, width: 16, height: 14, angle: 180, fill: 'transparent', stroke: '#64748b', strokeWidth: 1.2 }));
+        }
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('เพิ่ม Comic Strip แล้ว');
+    }
+
     function openSavedDb() {
         return new Promise((resolve, reject) => {
             const req = indexedDB.open(SAVED_DB, 1);
@@ -2421,6 +2660,10 @@
         document.getElementById('btnGenCoordinate')?.addEventListener('click', addCoordinatePlaneGenerator);
         document.getElementById('btnGenWordSearch')?.addEventListener('click', addWordSearch);
         document.getElementById('btnGenCrossword')?.addEventListener('click', addCrossword);
+        document.getElementById('btnGenTaskCards')?.addEventListener('click', addTaskCardsWorksheet);
+        document.getElementById('btnGenMazePattern')?.addEventListener('click', addMazePatternWorksheet);
+        document.getElementById('btnGenShapeNets')?.addEventListener('click', addShapeNetsWorksheet);
+        document.getElementById('btnGenComicStrip')?.addEventListener('click', addComicStripWorksheet);
         document.getElementById('btnGenTracing')?.addEventListener('click', addTracingWorksheet);
         document.getElementById('btnGenMatching')?.addEventListener('click', addMatchingWorksheet);
         document.getElementById('btnGenFillBlank')?.addEventListener('click', addFillBlankWorksheet);
@@ -2432,6 +2675,8 @@
         document.getElementById('btnInsertSubheadingQuick')?.addEventListener('click', () => addTextPreset('subheading'));
         document.getElementById('btnInsertBodyQuick')?.addEventListener('click', () => addTextPreset('body'));
         document.getElementById('btnTextCurveQuick')?.addEventListener('click', convertTextToCurve);
+        document.getElementById('btnGenTaskCardsQuick')?.addEventListener('click', addTaskCardsWorksheet);
+        document.getElementById('btnGenShapeNetsQuick')?.addEventListener('click', addShapeNetsWorksheet);
         document.getElementById('btnGoBordersTab')?.addEventListener('click', () => activateSidebarTab('bordersTab'));
         document.getElementById('btnOpenMarketDashboard')?.addEventListener('click', () => {
             document.getElementById('marketDashboardModal')?.style.setProperty('display', 'flex');
@@ -2521,7 +2766,7 @@
         createChipButtons('templateSubjectChips', SUBJECTS, templateFilterState.subjects, refreshTemplateGallery);
         createChipButtons('templateSkillChips', SKILLS, templateFilterState.skills, refreshTemplateGallery);
         refreshTemplateGallery();
-        buildBorderGallery('borderGallery', borderCards, (item) => addBorder(item.key));
+        buildBorderGallery('borderGallery', allBorderCards, (item) => addBorder(item.key));
     }
 
     window.wbSetSaveIndicator = setSaveIndicator;

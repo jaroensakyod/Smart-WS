@@ -1546,6 +1546,23 @@ body.is-slideshow .page-grid {
     line-height: 1.45;
 }
 
+.market-score-bar {
+    height: 10px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.market-score-bar span {
+    display: block;
+    height: 100%;
+    width: 0;
+    transition: width .2s ease;
+    background: var(--blue);
+}
+
 .template-gallery {
     display: grid;
     grid-template-columns: 1fr;

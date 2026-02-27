@@ -7,14 +7,28 @@
     const closeBtn = document.getElementById('marketDashboardClose');
     const refreshBtn = document.getElementById('btnRefreshMarketData');
     const analyzeBtn = document.getElementById('btnAnalyzeNiche');
+    const openSearchBtn = document.getElementById('btnOpenTpTSearch');
     const keywordInput = document.getElementById('marketKeywordInput');
 
     const trendingRoot = document.getElementById('marketTrendingList');
     const seasonalRoot = document.getElementById('marketSeasonalList');
     const resultRoot = document.getElementById('marketOpportunityResult');
+    const scoreFill = document.getElementById('marketScoreFill');
+
+    const FALLBACK_DATA = {
+        updatedAt: '-',
+        niches: [],
+        seasonal: [],
+    };
 
     function getData() {
-        return window.SMARTWS_MARKET_TRENDS || { updatedAt: '-', niches: [], seasonal: [] };
+        const data = window.SMARTWS_MARKET_TRENDS || FALLBACK_DATA;
+        const niches = (data.niches || []).filter(item => String(item.platform || '').toLowerCase().includes('tpt'));
+        return {
+            updatedAt: data.updatedAt || '-',
+            seasonal: Array.isArray(data.seasonal) ? data.seasonal : [],
+            niches,
+        };
     }
 
     function calcOpportunityScore(demand, competition) {
@@ -31,6 +45,32 @@
         return 'ต่ำ';
     }
 
+    function scoreColor(score) {
+        if (score >= 70) return 'var(--green)';
+        if (score >= 45) return 'var(--amber)';
+        return 'var(--red)';
+    }
+
+    function updateScoreBar(score) {
+        if (!scoreFill) return;
+        scoreFill.style.width = `${Math.max(0, Math.min(100, score))}%`;
+        scoreFill.style.background = scoreColor(score);
+    }
+
+    function buildTpTSearchUrl(keyword) {
+        const q = encodeURIComponent(String(keyword || '').trim());
+        return `https://www.teacherspayteachers.com/browse?search=${q}`;
+    }
+
+    function openTpTSearch() {
+        const kw = String(keywordInput?.value || '').trim();
+        if (!kw) {
+            resultRoot.textContent = 'กรอกคีย์เวิร์ดก่อน แล้วค่อยเปิดผลลัพธ์บน TpT';
+            return;
+        }
+        window.open(buildTpTSearchUrl(kw), '_blank', 'noopener,noreferrer');
+    }
+
     function buildTrending() {
         if (!trendingRoot) return;
         const data = getData();
@@ -45,7 +85,7 @@
                 row.className = 'market-item';
                 row.innerHTML = `
                     <div><strong>${item.keyword}</strong></div>
-                    <div class="market-item-meta">${item.platform} • demand ${item.demand} • competition ${item.competition} • score ${score}</div>
+                    <div class="market-item-meta">TpT • demand ${item.demand} • competition ${item.competition} • score ${score}</div>
                     <div class="market-item-meta">season: ${item.season}</div>
                 `;
 
@@ -55,6 +95,7 @@
                 btn.textContent = 'Generate This';
                 btn.addEventListener('click', () => {
                     const target = document.getElementById(item.generator || '');
+                    keywordInput.value = item.keyword;
                     modal.style.display = 'none';
                     target?.click();
                 });
@@ -80,6 +121,7 @@
         const kw = String(keywordInput?.value || '').trim().toLowerCase();
         if (!kw) {
             resultRoot.textContent = 'กรอกคีย์เวิร์ดก่อน เช่น tracing worksheet, scissor skills';
+            updateScoreBar(0);
             return;
         }
         const data = getData();
@@ -87,7 +129,8 @@
 
         if (hit) {
             const score = calcOpportunityScore(hit.demand, hit.competition);
-            resultRoot.innerHTML = `Keyword: <strong>${kw}</strong><br>Opportunity Score: <strong>${score}/100 (${scoreLabel(score)})</strong><br>Platform: ${hit.platform}<br>Insight: demand ${hit.demand} vs competition ${hit.competition}`;
+            updateScoreBar(score);
+            resultRoot.innerHTML = `Keyword: <strong>${kw}</strong><br>Opportunity Score: <strong>${score}/100 (${scoreLabel(score)})</strong><br>Platform: TpT<br>Insight: demand ${hit.demand} vs competition ${hit.competition}`;
             return;
         }
 
@@ -95,13 +138,44 @@
         const demandHint = Math.min(90, 30 + tokens.length * 10 + (kw.includes('worksheet') ? 12 : 0) + (kw.includes('tracing') ? 14 : 0));
         const competitionHint = Math.max(18, 75 - tokens.length * 7 - (kw.includes('niche') ? 10 : 0));
         const score = calcOpportunityScore(demandHint, competitionHint);
-        resultRoot.innerHTML = `Keyword: <strong>${kw}</strong><br>Opportunity Score (estimated): <strong>${score}/100 (${scoreLabel(score)})</strong><br>Demand hint: ${demandHint}<br>Competition hint: ${competitionHint}`;
+        updateScoreBar(score);
+        resultRoot.innerHTML = `Keyword: <strong>${kw}</strong><br>Opportunity Score (estimated): <strong>${score}/100 (${scoreLabel(score)})</strong><br>Platform: TpT<br>Demand hint: ${demandHint}<br>Competition hint: ${competitionHint}`;
+    }
+
+    async function refreshLiveTpTData() {
+        try {
+            const resp = await fetch('https://www.teacherspayteachers.com/', { method: 'GET' });
+            if (!resp.ok) return false;
+            const html = await resp.text();
+            const titleMatches = [...html.matchAll(/Product\/(.+?)-\d+/g)]
+                .map(match => decodeURIComponent(match[1] || '').replace(/-/g, ' ').trim())
+                .filter(Boolean)
+                .slice(0, 8);
+            if (!titleMatches.length) return false;
+            const liveNiches = titleMatches.map((title, idx) => ({
+                keyword: title.toLowerCase(),
+                platform: 'TpT',
+                demand: Math.max(55, 90 - idx * 3),
+                competition: Math.min(65, 34 + idx * 3),
+                season: 'Current',
+                generator: 'btnGenTaskCards',
+            }));
+            window.SMARTWS_MARKET_TRENDS = {
+                ...(window.SMARTWS_MARKET_TRENDS || FALLBACK_DATA),
+                updatedAt: new Date().toISOString().slice(0, 10),
+                niches: liveNiches,
+            };
+            return true;
+        } catch (_) {
+            return false;
+        }
     }
 
     function open() {
         modal.style.display = 'flex';
         buildTrending();
         buildSeasonal();
+        updateScoreBar(0);
     }
 
     function close() {
@@ -110,11 +184,13 @@
 
     document.getElementById('btnOpenMarketDashboard')?.addEventListener('click', open);
     closeBtn?.addEventListener('click', close);
-    refreshBtn?.addEventListener('click', () => {
+    refreshBtn?.addEventListener('click', async () => {
+        await refreshLiveTpTData();
         buildTrending();
         buildSeasonal();
     });
     analyzeBtn?.addEventListener('click', analyzeKeyword);
+    openSearchBtn?.addEventListener('click', openTpTSearch);
     keywordInput?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();

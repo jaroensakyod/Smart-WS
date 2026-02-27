@@ -1,14 +1,14 @@
 window.SMARTWS_MARKET_TRENDS = {
     updatedAt: '2026-02-27',
     niches: [
-        { keyword: 'scissor skills workbook', platform: 'KDP', demand: 86, competition: 44, season: 'Q2-Q3', generator: 'btnGenTracing' },
         { keyword: 'phonics word search', platform: 'TpT', demand: 82, competition: 48, season: 'Back to School', generator: 'btnGenWordSearch' },
         { keyword: 'SEL reflection worksheet', platform: 'TpT', demand: 79, competition: 38, season: 'All year', generator: 'btnGenFillBlank' },
         { keyword: 'matching vocabulary cards', platform: 'TpT', demand: 77, competition: 34, season: 'All year', generator: 'btnGenMatching' },
-        { keyword: 'bingo sight words', platform: 'KDP/TpT', demand: 75, competition: 29, season: 'All year', generator: 'btnGenBingo' },
-        { keyword: 'dyslexia-friendly tracing', platform: 'KDP', demand: 72, competition: 24, season: 'Q1-Q4', generator: 'btnGenTracing' },
+        { keyword: 'bingo sight words', platform: 'TpT', demand: 75, competition: 29, season: 'All year', generator: 'btnGenBingo' },
         { keyword: 'halloween math drills', platform: 'TpT', demand: 70, competition: 27, season: 'Aug-Oct', generator: 'btnGenMath' },
-        { keyword: 'spring word puzzles', platform: 'KDP', demand: 69, competition: 31, season: 'Jan-Mar', generator: 'btnGenWordSearch' }
+        { keyword: '3d shape nets', platform: 'TpT', demand: 84, competition: 52, season: 'All year', generator: 'btnGenShapeNets' },
+        { keyword: 'task cards reading comprehension', platform: 'TpT', demand: 88, competition: 56, season: 'All year', generator: 'btnGenTaskCards' },
+        { keyword: 'comic strip writing prompt', platform: 'TpT', demand: 71, competition: 33, season: 'All year', generator: 'btnGenComicStrip' }
     ],
     seasonal: [
         { month: 'Jan-Feb', focus: 'Valentine + 100th Day', action: 'ทำชุด Math Drills และ Fill-in-the-blank' },
