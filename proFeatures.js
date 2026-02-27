@@ -281,6 +281,7 @@
         { key: 'simple', title: 'Simple Border', desc: 'กรอบเส้นเดี่ยวเรียบง่าย', group: 'Basic' },
         { key: 'double', title: 'Double Border', desc: 'กรอบเส้นคู่ยอดนิยม', group: 'Basic' },
         { key: 'triple', title: 'Triple Border', desc: 'กรอบเส้นสามชั้น', group: 'Basic' },
+        { key: 'inkSaver', title: 'Ink Saver Border', desc: 'กรอบประหยัดหมึกแบบบาง', group: 'Basic' },
         { key: 'dashed', title: 'Dashed Border', desc: 'กรอบเส้นประแบบ Worksheet', group: 'Basic' },
         { key: 'dotted', title: 'Dotted Border', desc: 'กรอบจุดสไตล์น่ารัก', group: 'Basic' },
         { key: 'wavy', title: 'Wavy Border', desc: 'กรอบเส้นคลื่น', group: 'Basic' },
@@ -288,6 +289,9 @@
         { key: 'stitch', title: 'Stitch Border', desc: 'กรอบเย็บผ้าแบบเส้นสั้น', group: 'Basic' },
         { key: 'geo', title: 'Geometric Border', desc: 'กรอบลายเรขาคณิต', group: 'Decorative' },
         { key: 'doodle', title: 'Doodle Border', desc: 'กรอบวาดมือ (hand-drawn)', group: 'Decorative' },
+        { key: 'school', title: 'School Theme Border', desc: 'ธีมโรงเรียน ดินสอ/ดาว', group: 'Decorative' },
+        { key: 'polka', title: 'Polka Dot Border', desc: 'กรอบลายจุด', group: 'Decorative' },
+        { key: 'chevron', title: 'Chevron Border', desc: 'กรอบลายเชฟรอน', group: 'Decorative' },
         { key: 'stars', title: 'Star Border', desc: 'กรอบประดับดาว', group: 'Decorative' },
         { key: 'ribbon', title: 'Ribbon Border', desc: 'กรอบริบบิ้นสองชั้น', group: 'Decorative' },
         { key: 'scallop', title: 'Scallop Border', desc: 'กรอบโค้งลูกไม้', group: 'Decorative' },
@@ -295,6 +299,13 @@
         { key: 'cornerDots', title: 'Corner Dots', desc: 'จุดมุมกระดาษ', group: 'Corner' },
         { key: 'cornerBrackets', title: 'Corner Brackets', desc: 'วงเล็บมุมเอกสาร', group: 'Corner' },
     ];
+
+    function activateSidebarTab(tabId) {
+        const tabs = Array.from(document.querySelectorAll('.sidebar-tab'));
+        const panels = Array.from(document.querySelectorAll('.sidebar-tab-content'));
+        tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
+        panels.forEach(p => p.classList.toggle('active', p.id === tabId));
+    }
 
     function setupTabs() {
         const tabs = Array.from(document.querySelectorAll('.sidebar-tab'));
@@ -569,6 +580,10 @@
             border = new fabric.Group([outer, mid, inner], { objectCaching: false });
         } else if (kind === 'dashed') {
             border = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 2, strokeDashArray: [12, 8] });
+        } else if (kind === 'inkSaver') {
+            const outer = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 1.2 });
+            const inner = new fabric.Rect({ left: left + 12, top: top + 12, width: width - 24, height: height - 24, fill: 'transparent', stroke, strokeWidth: 0.8 });
+            border = new fabric.Group([outer, inner], { objectCaching: false });
         } else if (kind === 'dotted') {
             border = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 2, strokeDashArray: [2, 8] });
         } else if (kind === 'geo') {
@@ -588,6 +603,46 @@
         } else if (kind === 'doodle') {
             const p = `M ${left} ${top} Q ${left + width / 4} ${top - 6} ${left + width / 2} ${top} T ${left + width} ${top} L ${left + width} ${top + height} Q ${left + width + 8} ${top + height / 2} ${left + width} ${top} M ${left + width} ${top + height} Q ${left + width / 2} ${top + height + 8} ${left} ${top + height} L ${left} ${top}`;
             border = new fabric.Path(p, { fill: 'transparent', stroke, strokeWidth: 2 });
+        } else if (kind === 'school') {
+            const base = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 1.4 });
+            const starPath = 'M 0 -4 L 1.3 -1.3 L 4 -1.3 L 2 0.6 L 2.7 3.8 L 0 2.2 L -2.7 3.8 L -2 0.6 L -4 -1.3 L -1.3 -1.3 Z';
+            const deco = [];
+            for (let i = 0; i < 10; i++) {
+                const x = left + 20 + i * ((width - 40) / 9);
+                deco.push(new fabric.Path(starPath, { left: x, top: top + 6, fill: stroke, stroke: 'transparent', selectable: false, evented: false }));
+                deco.push(new fabric.Path(starPath, { left: x, top: top + height - 10, fill: stroke, stroke: 'transparent', selectable: false, evented: false }));
+            }
+            border = new fabric.Group([base, ...deco], { objectCaching: false });
+        } else if (kind === 'polka') {
+            const base = new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 1.2 });
+            const dots = [];
+            for (let x = left + 12; x <= left + width - 12; x += 24) {
+                dots.push(new fabric.Circle({ left: x, top: top + 4, radius: 2.2, fill: stroke, stroke: 'transparent', selectable: false, evented: false }));
+                dots.push(new fabric.Circle({ left: x, top: top + height - 8, radius: 2.2, fill: stroke, stroke: 'transparent', selectable: false, evented: false }));
+            }
+            for (let y = top + 20; y <= top + height - 20; y += 24) {
+                dots.push(new fabric.Circle({ left: left + 4, top: y, radius: 2.2, fill: stroke, stroke: 'transparent', selectable: false, evented: false }));
+                dots.push(new fabric.Circle({ left: left + width - 8, top: y, radius: 2.2, fill: stroke, stroke: 'transparent', selectable: false, evented: false }));
+            }
+            border = new fabric.Group([base, ...dots], { objectCaching: false });
+        } else if (kind === 'chevron') {
+            const mkChevron = (x1, x2, y, depth = 7, size = 18) => {
+                const seg = [];
+                let x = x1;
+                let idx = 0;
+                while (x <= x2) {
+                    const yOffset = idx % 2 === 0 ? -depth : depth;
+                    seg.push(`${idx === 0 ? 'M' : 'L'} ${x} ${y + yOffset}`);
+                    x += size;
+                    idx += 1;
+                }
+                return new fabric.Path(seg.join(' '), { fill: 'transparent', stroke, strokeWidth: 1.8 });
+            };
+            border = new fabric.Group([
+                mkChevron(left, left + width, top + 6),
+                mkChevron(left, left + width, top + height - 6),
+                new fabric.Rect({ left, top, width, height, fill: 'transparent', stroke, strokeWidth: 1.2 }),
+            ], { objectCaching: false });
         } else if (kind === 'corners') {
             const len = 58;
             const corners = [
@@ -1897,6 +1952,108 @@
         window.showToast?.(`สร้าง Crossword แล้ว (${placements.length} คำ)`);
     }
 
+    function addTracingWorksheet() {
+        const text = String(window.prompt('ข้อความฝึกคัดลายมือ', 'Aa Bb Cc') || 'Aa Bb Cc').trim() || 'Aa Bb Cc';
+        const rows = Math.min(10, Math.max(2, Number(window.prompt('จำนวนบรรทัด', '4')) || 4));
+        const left = 90;
+        const top = 130;
+        const width = Math.max(420, (canvas.width || 900) - 180);
+        const lineGap = 74;
+        canvas.add(new fabric.IText('Tracing Worksheet', { left, top: 72, fontFamily: 'Fredoka', fontSize: 34, fill: '#1e293b' }));
+        for (let i = 0; i < rows; i++) {
+            const y = top + i * lineGap;
+            canvas.add(new fabric.Line([left, y, left + width, y], { stroke: '#64748b', strokeWidth: 1.4 }));
+            canvas.add(new fabric.Line([left, y + 24, left + width, y + 24], { stroke: '#94a3b8', strokeWidth: 1, strokeDashArray: [6, 5] }));
+            canvas.add(new fabric.Line([left, y + 48, left + width, y + 48], { stroke: '#64748b', strokeWidth: 1.4 }));
+            canvas.add(new fabric.IText(text, {
+                left: left + 12,
+                top: y + 4,
+                fontFamily: 'Sarabun',
+                fontSize: 30,
+                fill: '#94a3b8',
+                opacity: 0.7,
+            }));
+        }
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('เพิ่ม Tracing worksheet แล้ว');
+    }
+
+    function addMatchingWorksheet() {
+        const pairCount = Math.min(8, Math.max(3, Number(window.prompt('จำนวนข้อจับคู่', '5')) || 5));
+        const leftWords = Array.from({ length: pairCount }, (_, i) => `A${i + 1}`);
+        const rightWords = Array.from({ length: pairCount }, (_, i) => `B${i + 1}`).sort(() => Math.random() - 0.5);
+        const leftX = 120;
+        const rightX = Math.max(420, (canvas.width || 900) - 260);
+        const top = 150;
+        const gap = 62;
+        canvas.add(new fabric.IText('Matching Worksheet', { left: 90, top: 74, fontFamily: 'Fredoka', fontSize: 34, fill: '#1e293b' }));
+        for (let i = 0; i < pairCount; i++) {
+            const y = top + i * gap;
+            canvas.add(new fabric.IText(`${i + 1}. ${leftWords[i]}`, { left: leftX, top: y, fontFamily: 'Sarabun', fontSize: 24, fill: '#1e293b' }));
+            canvas.add(new fabric.IText(String.fromCharCode(65 + i) + `. ${rightWords[i]}`, { left: rightX, top: y, fontFamily: 'Sarabun', fontSize: 24, fill: '#1e293b' }));
+            canvas.add(new fabric.Line([leftX + 150, y + 18, rightX - 16, y + 18], { stroke: '#cbd5e1', strokeWidth: 1.2, strokeDashArray: [8, 6] }));
+        }
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('เพิ่ม Matching worksheet แล้ว');
+    }
+
+    function addFillBlankWorksheet() {
+        const title = String(window.prompt('หัวข้อใบงานเติมคำ', 'Fill in the Blank') || 'Fill in the Blank').trim();
+        const count = Math.min(14, Math.max(4, Number(window.prompt('จำนวนข้อ', '8')) || 8));
+        const left = 90;
+        const top = 140;
+        const gap = 62;
+        canvas.add(new fabric.IText(title || 'Fill in the Blank', { left, top: 74, fontFamily: 'Fredoka', fontSize: 34, fill: '#1e293b' }));
+        for (let i = 0; i < count; i++) {
+            const y = top + i * gap;
+            const sentence = `${i + 1}) ________________________________.`;
+            canvas.add(new fabric.IText(sentence, {
+                left,
+                top: y,
+                fontFamily: 'Sarabun',
+                fontSize: 24,
+                fill: '#334155',
+            }));
+        }
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('เพิ่ม Fill-in-the-blank worksheet แล้ว');
+    }
+
+    function addBingoCardsWorksheet() {
+        const size = (window.prompt('ขนาดบิงโก 3 หรือ 5', '5') || '5').trim() === '3' ? 3 : 5;
+        const cards = Math.min(4, Math.max(1, Number(window.prompt('จำนวนการ์ดในหน้า', '2')) || 2));
+        const cardW = size === 5 ? 300 : 250;
+        const cardH = cardW;
+        const cols = cards > 2 ? 2 : cards;
+        const gapX = 42;
+        const gapY = 66;
+        const startX = 70;
+        const startY = 140;
+        canvas.add(new fabric.IText(`Bingo ${size}x${size}`, { left: 90, top: 72, fontFamily: 'Fredoka', fontSize: 34, fill: '#1e293b' }));
+
+        for (let i = 0; i < cards; i++) {
+            const row = Math.floor(i / cols);
+            const col = i % cols;
+            const x = startX + col * (cardW + gapX);
+            const y = startY + row * (cardH + gapY);
+            canvas.add(new fabric.Rect({ left: x, top: y, width: cardW, height: cardH, fill: 'transparent', stroke: '#334155', strokeWidth: 2 }));
+            const cell = cardW / size;
+            for (let c = 1; c < size; c++) {
+                canvas.add(new fabric.Line([x + c * cell, y, x + c * cell, y + cardH], { stroke: '#64748b', strokeWidth: 1.2 }));
+            }
+            for (let r = 1; r < size; r++) {
+                canvas.add(new fabric.Line([x, y + r * cell, x + cardW, y + r * cell], { stroke: '#64748b', strokeWidth: 1.2 }));
+            }
+            canvas.add(new fabric.IText(`Card ${i + 1}`, { left: x + 8, top: y - 28, fontFamily: 'Sarabun', fontSize: 18, fill: '#334155' }));
+        }
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('เพิ่ม Bingo cards worksheet แล้ว');
+    }
+
     function openSavedDb() {
         return new Promise((resolve, reject) => {
             const req = indexedDB.open(SAVED_DB, 1);
@@ -2264,8 +2421,21 @@
         document.getElementById('btnGenCoordinate')?.addEventListener('click', addCoordinatePlaneGenerator);
         document.getElementById('btnGenWordSearch')?.addEventListener('click', addWordSearch);
         document.getElementById('btnGenCrossword')?.addEventListener('click', addCrossword);
+        document.getElementById('btnGenTracing')?.addEventListener('click', addTracingWorksheet);
+        document.getElementById('btnGenMatching')?.addEventListener('click', addMatchingWorksheet);
+        document.getElementById('btnGenFillBlank')?.addEventListener('click', addFillBlankWorksheet);
+        document.getElementById('btnGenBingo')?.addEventListener('click', addBingoCardsWorksheet);
         document.getElementById('btnGenerateAnswerKey')?.addEventListener('click', () => window.wbGenerateAnswerKeyPage?.());
         document.getElementById('btnPlaySlideshow')?.addEventListener('click', startSlideshow);
+
+        document.getElementById('btnInsertHeadingQuick')?.addEventListener('click', () => addTextPreset('heading'));
+        document.getElementById('btnInsertSubheadingQuick')?.addEventListener('click', () => addTextPreset('subheading'));
+        document.getElementById('btnInsertBodyQuick')?.addEventListener('click', () => addTextPreset('body'));
+        document.getElementById('btnTextCurveQuick')?.addEventListener('click', convertTextToCurve);
+        document.getElementById('btnGoBordersTab')?.addEventListener('click', () => activateSidebarTab('bordersTab'));
+        document.getElementById('btnOpenMarketDashboard')?.addEventListener('click', () => {
+            document.getElementById('marketDashboardModal')?.style.setProperty('display', 'flex');
+        });
 
         document.getElementById('btnRefreshLayers')?.addEventListener('click', renderLayersPanel);
         document.getElementById('btnSaveElement')?.addEventListener('click', saveCurrentSelectionAsElement);

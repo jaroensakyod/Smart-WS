@@ -285,32 +285,73 @@
             </div>
 
             <div class="sidebar-tab-content" id="elementsTab">
-                <div class="panel-search-wrap">
-                    <button class="action-btn load-btn" id="toolImageSearch" style="width:100%">🖼 ค้นหารูปฟรี</button>
+                <div class="elements-accordion">
+                    <details class="elements-section" open>
+                        <summary>🖼 Graphics & Icons</summary>
+                        <div class="elements-section-body">
+                            <div class="panel-search-wrap" style="padding:0 0 6px 0;">
+                                <button class="action-btn load-btn" id="toolImageSearch" style="width:100%">🖼 ค้นหารูปฟรี</button>
+                            </div>
+                            <div class="panel-search-wrap" style="padding:0 0 6px 0;">
+                                <input type="text" id="svgSearch" class="panel-search" placeholder="🔍 ค้นหารูป..." />
+                            </div>
+                            <div class="panel-filter-wrap" style="padding:0 0 8px 0;">
+                                <label class="panel-filter-label">
+                                    <input type="checkbox" id="monoOnlyFilter" />
+                                    Monoline only
+                                </label>
+                            </div>
+                            <div class="panel-upload" style="display:flex;gap:6px;align-items:center;padding:0 0 8px 0;">
+                                <select id="basicShapeSelect" class="toolbar-select" style="flex:1;">
+                                    <option value="square">⬛ Square</option>
+                                    <option value="circle">⚪ Circle</option>
+                                    <option value="triangle">🔺 Triangle</option>
+                                    <option value="arrow">➡ Arrow</option>
+                                </select>
+                                <button class="action-btn load-btn" id="btnAddBasicShape" style="padding:0 12px;">Add</button>
+                            </div>
+                            <div class="panel-upload" style="padding:0 0 8px 0;">
+                                <label class="upload-btn" for="svgFileInput">📁 นำเข้า SVG จากเครื่อง</label>
+                                <input type="file" id="svgFileInput" accept=".svg" style="display:none" />
+                            </div>
+                            <div class="panel-categories" id="panelCategories"></div>
+                        </div>
+                    </details>
+
+                    <details class="elements-section">
+                        <summary>📝 Text & Typography</summary>
+                        <div class="elements-section-body section-btn-grid">
+                            <button class="action-btn load-btn" id="btnInsertHeadingQuick">+ Heading</button>
+                            <button class="action-btn load-btn" id="btnInsertSubheadingQuick">+ Subheading</button>
+                            <button class="action-btn load-btn" id="btnInsertBodyQuick">+ Body Text</button>
+                            <button class="action-btn load-btn" id="btnTextCurveQuick">〰 Curved Text</button>
+                        </div>
+                    </details>
+
+                    <details class="elements-section">
+                        <summary>🧩 Generators</summary>
+                        <div class="elements-section-body section-btn-grid">
+                            <button class="action-btn load-btn" id="btnGenTracing">✍ Tracing Worksheet</button>
+                            <button class="action-btn load-btn" id="btnGenMatching">🔗 Matching Worksheet</button>
+                            <button class="action-btn load-btn" id="btnGenFillBlank">📝 Fill in the Blank</button>
+                            <button class="action-btn load-btn" id="btnGenBingo">🎯 Bingo Cards</button>
+                        </div>
+                    </details>
+
+                    <details class="elements-section">
+                        <summary>🖼 Borders & Frames</summary>
+                        <div class="elements-section-body section-btn-grid">
+                            <button class="action-btn load-btn" id="btnGoBordersTab">Open Borders Tab</button>
+                        </div>
+                    </details>
+
+                    <details class="elements-section">
+                        <summary>📊 Market Analysis</summary>
+                        <div class="elements-section-body section-btn-grid">
+                            <button class="action-btn export-btn" id="btnOpenMarketDashboard">Open Dashboard</button>
+                        </div>
+                    </details>
                 </div>
-                <div class="panel-search-wrap">
-                    <input type="text" id="svgSearch" class="panel-search" placeholder="🔍 ค้นหารูป..." />
-                </div>
-                <div class="panel-filter-wrap">
-                    <label class="panel-filter-label">
-                        <input type="checkbox" id="monoOnlyFilter" />
-                        Monoline only
-                    </label>
-                </div>
-                <div class="panel-upload" style="display:flex;gap:6px;align-items:center;">
-                    <select id="basicShapeSelect" class="toolbar-select" style="flex:1;">
-                        <option value="square">⬛ Square</option>
-                        <option value="circle">⚪ Circle</option>
-                        <option value="triangle">🔺 Triangle</option>
-                        <option value="arrow">➡ Arrow</option>
-                    </select>
-                    <button class="action-btn load-btn" id="btnAddBasicShape" style="padding:0 12px;">Add</button>
-                </div>
-                <div class="panel-upload">
-                    <label class="upload-btn" for="svgFileInput">📁 นำเข้า SVG จากเครื่อง</label>
-                    <input type="file" id="svgFileInput" accept=".svg" style="display:none" />
-                </div>
-                <div class="panel-categories" id="panelCategories"></div>
             </div>
 
             <div class="sidebar-tab-content" id="bordersTab">
@@ -698,13 +739,47 @@
         </div>
     </div>
 
+    <div id="marketDashboardModal" class="modal-overlay" style="display:none">
+        <div class="modal-box modal-box-wide">
+            <div class="modal-header">
+                <span class="modal-icon">📊</span>
+                <h2 class="modal-title">Market Analysis Dashboard (TpT / KDP)</h2>
+                <button class="modal-close" id="marketDashboardClose">✕</button>
+            </div>
+            <div class="panel-search-wrap" style="padding:0">
+                <input type="text" id="marketKeywordInput" class="panel-search" placeholder="เช่น scissor skills, tracing letters, SEL worksheet" />
+            </div>
+            <div class="section-btn-grid" style="margin-top:2px;">
+                <button class="action-btn load-btn" id="btnAnalyzeNiche">Analyze Niche</button>
+                <button class="action-btn load-btn" id="btnRefreshMarketData">Refresh Trends</button>
+            </div>
+
+            <div class="market-grid" style="margin-top:10px;">
+                <div class="market-card">
+                    <div class="market-card-title">🔥 Trending Niches</div>
+                    <div id="marketTrendingList" class="market-list"></div>
+                </div>
+                <div class="market-card">
+                    <div class="market-card-title">📈 Opportunity Score</div>
+                    <div id="marketOpportunityResult" class="market-result">กรอกคีย์เวิร์ดแล้วกด Analyze</div>
+                </div>
+                <div class="market-card">
+                    <div class="market-card-title">📅 Seasonal Forecaster</div>
+                    <div id="marketSeasonalList" class="market-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <footer class="app-footer">Copyright © 2026 The Coach inc.</footer>
 
     <script src="data/svgLibrary.js"></script>
+    <script src="data/marketTrends.js"></script>
     <script src="app.js"></script>
     <script src="panel.js"></script>
     <script src="toolbar.js"></script>
     <script src="proFeatures.js"></script>
+    <script src="market_analysis.js"></script>
     <script src="export.utils.js"></script>
     <script src="odl.import.utils.js"></script>
     <script src="export.js"></script>

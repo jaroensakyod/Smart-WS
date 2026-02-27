@@ -1441,6 +1441,111 @@ body.is-slideshow .page-grid {
     display: block;
 }
 
+.elements-accordion {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.elements-section {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface2);
+    overflow: hidden;
+}
+
+.elements-section>summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 10px;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.elements-section>summary::-webkit-details-marker {
+    display: none;
+}
+
+.elements-section>summary::after {
+    content: '▾';
+    color: var(--muted);
+    font-size: 12px;
+    transition: transform .15s ease;
+}
+
+.elements-section[open]>summary::after {
+    transform: rotate(180deg);
+}
+
+.elements-section-body {
+    border-top: 1px solid var(--border);
+    padding: 10px;
+}
+
+.section-btn-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+}
+
+.market-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(220px, 1fr));
+    gap: 10px;
+}
+
+.market-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface2);
+    padding: 10px;
+}
+
+.market-card-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+.market-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 280px;
+    overflow: auto;
+}
+
+.market-item {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 11px;
+}
+
+.market-item-meta {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.market-result {
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    color: var(--muted);
+    min-height: 72px;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
 .template-gallery {
     display: grid;
     grid-template-columns: 1fr;
