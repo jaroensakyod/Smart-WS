@@ -378,6 +378,13 @@
                             <button class="action-btn export-btn" id="btnOpenMarketDashboard">Open Dashboard</button>
                         </div>
                     </details>
+
+                    <details class="elements-section">
+                        <summary>🤖 AI Prompt Guide</summary>
+                        <div class="elements-section-body section-btn-grid">
+                            <button class="action-btn load-btn" id="btnOpenAIPromptGuide">Open Prompt Guide</button>
+                        </div>
+                    </details>
                 </div>
             </div>
 
@@ -818,6 +825,21 @@
                     <div id="marketSeasonalList" class="market-list"></div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div id="aiPromptGuideModal" class="modal-overlay" style="display:none">
+        <div class="modal-box modal-box-wide" style="max-width:1040px;max-height:88vh;overflow:auto">
+            <div class="modal-header">
+                <span class="modal-icon">🤖</span>
+                <h2 class="modal-title">AI Prompt Guide for Worksheets</h2>
+                <button class="modal-close" id="aiPromptGuideClose">✕</button>
+            </div>
+            <div class="img-search-hint" style="margin-bottom:10px">
+                เลือกประเภทใบงาน → ปรับข้อความใน Prompt → กดคัดลอก แล้วนำไปวางใน AI ที่ต้องการใช้งาน
+            </div>
+            <div id="aiPromptCards" class="market-grid"
+                style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px;"></div>
         </div>
     </div>
 

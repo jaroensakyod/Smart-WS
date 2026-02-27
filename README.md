@@ -1,137 +1,41 @@
-# Smart WS Pro
+# Smart WS
 
-Smart WS Pro คือ Chrome New Tab Extension สำหรับครูและผู้สร้างสื่อการสอน ใช้สร้างใบงานและสไลด์จาก Fabric.js แบบหลายหน้า แก้ไขง่าย และส่งออกได้ทั้ง PNG, PDF, PPTX
+Smart WS คือ Chrome New Tab Extension สำหรับสร้างใบงาน/สื่อการสอนแบบลากวางบน Canvas และส่งออกได้ทันที
 
-## จุดเด่นล่าสุด
+## ใช้ทำอะไรได้บ้าง
+- สร้างเอกสารหลายหน้า (Worksheet / Activity Pack / Slide)
+- ใช้เทมเพลตและตัวช่วย Generator เพื่อลดเวลาทำงาน
+- เพิ่มข้อความ สมการ รูปภาพ ไอคอน และองค์ประกอบกราฟิก
+- ส่งออกเป็น PNG, PDF, PPTX
 
-- รองรับเอกสารหลายหน้า (เพิ่ม/ลบ/ทำซ้ำ/จัดลำดับ/กระโดดหน้า)
-- รองรับขนาดกระดาษและสไลด์
-  - A4 แนวตั้ง
-  - A4 แนวนอน
-  - US Letter
-  - 16:9 Presentation
-- Template ใช้งานได้จริงครบชุดสำคัญ (รวม Timeline, Fishbone, Lab Report, Music Sheet, Flashcards, Sudoku, Maze, Presentation layouts)
-- Template Discovery แบบใหม่: ค้นหาและกรองตาม Grade Band / Grade / Subject / Skill / Difficulty / Format
-- มี sections ใน gallery: All / Featured / Popular / New
-- เพิ่มเทมเพลต P0: Lesson Plan และ Reading Comprehension
-- ขยายคลังเทมเพลตช่วง Elementary/Middle เพิ่ม (เช่น Letter Tracing, Picture Vocabulary, Add/Sub Practice, Context Clues, Cause-Effect, Reflection Journal, Project Planning)
-- ขยายคลังเทมเพลตช่วง High/Adult เพิ่ม (เช่น Critical Reading, Argument Planner, CER, Source Analysis, Workplace Reading, Competency Rubric, Portfolio Evidence)
-- UI Template แบบสองภาษา EN (TH) ทั้ง dropdown และ gallery
-- Telemetry สำหรับ Template Discovery และ Apply flow (requested/cancelled/success, segment/filter/gallery view)
-- Generator Registry กลางใน `proFeatures.js` เพื่อลดการ bind event กระจัดกระจายและขยายได้เร็วขึ้น
-- Telemetry สำหรับ Generator flow (requested / cancelled / success / error)
-- Telemetry Report View ใน sidebar: Dump JSON / Clear / Mini dashboard
-- เพิ่ม P0 Generators ใหม่ 6 ตัว
-  - Word Scramble
-  - Cryptogram
-  - Missing Letters
-  - Multiple Choice Quiz
-  - Short Answer / Exit Ticket
-  - ABC Order Cut & Glue
-- รองรับนำเข้า OpenDataLoader JSON (MVP) เพื่อแปลงเป็นหน้า workbook อัตโนมัติ
-- Export ที่เสถียรขึ้น
-  - PDF หลายหน้าแบบประมวลผลทีละหน้า (ลด peak memory)
-  - PPTX หลายหน้าใช้งานได้จริงผ่าน PptxGenJS
-- มี Utility + Unit tests สำหรับ logic export profile/layout เพื่อลด regression
+## ฟีเจอร์หลักแบบสั้น
+- Multi-page Workbook: เพิ่ม/ลบ/ทำซ้ำ/จัดลำดับหน้า
+- Template + Generator: ใบงานหลายรูปแบบพร้อมใช้งาน
+- AI Prompt Guide: คัดลอก prompt ไปใช้กับ AI ภายนอก
+- Market Analysis: ช่วยดูแนวโน้มไอเดียสินค้า
+- Export Engine: รองรับงานหลายหน้าได้เสถียร
 
----
+## โครงสร้างไฟล์สำคัญ
+- `newtab.html` หน้าหลักของแอป
+- `style.css` สไตล์ทั้งหมด
+- `app.js` แกน canvas/workbook
+- `proFeatures.js` ฟีเจอร์เสริม + generators + modal logic
+- `export.js`, `export.utils.js` ระบบ export
+- `data/` ข้อมูล templates และ taxonomy
+- `vendor/` ไลบรารีภายนอก
+- `docs/` เอกสารแผน/บันทึกการพัฒนา
 
-## โครงสร้างไฟล์หลัก
+## เอกสารใหม่
+- ความรู้รวมไฟล์เดียว: `docs/SMARTWS_KNOWLEDGE_BASE.md`
 
-- `newtab.html` — หน้า UI หลัก
-- `style.css` — ระบบสไตล์และ layout
-- `app.js` — Canvas engine, workbook state, templates, page nav
-- `proFeatures.js` — ฟีเจอร์โปร, gallery, generators, zoom, slideshow
-- `export.js` — Export PNG/PDF/PPTX + save/load project
-- `export.utils.js` — helper สำหรับ export profile/page spec/layout spec
-- `equation.js` — โหมดสมการ LaTeX และ text+math
-- `toolbar.js`, `panel.js` — wiring ของเครื่องมือและ sidebar
-- `tests/export.utils.test.js` — unit tests ของ export utilities
-- `odl.import.utils.js` — parser/mapping utility สำหรับ OpenDataLoader JSON
-- `odl.import.js` — UI wiring สำหรับปุ่มนำเข้า ODL JSON
-- `tests/odl.import.utils.test.js` — unit tests สำหรับ ODL importer utility
-- `vendor/`
-  - `fabric.min.js`
-  - `jspdf.umd.min.js`
-  - `pptxgen.bundle.js`
-  - `katex/*`
-
----
-
-## ฟีเจอร์หลัก
-
-### 1) Workbook หลายหน้า
-
-- เพิ่มหน้า / ลบหน้า / ทำซ้ำหน้า
-- สลับหน้าแบบ Prev/Next
-- Jump to Page พร้อม validation
-- Page Manager พร้อม thumbnail และลากสลับลำดับ
-
-### 2) เครื่องมือแก้ไขบน Canvas
-
-- Select, Text, Rect, Table, Line, Arrow, Curve, Callout
-- Group/Ungroup, Lock/Unlock, Arrange layer
-- Zoom In/Out/Fit, Grid, Snap
-
-### 3) Templates และ Assets
-
-- เทมเพลตด้านการเรียนการสอนและพรีเซนต์
-- กรองเทมเพลตตามช่วงชั้น (Elementary / Middle / High / Adult) ได้โดยตรง
-- Border gallery, shape tools, upload assets
-- Saved elements (IndexedDB)
-
-### 4) Generators
-
-- Math (basic/advanced/fraction/algebra/geometry)
-- Graph/Parabola/Number line/Coordinate
-- Word Search / Crossword
-- Word Scramble / Cryptogram / Missing Letters
-- Multiple Choice Quiz / Short Answer / Exit Ticket
-- ABC Order Cut & Glue
-- Answer Key generation
-
-### 5) สมการและข้อความคณิต
-
-- รองรับ KaTeX
-- รองรับ text + math ภายในเอกสาร
-
-### 6) Export
-
-- PNG (หน้าปัจจุบัน)
-- PDF (ทุกหน้า)
-- PPTX (ทุกหน้า)
-- Preview watermark
-
----
-
-## Export Reliability (สำคัญ)
-
-รอบล่าสุดแก้ปัญหาเครื่องสเปกต่ำที่ export หลายหน้าแล้วล้ม โดยเปลี่ยนจากการกอง dataURL ทุกหน้าในหน่วยความจำ ไปเป็นประมวลผลทีละหน้าและใส่ลงไฟล์ทันที
-
-- PDF ใช้ adaptive profile ตามจำนวนหน้า
-  - เอกสารเล็ก: คุณภาพสูง
-  - เอกสารใหญ่: memory saver
-- PPTX ใช้ PptxGenJS แบบ bundle ใน `vendor/pptxgen.bundle.js`
-- มี dependency checks และ toast แจ้งสถานะ export ระหว่างทำงาน
-
----
-
-## วิธีติดตั้ง (Developer Mode)
-
-1. เปิด Chrome ที่ `chrome://extensions`
+## ติดตั้ง (Developer Mode)
+1. เปิด `chrome://extensions`
 2. เปิด `Developer mode`
 3. กด `Load unpacked`
-4. เลือกโฟลเดอร์ `Smart-WS`
+4. เลือกโฟลเดอร์โปรเจกต์ `Smart-WS`
 5. เปิดแท็บใหม่เพื่อใช้งาน
 
----
-
-## การทดสอบ
-
-### Unit test
-
-รันจากโฟลเดอร์โปรเจกต์:
-
+## ทดสอบ
 ```bash
 node --test tests/export.utils.test.js
 node --test tests/iconify.utils.test.js
@@ -140,46 +44,5 @@ node --test tests/template.catalog.test.js
 node --test tests/template.handlers.test.js
 ```
 
-ครอบคลุม:
-
-- page count normalization
-- render profile selection ตามจำนวนหน้า
-- PDF page spec จาก paper config
-- PPTX layout conversion (mm -> inches)
-
----
-
-## หมายเหตุพัฒนา
-
-- ระบบแยก core (`app.js`) กับ feature layer (`proFeatures.js`) เพื่อง่ายต่อการขยาย
-- หากเพิ่ม template ใหม่ ให้ sync key ทั้งใน
-  - `newtab.html` (option value)
-  - `proFeatures.js` (`templateCards`)
-  - `app.js` (`applyTemplate(type)`)
-- หากเพิ่ม export mode ใหม่ แนะนำให้วาง logic เลือก profile/layout ที่ `export.utils.js` และเพิ่ม test ใน `tests/export.utils.test.js`
-
----
-
-## Release Notes (2026-02-27)
-
-- ส่งมอบ Grade-level catalog ครบ 4 ช่วงชั้น: Elementary / Middle / High / Adult
-- ส่งมอบ template discovery รุ่นใช้งานจริง (search + filters + segments + ranking)
-- เพิ่มและเชื่อม template packs ใหม่ครบทั้ง metadata, gallery cards, และ `applyTemplate`
-- ส่งมอบ Generator Registry + Generator telemetry สำหรับการติดตามการใช้งาน
-- ส่งมอบ P0 generators เพิ่ม 6 ตัวเพื่อทำใบงานได้เร็วขึ้น
-- เพิ่ม telemetry ครบวงจรฝั่ง discovery/apply พร้อม UI สำหรับ export/clear/report
-- ผ่าน syntax checks และ unit tests ที่มีในโปรเจกต์
-
-## Release Checklist
-
-- [x] Discovery + ranking + segment flow ใช้งานได้
-- [x] Template packs ทุกช่วงชั้นเชื่อม end-to-end
-- [x] Telemetry API + UI report พร้อมใช้งาน
-- [x] Regression smoke tests ผ่าน
-- [x] Documentation updated
-
----
-
-## License
-
-ใช้งานภายในโปรเจกต์ Smart WS Pro (โปรดจัดการ license ภายนอกของไลบรารี vendor ตามเงื่อนไขต้นทาง)
+## หมายเหตุ
+- โปรเจกต์นี้เป็น Chrome Extension: หากย้ายไฟล์ runtime ต้องอัปเดต path ใน `manifest.json` และ `newtab.html` ให้ครบ
