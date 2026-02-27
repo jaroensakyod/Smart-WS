@@ -12,7 +12,6 @@ const PAPER_PRESETS = {
 };
 let paperSize = 'a4';
 let gridEnabled = false;
-let snapEnabled = true;
 let worksheetMode = 'student'; // student | answer
 const GRID_SIZE = 24;
 const SNAP_TOLERANCE = 8;
@@ -85,10 +84,8 @@ const canvas = new fabric.Canvas('worksheetCanvas', {
 
 function syncUiToggles() {
     document.body.classList.toggle('show-grid', gridEnabled);
-    const snapBtn = document.getElementById('btnToggleSnap');
     const gridBtn = document.getElementById('btnToggleGrid');
     const modeBtn = document.getElementById('btnToggleAnswerMode');
-    if (snapBtn) snapBtn.classList.toggle('active', snapEnabled);
     if (gridBtn) gridBtn.classList.toggle('active', gridEnabled);
     if (modeBtn) {
         modeBtn.textContent = worksheetMode === 'answer' ? '🧑‍🏫 โหมดเฉลย' : '👩‍🎓 โหมดนักเรียน';
@@ -101,7 +98,7 @@ function applyPaperLayout(size = paperSize) {
     activePaper = cfg;
     PAPER_W = cfg.width;
     PAPER_H = cfg.height;
-    
+
     if (window.wbSetZoom && window.wbGetZoom) {
         window.wbSetZoom(window.wbGetZoom());
     } else {
@@ -379,7 +376,6 @@ let writingLineSettings = {
     width: 520,
     rows: 4,
 };
-let activeGuideLines = [];
 
 function makeWritingLinesAt(x, y, width = 520, rows = 4, style = 'primary', spacing = 46) {
     const lines = [];
@@ -408,14 +404,14 @@ function makeWritingLinesAt(x, y, width = 520, rows = 4, style = 'primary', spac
             }));
         }
     } else {
-    for (let i = 0; i < rows; i++) {
-        const baseY = y + i * rowHeight;
-        lines.push(new fabric.Line([x, baseY, x + width, baseY], {
-            stroke: '#1e293b',
-            strokeWidth: 1.6,
-            selectable: false,
-            evented: false,
-        }));
+        for (let i = 0; i < rows; i++) {
+            const baseY = y + i * rowHeight;
+            lines.push(new fabric.Line([x, baseY, x + width, baseY], {
+                stroke: '#1e293b',
+                strokeWidth: 1.6,
+                selectable: false,
+                evented: false,
+            }));
             if (mode === 'dotted') {
                 lines.push(new fabric.Line([x, baseY + rowHeight / 2, x + width, baseY + rowHeight / 2], {
                     stroke: '#475569',
@@ -1458,21 +1454,18 @@ function getBoundsForSnap(obj) {
 }
 
 function snapMovingObject(obj) {
-    if (!snapEnabled || !obj) return;
+    if (!obj) return;
     const bounds = getBoundsForSnap(obj);
     let nextLeft = obj.left;
     let nextTop = obj.top;
-    activeGuideLines = [];
 
     const targetCenterX = PAPER_W / 2;
     const targetCenterY = PAPER_H / 2;
     if (Math.abs(bounds.centerX - targetCenterX) <= SNAP_TOLERANCE) {
         nextLeft += targetCenterX - bounds.centerX;
-        activeGuideLines.push({ x1: targetCenterX, y1: 0, x2: targetCenterX, y2: PAPER_H });
     }
     if (Math.abs(bounds.centerY - targetCenterY) <= SNAP_TOLERANCE) {
         nextTop += targetCenterY - bounds.centerY;
-        activeGuideLines.push({ x1: 0, y1: targetCenterY, x2: PAPER_W, y2: targetCenterY });
     }
 
     const gridX = Math.round(nextLeft / GRID_SIZE) * GRID_SIZE;
@@ -1490,19 +1483,15 @@ function snapMovingObject(obj) {
 
         if (deltaL <= SNAP_TOLERANCE) {
             nextLeft += ob.left - bounds.left;
-            activeGuideLines.push({ x1: ob.left, y1: 0, x2: ob.left, y2: PAPER_H });
         }
         if (deltaR <= SNAP_TOLERANCE) {
             nextLeft += ob.right - bounds.right;
-            activeGuideLines.push({ x1: ob.right, y1: 0, x2: ob.right, y2: PAPER_H });
         }
         if (deltaT <= SNAP_TOLERANCE) {
             nextTop += ob.top - bounds.top;
-            activeGuideLines.push({ x1: 0, y1: ob.top, x2: PAPER_W, y2: ob.top });
         }
         if (deltaB <= SNAP_TOLERANCE) {
             nextTop += ob.bottom - bounds.bottom;
-            activeGuideLines.push({ x1: 0, y1: ob.bottom, x2: PAPER_W, y2: ob.bottom });
         }
     });
 
@@ -1874,24 +1863,6 @@ canvas.on('object:moving', (opt) => {
     if (isReplaying) return;
     snapMovingObject(opt.target);
 });
-canvas.on('mouse:up', () => {
-    activeGuideLines = [];
-    canvas.requestRenderAll();
-});
-canvas.on('after:render', () => {
-    if (!activeGuideLines.length) return;
-    const ctx = canvas.getSelectionContext();
-    ctx.save();
-    ctx.strokeStyle = 'rgba(220,38,38,0.78)';
-    ctx.lineWidth = 1;
-    activeGuideLines.forEach(g => {
-        ctx.beginPath();
-        ctx.moveTo(g.x1, g.y1);
-        ctx.lineTo(g.x2, g.y2);
-        ctx.stroke();
-    });
-    ctx.restore();
-});
 
 /* ── 5. SHAPE DRAWING (Rect, Line) ─────────────────────────── */
 const getFill = () => document.getElementById('colorFill')?.value || '#ffffff';
@@ -2204,10 +2175,6 @@ document.getElementById('pageSizeSelect')?.addEventListener('change', (e) => {
 });
 document.getElementById('btnToggleGrid')?.addEventListener('click', () => {
     gridEnabled = !gridEnabled;
-    syncUiToggles();
-});
-document.getElementById('btnToggleSnap')?.addEventListener('click', () => {
-    snapEnabled = !snapEnabled;
     syncUiToggles();
 });
 document.getElementById('btnDuplicateAnswer')?.addEventListener('click', duplicateAsAnswerKey);

@@ -12,6 +12,26 @@
     const STORAGE_COLORS = 'smartws_doc_colors_v1';
     const SAVED_DB = 'smartws_saved_elements_v1';
     const SAVED_STORE = 'elements';
+    const templateCatalogApi = window.SMARTWS_TEMPLATE_CATALOG || {};
+    const templateHandlersApi = window.SMARTWS_TEMPLATE_HANDLERS || {};
+    const iconifyApi = window.SMARTWS_ICONIFY_UTILS || {};
+    const fullCatalog = Array.isArray(templateCatalogApi.TEMPLATE_CATALOG)
+        ? templateCatalogApi.TEMPLATE_CATALOG
+        : [];
+    const legacyCatalog = fullCatalog.filter(item => (item.tags || []).includes('cohort-legacy'));
+    const newVisualCatalog = fullCatalog.filter(item => (item.tags || []).includes('cohort-new'));
+    const waveACatalog = legacyCatalog.slice(0, 50);
+    const waveAHandlerMap = typeof templateHandlersApi.buildWaveAHandlerMap === 'function'
+        ? templateHandlersApi.buildWaveAHandlerMap(fullCatalog)
+        : {};
+    const waveBCatalog = legacyCatalog.slice(50);
+    const waveBHandlerMap = typeof templateHandlersApi.buildWaveBHandlerMap === 'function'
+        ? templateHandlersApi.buildWaveBHandlerMap(fullCatalog)
+        : {};
+    const waveCCatalog = newVisualCatalog;
+    const waveCHandlerMap = typeof templateHandlersApi.buildWaveCHandlerMap === 'function'
+        ? templateHandlersApi.buildWaveCHandlerMap(fullCatalog)
+        : {};
 
     const baseTemplateCards = [
         { key: 'taskcards4', title: 'Task Cards 4 (การ์ดงาน 4)', desc: 'การ์ดงาน 4 ช่องพร้อมเส้นตัด' },
@@ -230,7 +250,91 @@
         return normalized;
     }
 
-    const templateCards = baseTemplateCards.map(normalizeTemplateMeta);
+    function mapGradeBandToFilters(gradeBand) {
+        const key = String(gradeBand || '').trim().toLowerCase();
+        if (key === 'pre-k') {
+            return {
+                gradeBands: ['elementary'],
+                grades: ['preschool', 'kindergarten'],
+            };
+        }
+        if (key === 'k-1') {
+            return {
+                gradeBands: ['elementary'],
+                grades: ['kindergarten', 'g1'],
+            };
+        }
+        if (key === 'g1-g2') {
+            return {
+                gradeBands: ['elementary'],
+                grades: ['g1', 'g2'],
+            };
+        }
+        if (key === 'g3-g5') {
+            return {
+                gradeBands: ['elementary'],
+                grades: ['g3', 'g4', 'g5'],
+            };
+        }
+        return {
+            gradeBands: ['elementary', 'middle', 'high', 'adult'],
+            grades: ['preschool', 'kindergarten', 'g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10', 'g11', 'g12', 'adult'],
+        };
+    }
+
+    function mapCategoryToSubjectsSkills(category) {
+        const c = String(category || '').trim();
+        if (c === 'early_learning_games') return { subjects: ['language'], skills: ['vocabulary', 'reasoning'] };
+        if (c === 'math_visuals') return { subjects: ['math'], skills: ['computation', 'reasoning'] };
+        if (c === 'classroom_management_decor') return { subjects: ['planning'], skills: ['communication', 'reflection'] };
+        if (c === 'ela_graphic_organizers') return { subjects: ['language'], skills: ['reading', 'writing', 'analysis'] };
+        return { subjects: ['project'], skills: ['communication'] };
+    }
+
+    function buildTemplateCardsFromCatalog(catalog) {
+        const list = Array.isArray(catalog) ? catalog : [];
+        const seenFamily = new Set();
+        return list
+            .filter((tpl) => {
+                const key = `${tpl.category || ''}::${tpl.familyKey || tpl.id || ''}`;
+                if (seenFamily.has(key)) return false;
+                seenFamily.add(key);
+                return true;
+            })
+            .map((tpl, index) => {
+                const mappedGrade = mapGradeBandToFilters(tpl.gradeBand);
+                const mappedCategory = mapCategoryToSubjectsSkills(tpl.category);
+                const title = String(tpl.title || 'Template').trim();
+                const desc = `${tpl.id || ''} • ${tpl.category || '-'} • ${tpl.format || 'worksheet'}`;
+                const item = {
+                    key: `catalog_${tpl.id}`,
+                    title,
+                    desc,
+                    category: tpl.category || '',
+                    familyKey: tpl.familyKey || '',
+                    variantIndex: Number.isFinite(tpl.variantIndex) ? tpl.variantIndex : 0,
+                    gradeBands: mappedGrade.gradeBands,
+                    grades: mappedGrade.grades,
+                    subjects: mappedCategory.subjects,
+                    skills: mappedCategory.skills,
+                    difficulty: (tpl.tags || []).find(tag => String(tag).startsWith('difficulty-'))
+                        ? String((tpl.tags || []).find(tag => String(tag).startsWith('difficulty-'))).replace('difficulty-', '')
+                        : 'beginner',
+                    format: tpl.format || 'worksheet',
+                    isFeatured: index < 24,
+                    isNew: (tpl.tags || []).includes('cohort-new'),
+                    popularityScore: 60 + ((index * 7) % 36),
+                    catalogTemplate: tpl,
+                };
+                item.searchText = `${item.title} ${item.desc} ${(tpl.tags || []).join(' ')} ${item.subjects.join(' ')} ${item.skills.join(' ')}`.toLowerCase();
+                return item;
+            });
+    }
+
+    const templateCards = [
+        ...baseTemplateCards.map(normalizeTemplateMeta),
+        ...buildTemplateCardsFromCatalog(newVisualCatalog),
+    ];
 
     const templateFilterState = {
         segment: 'all',
@@ -386,6 +490,9 @@
     function buildTemplateFilterState() {
         return {
             search: (document.getElementById('templateSearch')?.value || '').trim().toLowerCase(),
+            category: document.getElementById('templateCategoryFilter')?.value || 'all',
+            themeKeyword: (document.getElementById('templateThemeKeyword')?.value || '').trim().toLowerCase(),
+            iconMode: document.getElementById('templateIconMode')?.value || 'random',
             segment: templateFilterState.segment,
             gradeBand: document.getElementById('templateGradeBand')?.value || 'all',
             grade: document.getElementById('templateGrade')?.value || 'all',
@@ -402,6 +509,7 @@
     }
 
     function computeTemplateRank(item, state) {
+        if (state.category !== 'all' && String(item.category || '') !== state.category) return -1;
         if (state.gradeBand !== 'all' && !item.gradeBands.includes(state.gradeBand)) return -1;
         if (state.grade !== 'all' && !item.grades.includes(state.grade)) return -1;
         if (state.difficulty !== 'all' && item.difficulty !== state.difficulty) return -1;
@@ -409,6 +517,7 @@
         if (!includesAny(item.subjects, state.subjects)) return -1;
         if (!includesAny(item.skills, state.skills)) return -1;
         if (state.search && !item.searchText.includes(state.search)) return -1;
+        if (state.themeKeyword && !item.searchText.includes(state.themeKeyword)) return -1;
         if (state.segment === 'featured' && !item.isFeatured) return -1;
         if (state.segment === 'new' && !item.isNew) return -1;
 
@@ -436,6 +545,12 @@
         return ranked.map(entry => entry.item);
     }
 
+    function pickPrimaryCatalogTemplate(state) {
+        const list = filterAndSortTemplates(state);
+        const firstCatalogCard = list.find(item => !!item.catalogTemplate);
+        return firstCatalogCard?.catalogTemplate || null;
+    }
+
     function updateTemplateSummary(total, shown, state) {
         const summary = document.getElementById('templateResultSummary');
         if (!summary) return;
@@ -447,11 +562,14 @@
         const list = filterAndSortTemplates(state);
         const signature = [
             state.segment,
+            state.category,
             state.gradeBand,
             state.grade,
             state.difficulty,
             state.format,
             state.search,
+            state.themeKeyword,
+            state.iconMode,
             [...state.subjects].sort().join(','),
             [...state.skills].sort().join(','),
             list.length,
@@ -462,20 +580,29 @@
                 shown: list.length,
                 total: templateCards.length,
                 segment: state.segment,
+                category: state.category,
                 gradeBand: state.gradeBand,
                 grade: state.grade,
                 difficulty: state.difficulty,
                 format: state.format,
                 hasSearch: !!state.search,
+                hasThemeKeyword: !!state.themeKeyword,
                 subjectCount: state.subjects.size,
                 skillCount: state.skills.size,
             });
         }
         buildCardGallery('templateGallery', list, (item) => {
             const select = document.getElementById('templateSelect');
-            if (select) select.value = item.key;
-            emitTelemetry('template_apply_requested', { source: 'template_gallery', template: item.key });
-            window.wbApplyTemplate?.(item.key);
+            if (select && !item.catalogTemplate) select.value = item.key;
+            emitTelemetry('template_apply_requested', {
+                source: 'template_gallery',
+                template: item.catalogTemplate?.id || item.key,
+            });
+            if (item.catalogTemplate) {
+                addWaveATemplateFromCatalog(item.catalogTemplate, getTemplateGenerationOptions());
+            } else {
+                window.wbApplyTemplate?.(item.key);
+            }
             markSaving();
             updateTelemetryPanel();
         });
@@ -486,15 +613,21 @@
     function resetTemplateFilters() {
         const search = document.getElementById('templateSearch');
         const band = document.getElementById('templateGradeBand');
+        const category = document.getElementById('templateCategoryFilter');
         const grade = document.getElementById('templateGrade');
         const difficulty = document.getElementById('templateDifficulty');
         const format = document.getElementById('templateFormat');
+        const themeKeyword = document.getElementById('templateThemeKeyword');
+        const iconMode = document.getElementById('templateIconMode');
         if (search) search.value = '';
+        if (category) category.value = 'all';
         if (band) band.value = 'all';
         syncGradeOptions();
         if (grade) grade.value = 'all';
         if (difficulty) difficulty.value = 'all';
         if (format) format.value = 'all';
+        if (themeKeyword) themeKeyword.value = '';
+        if (iconMode) iconMode.value = 'random';
         templateFilterState.segment = 'all';
         templateFilterState.subjects.clear();
         templateFilterState.skills.clear();
@@ -1276,6 +1409,409 @@
 
     function getRandomInt(min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function buildWorksheetFrame(opts = {}) {
+        const left = Number.isFinite(opts.left) ? opts.left : 90;
+        const titleTop = Number.isFinite(opts.titleTop) ? opts.titleTop : 72;
+        const bodyTop = Number.isFinite(opts.bodyTop) ? opts.bodyTop : 150;
+        const width = Number.isFinite(opts.width) ? opts.width : Math.max(540, (canvas.width || 900) - left * 2);
+        const title = String(opts.title || 'Worksheet');
+        const subtitle = String(opts.subtitle || '').trim();
+        const instructions = String(opts.instructions || '').trim();
+
+        canvas.add(new fabric.IText(title, { left, top: titleTop, fontFamily: 'Fredoka', fontSize: 34, fill: '#1e293b' }));
+        if (subtitle) {
+            canvas.add(new fabric.IText(subtitle, { left, top: titleTop + 42, fontFamily: 'Sarabun', fontSize: 16, fill: '#475569' }));
+        }
+        if (instructions) {
+            canvas.add(new fabric.IText(instructions, { left, top: bodyTop - 32, fontFamily: 'Sarabun', fontSize: 16, fill: '#64748b' }));
+        }
+        return {
+            left,
+            width,
+            bodyTop,
+        };
+    }
+
+    function renderQuestionBlocks(items, layout = {}) {
+        const left = Number.isFinite(layout.left) ? layout.left : 90;
+        const top = Number.isFinite(layout.top) ? layout.top : 150;
+        const width = Number.isFinite(layout.width) ? layout.width : Math.max(560, (canvas.width || 900) - 180);
+        const rowHeight = Number.isFinite(layout.rowHeight) ? layout.rowHeight : 58;
+        const columns = Math.min(3, Math.max(1, Number(layout.columns) || 1));
+        const fontSize = Number.isFinite(layout.fontSize) ? layout.fontSize : 22;
+        const answerLine = layout.answerLine !== false;
+        const answers = [];
+        const colGap = Number.isFinite(layout.colGap) ? layout.colGap : 20;
+        const colWidth = (width - (columns - 1) * colGap) / columns;
+
+        (items || []).forEach((item, index) => {
+            const col = index % columns;
+            const row = Math.floor(index / columns);
+            const x = left + col * (colWidth + colGap);
+            const y = top + row * rowHeight;
+            const label = String(item?.label || `${index + 1})`);
+            const text = String(item?.text || '').trim();
+            const answer = String(item?.answer || '').trim();
+            const lineText = `${label} ${text}`.trim();
+            const node = new fabric.IText(lineText, {
+                left: x,
+                top: y,
+                fontFamily: 'Sarabun',
+                fontSize,
+                fill: '#334155',
+                width: colWidth,
+                data: {
+                    answerOnly: false,
+                    answer,
+                    generator: String(layout.generator || ''),
+                },
+            });
+            canvas.add(node);
+            if (answer) answers.push({ index: index + 1, answer });
+
+            if (answerLine) {
+                const lineY = y + Math.max(28, fontSize + 8);
+                canvas.add(new fabric.Line([x + 22, lineY, x + colWidth - 10, lineY], {
+                    stroke: '#cbd5e1',
+                    strokeWidth: 1.2,
+                    strokeDashArray: [7, 6],
+                    selectable: false,
+                    evented: false,
+                }));
+            }
+        });
+
+        return answers;
+    }
+
+    function renderAnswerKeyPage(answerItems, opts = {}) {
+        if (!Array.isArray(answerItems) || !answerItems.length) return;
+        const left = Number.isFinite(opts.left) ? opts.left : 90;
+        const top = Number.isFinite(opts.top) ? opts.top : 120;
+        const title = String(opts.title || 'Answer Key');
+        const max = Math.min(answerItems.length, Number.isFinite(opts.maxItems) ? opts.maxItems : 24);
+
+        canvas.add(new fabric.IText(title, {
+            left,
+            top,
+            fontFamily: 'Fredoka',
+            fontSize: 30,
+            fill: '#0f172a',
+            data: { answerOnly: true },
+        }));
+
+        for (let i = 0; i < max; i++) {
+            const item = answerItems[i];
+            canvas.add(new fabric.IText(`${item.index}) ${item.answer}`, {
+                left,
+                top: top + 52 + i * 34,
+                fontFamily: 'Sarabun',
+                fontSize: 19,
+                fill: '#334155',
+                data: { answerOnly: true },
+            }));
+        }
+    }
+
+    function shouldIncludeAnswerKey(defaultValue = true) {
+        const raw = window.prompt('Include Answer Key? (yes/no)', defaultValue ? 'yes' : 'no');
+        if (raw === null) return null;
+        return /^y|yes|1|true|ok$/i.test(String(raw).trim());
+    }
+
+    function normalizeWordList(raw, limit = 24) {
+        return String(raw || '')
+            .split(',')
+            .map(w => w.trim().toUpperCase().replace(/[^A-Z]/g, ''))
+            .filter(Boolean)
+            .filter((w, i, arr) => arr.indexOf(w) === i)
+            .slice(0, limit);
+    }
+
+    function shuffleWord(word) {
+        const arr = String(word || '').split('');
+        if (arr.length < 2) return String(word || '');
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = getRandomInt(0, i);
+            const tmp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = tmp;
+        }
+        const result = arr.join('');
+        return result === word ? arr.reverse().join('') : result;
+    }
+
+    function addWordScrambleGenerator() {
+        const raw = window.prompt('ใส่คำศัพท์สำหรับสลับคำ (comma)', 'APPLE,BANANA,ORANGE,TEACHER,STUDENT,LESSON');
+        if (raw === null) return { status: 'cancelled' };
+        const words = normalizeWordList(raw, 24);
+        if (!words.length) return { status: 'cancelled' };
+        const includeAnswerKey = shouldIncludeAnswerKey(true);
+        if (includeAnswerKey === null) return { status: 'cancelled' };
+
+        const frame = buildWorksheetFrame({
+            title: 'Word Scramble',
+            subtitle: 'Unscramble the words',
+            instructions: 'เรียงตัวอักษรให้เป็นคำที่ถูกต้อง',
+            bodyTop: 150,
+        });
+
+        const items = words.map((word, i) => ({
+            label: `${i + 1})`,
+            text: shuffleWord(word),
+            answer: word,
+        }));
+        const answers = renderQuestionBlocks(items, {
+            left: frame.left,
+            top: frame.bodyTop,
+            width: frame.width,
+            rowHeight: 56,
+            columns: 2,
+            fontSize: 22,
+            generator: 'word_scramble',
+        });
+        if (includeAnswerKey) {
+            window.wbGenerateAnswerKeyPage?.();
+            if (!window.wbGenerateAnswerKeyPage) renderAnswerKeyPage(answers, { title: 'Word Scramble Answer Key' });
+        }
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.(`เพิ่ม Word Scramble แล้ว (${words.length} ข้อ)`);
+        return { status: 'success', count: words.length };
+    }
+
+    function addCryptogramGenerator() {
+        const phraseRaw = window.prompt('ใส่ประโยคสำหรับ Cryptogram', 'LEARNING NEVER STOPS');
+        if (phraseRaw === null) return { status: 'cancelled' };
+        const phrase = String(phraseRaw || '').toUpperCase().replace(/[^A-Z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!phrase) return { status: 'cancelled' };
+        const includeAnswerKey = shouldIncludeAnswerKey(true);
+        if (includeAnswerKey === null) return { status: 'cancelled' };
+
+        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        const shuffled = alphabet.slice().sort(() => Math.random() - 0.5);
+        const map = {};
+        alphabet.forEach((ch, idx) => {
+            map[ch] = shuffled[idx];
+        });
+        const encoded = phrase
+            .split('')
+            .map(ch => (/[A-Z]/.test(ch) ? map[ch] : ch))
+            .join('');
+
+        const frame = buildWorksheetFrame({
+            title: 'Cryptogram',
+            subtitle: 'Decode the message',
+            instructions: 'ถอดรหัสข้อความด้านล่าง',
+            bodyTop: 168,
+        });
+        canvas.add(new fabric.IText(`Cipher: ${encoded}`, {
+            left: frame.left,
+            top: frame.bodyTop,
+            fontFamily: 'Sarabun',
+            fontSize: 26,
+            fill: '#1f2937',
+            data: { answerOnly: false, answer: phrase, generator: 'cryptogram' },
+        }));
+        for (let i = 0; i < 8; i++) {
+            const y = frame.bodyTop + 62 + i * 44;
+            canvas.add(new fabric.Line([frame.left, y, frame.left + frame.width, y], {
+                stroke: '#cbd5e1',
+                strokeWidth: 1.2,
+                strokeDashArray: [7, 5],
+            }));
+        }
+        if (includeAnswerKey) {
+            window.wbGenerateAnswerKeyPage?.();
+            if (!window.wbGenerateAnswerKeyPage) renderAnswerKeyPage([{ index: 1, answer: phrase }], { title: 'Cryptogram Answer Key' });
+        }
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.('เพิ่ม Cryptogram แล้ว');
+        return { status: 'success', count: 1 };
+    }
+
+    function addMissingLettersGenerator() {
+        const raw = window.prompt('ใส่คำศัพท์สำหรับ Missing Letters (comma)', 'CAT,DOG,SCHOOL,MATH,SCIENCE,READING');
+        if (raw === null) return { status: 'cancelled' };
+        const words = normalizeWordList(raw, 20).filter(w => w.length >= 3);
+        if (!words.length) return { status: 'cancelled' };
+        const includeAnswerKey = shouldIncludeAnswerKey(true);
+        if (includeAnswerKey === null) return { status: 'cancelled' };
+
+        const frame = buildWorksheetFrame({
+            title: 'Missing Letters',
+            subtitle: 'Fill in the missing letters',
+            instructions: 'เติมตัวอักษรที่หายไปให้เป็นคำที่ถูกต้อง',
+            bodyTop: 154,
+        });
+
+        const items = words.map((word, i) => {
+            const chars = word.split('');
+            const hideCount = Math.min(2, Math.max(1, Math.floor(chars.length / 4)));
+            const positions = [];
+            while (positions.length < hideCount) {
+                const pos = getRandomInt(1, Math.max(1, chars.length - 2));
+                if (!positions.includes(pos)) positions.push(pos);
+            }
+            positions.forEach(pos => {
+                chars[pos] = '_';
+            });
+            return {
+                label: `${i + 1})`,
+                text: chars.join(' '),
+                answer: word,
+            };
+        });
+
+        const answers = renderQuestionBlocks(items, {
+            left: frame.left,
+            top: frame.bodyTop,
+            width: frame.width,
+            rowHeight: 58,
+            columns: 2,
+            fontSize: 24,
+            generator: 'missing_letters',
+        });
+        if (includeAnswerKey) {
+            window.wbGenerateAnswerKeyPage?.();
+            if (!window.wbGenerateAnswerKeyPage) renderAnswerKeyPage(answers, { title: 'Missing Letters Answer Key' });
+        }
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.(`เพิ่ม Missing Letters แล้ว (${words.length} ข้อ)`);
+        return { status: 'success', count: words.length };
+    }
+
+    function addMultipleChoiceQuizGenerator() {
+        const topicRaw = window.prompt('หัวข้อแบบทดสอบ', 'Reading Comprehension');
+        if (topicRaw === null) return { status: 'cancelled' };
+        const topic = String(topicRaw || '').trim() || 'General Knowledge';
+        const count = Math.min(20, Math.max(4, Number(window.prompt('จำนวนข้อ MCQ', '10')) || 10));
+        const includeAnswerKey = shouldIncludeAnswerKey(true);
+        if (includeAnswerKey === null) return { status: 'cancelled' };
+
+        const frame = buildWorksheetFrame({
+            title: 'Multiple Choice Quiz',
+            subtitle: topic,
+            instructions: 'เลือกคำตอบที่ถูกต้องที่สุดในแต่ละข้อ',
+            bodyTop: 150,
+        });
+
+        const options = ['A', 'B', 'C', 'D'];
+        const answers = [];
+        for (let i = 0; i < count; i++) {
+            const y = frame.bodyTop + i * 66;
+            const correct = options[getRandomInt(0, options.length - 1)];
+            answers.push({ index: i + 1, answer: correct });
+            canvas.add(new fabric.IText(`${i + 1}) ${topic} question ${i + 1}`, {
+                left: frame.left,
+                top: y,
+                fontFamily: 'Sarabun',
+                fontSize: 21,
+                fill: '#334155',
+                data: { answerOnly: false, answer: correct, generator: 'multiple_choice' },
+            }));
+            canvas.add(new fabric.IText('A) ______   B) ______   C) ______   D) ______', {
+                left: frame.left + 20,
+                top: y + 30,
+                fontFamily: 'Sarabun',
+                fontSize: 18,
+                fill: '#64748b',
+            }));
+        }
+
+        if (includeAnswerKey) {
+            window.wbGenerateAnswerKeyPage?.();
+            if (!window.wbGenerateAnswerKeyPage) renderAnswerKeyPage(answers, { title: 'Multiple Choice Answer Key' });
+        }
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.(`เพิ่ม Multiple Choice แล้ว (${count} ข้อ)`);
+        return { status: 'success', count };
+    }
+
+    function addShortAnswerExitTicketGenerator() {
+        const modeRaw = window.prompt('โหมด: short หรือ exit-ticket', 'exit-ticket');
+        if (modeRaw === null) return { status: 'cancelled' };
+        const mode = String(modeRaw || '').trim().toLowerCase().includes('short') ? 'short' : 'exit';
+        const count = Math.min(12, Math.max(3, Number(window.prompt('จำนวนข้อ', mode === 'short' ? '6' : '4')) || (mode === 'short' ? 6 : 4)));
+        const title = mode === 'short' ? 'Short Answer Worksheet' : 'Exit Ticket';
+        const frame = buildWorksheetFrame({
+            title,
+            subtitle: mode === 'short' ? 'ตอบคำถามสั้น' : 'สรุปท้ายคาบ',
+            instructions: mode === 'short' ? 'ตอบเป็นประโยคสั้น ๆ' : 'ตอบคำถามสะท้อนผลการเรียนรู้',
+            bodyTop: 162,
+        });
+
+        const items = Array.from({ length: count }, (_, i) => ({
+            label: `${i + 1})`,
+            text: mode === 'short' ? 'Answer in 1-2 sentences' : ['Today I learned...', 'One thing still unclear...', 'My confidence (1-5)...', 'Next step...'][i % 4],
+            answer: '',
+        }));
+        renderQuestionBlocks(items, {
+            left: frame.left,
+            top: frame.bodyTop,
+            width: frame.width,
+            rowHeight: mode === 'short' ? 74 : 82,
+            columns: 1,
+            fontSize: 20,
+            generator: 'short_answer_exit_ticket',
+        });
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.(`เพิ่ม ${title} แล้ว`);
+        return { status: 'success', count };
+    }
+
+    function addAbcOrderCutGlueGenerator() {
+        const raw = window.prompt('ใส่คำศัพท์สำหรับ ABC Order (comma)', 'banana,apple,grape,orange,kiwi,melon');
+        if (raw === null) return { status: 'cancelled' };
+        const words = String(raw || '')
+            .split(',')
+            .map(w => w.trim())
+            .filter(Boolean)
+            .slice(0, 18);
+        if (!words.length) return { status: 'cancelled' };
+        const shuffled = words.slice().sort(() => Math.random() - 0.5);
+
+        const frame = buildWorksheetFrame({
+            title: 'ABC Order Cut & Glue',
+            subtitle: 'เรียงคำตามลำดับตัวอักษร',
+            instructions: 'ตัดคำด้านล่าง แล้วเรียงใส่ช่องให้ถูกต้อง',
+            bodyTop: 166,
+        });
+
+        const colWidth = frame.width / 2 - 16;
+        const slotTop = frame.bodyTop;
+        const rows = Math.min(9, words.length);
+        for (let i = 0; i < rows; i++) {
+            const y = slotTop + i * 50;
+            canvas.add(new fabric.IText(`${i + 1})`, { left: frame.left, top: y + 8, fontFamily: 'Sarabun', fontSize: 18, fill: '#334155' }));
+            canvas.add(new fabric.Rect({ left: frame.left + 34, top: y, width: colWidth - 36, height: 38, fill: 'transparent', stroke: '#334155', strokeWidth: 1.1 }));
+        }
+
+        const cutX = frame.left + colWidth + 20;
+        canvas.add(new fabric.IText('Cut words', { left: cutX, top: slotTop - 30, fontFamily: 'Sarabun', fontSize: 16, fill: '#475569' }));
+        shuffled.forEach((word, idx) => {
+            const y = slotTop + idx * 42;
+            canvas.add(new fabric.Rect({ left: cutX, top: y, width: colWidth - 24, height: 34, fill: 'transparent', stroke: '#94a3b8', strokeWidth: 1, strokeDashArray: [6, 5] }));
+            canvas.add(new fabric.IText(word, {
+                left: cutX + 10,
+                top: y + 8,
+                fontFamily: 'Sarabun',
+                fontSize: 18,
+                fill: '#334155',
+                data: { answerOnly: false, answer: words.slice().sort((a, b) => a.localeCompare(b))[idx] || '', generator: 'abc_order' },
+            }));
+        });
+
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.(`เพิ่ม ABC Order แล้ว (${words.length} คำ)`);
+        return { status: 'success', count: words.length };
     }
 
     function addMathProblems() {
@@ -2293,6 +2829,66 @@
         window.showToast?.('เพิ่ม Comic Strip แล้ว');
     }
 
+    const GENERATOR_REGISTRY = [
+        { buttonId: 'btnGenMath', key: 'math', handler: addMathProblems },
+        { buttonId: 'btnGenAdvancedMath', key: 'advanced_math', handler: addAdvancedMathProblems },
+        { buttonId: 'btnGenFractions', key: 'fractions', handler: addFractionProblems },
+        { buttonId: 'btnGenAlgebra', key: 'algebra', handler: addAlgebraProblems },
+        { buttonId: 'btnGenGeometry', key: 'geometry', handler: addGeometryProblems },
+        { buttonId: 'btnGenGraph', key: 'graph', handler: addGraphGenerator },
+        { buttonId: 'btnGenParabola', key: 'parabola', handler: addParabolaGenerator },
+        { buttonId: 'btnGenNumberLine', key: 'number_line', handler: addNumberLineGenerator },
+        { buttonId: 'btnGenCoordinate', key: 'coordinate_plane', handler: addCoordinatePlaneGenerator },
+        { buttonId: 'btnGenWordSearch', key: 'word_search', handler: addWordSearch },
+        { buttonId: 'btnGenCrossword', key: 'crossword', handler: addCrossword },
+        { buttonId: 'btnGenTaskCards', key: 'task_cards', handler: addTaskCardsWorksheet },
+        { buttonId: 'btnGenTaskCardsQuick', key: 'task_cards_quick', handler: addTaskCardsWorksheet },
+        { buttonId: 'btnGenMazePattern', key: 'maze_pattern', handler: addMazePatternWorksheet },
+        { buttonId: 'btnGenShapeNets', key: 'shape_nets', handler: addShapeNetsWorksheet },
+        { buttonId: 'btnGenShapeNetsQuick', key: 'shape_nets_quick', handler: addShapeNetsWorksheet },
+        { buttonId: 'btnGenComicStrip', key: 'comic_strip', handler: addComicStripWorksheet },
+        { buttonId: 'btnGenTracing', key: 'tracing', handler: addTracingWorksheet },
+        { buttonId: 'btnGenMatching', key: 'matching', handler: addMatchingWorksheet },
+        { buttonId: 'btnGenFillBlank', key: 'fill_blank', handler: addFillBlankWorksheet },
+        { buttonId: 'btnGenBingo', key: 'bingo', handler: addBingoCardsWorksheet },
+        { buttonId: 'btnGenWordScramble', key: 'word_scramble', handler: addWordScrambleGenerator },
+        { buttonId: 'btnGenCryptogram', key: 'cryptogram', handler: addCryptogramGenerator },
+        { buttonId: 'btnGenMissingLetters', key: 'missing_letters', handler: addMissingLettersGenerator },
+        { buttonId: 'btnGenMultipleChoice', key: 'multiple_choice', handler: addMultipleChoiceQuizGenerator },
+        { buttonId: 'btnGenShortAnswer', key: 'short_answer_exit_ticket', handler: addShortAnswerExitTicketGenerator },
+        { buttonId: 'btnGenAbcOrder', key: 'abc_order', handler: addAbcOrderCutGlueGenerator },
+    ];
+
+    function bindGeneratorRegistryEvents() {
+        GENERATOR_REGISTRY.forEach((entry) => {
+            const btn = document.getElementById(entry.buttonId);
+            if (!btn || typeof entry.handler !== 'function') return;
+            btn.addEventListener('click', async () => {
+                emitTelemetry('generator_requested', { generator: entry.key, buttonId: entry.buttonId });
+                try {
+                    const result = await Promise.resolve(entry.handler());
+                    if (result && result.status === 'cancelled') {
+                        emitTelemetry('generator_cancelled', { generator: entry.key, buttonId: entry.buttonId });
+                        return;
+                    }
+                    emitTelemetry('generator_success', {
+                        generator: entry.key,
+                        buttonId: entry.buttonId,
+                        count: Number.isFinite(result?.count) ? result.count : undefined,
+                    });
+                } catch (error) {
+                    emitTelemetry('generator_error', {
+                        generator: entry.key,
+                        buttonId: entry.buttonId,
+                        message: String(error?.message || error || 'unknown'),
+                    });
+                    console.error('[SmartWS] generator failed', entry.key, error);
+                    window.showToast?.(`Generator error: ${entry.key}`);
+                }
+            });
+        });
+    }
+
     function openSavedDb() {
         return new Promise((resolve, reject) => {
             const req = indexedDB.open(SAVED_DB, 1);
@@ -2570,14 +3166,769 @@
     }
 
     let saveTimer = null;
+    let catalogGenerationToken = 0;
     function markSaving() {
         setSaveIndicator('saving');
         clearTimeout(saveTimer);
         saveTimer = setTimeout(() => setSaveIndicator('saved'), 500);
     }
 
+    function getPresetForFormat(format) {
+        const presets = window.SMARTWS_TEMPLATE_PRESETS || {};
+        return presets[String(format || '').trim()] || {};
+    }
+
+    function getCategoryRenderMode(category) {
+        const modeByCategory = {
+            early_learning_games: 'game_grid',
+            math_visuals: 'math_problem_set',
+            classroom_management_decor: 'project_planner',
+            ela_graphic_organizers: 'organizer_canvas',
+            ela_reading: 'reading_analysis',
+            ela_writing: 'writing_builder',
+            vocabulary_phonics: 'vocab_stations',
+            math_basic: 'math_drill',
+            math_middle: 'math_problem_set',
+            math_high_algebra: 'algebra_workspace',
+            science_reading_lab: 'science_lab_sheet',
+            social_studies_history: 'history_source_sheet',
+            sel_reflection: 'sel_reflection_journal',
+            games_word_crossword_maze_bingo: 'game_grid',
+            taskcards_flashcards: 'taskcards_layout',
+            graphic_organizers: 'organizer_canvas',
+            assessment_quiz_rubric: 'assessment_pack',
+            projects_research_presentation: 'project_planner',
+            seasonal_holiday_routines: 'seasonal_routine',
+        };
+        return modeByCategory[String(category || '').trim()] || 'format_default';
+    }
+
+    function getTemplateVariantIndex(template) {
+        if (Number.isFinite(template?.variantIndex)) {
+            return Number(template.variantIndex) % 4;
+        }
+        const num = Number(String(template?.id || '').replace(/\D/g, ''));
+        if (!Number.isFinite(num)) return 0;
+        return num % 4;
+    }
+
+    function isNewVisualTemplate(template) {
+        return Array.isArray(template?.tags) && template.tags.includes('cohort-new');
+    }
+
+    function resolveTemplateFamilyKey(template) {
+        if (template?.familyKey) return String(template.familyKey);
+        const tags = Array.isArray(template?.tags) ? template.tags.map(String) : [];
+        const ignored = new Set(['iconify-visual', 'cohort-new']);
+        const found = tags.find((tag) => {
+            if (ignored.has(tag)) return false;
+            if (tag.startsWith('difficulty-')) return false;
+            if (tag.startsWith('theme-')) return false;
+            if (tag.startsWith('family-')) return false;
+            if (tag === 'elg' || tag === 'mth' || tag === 'clm' || tag === 'ela') return false;
+            return true;
+        });
+        return found || '';
+    }
+
+    function renderNewFamilyTemplate(familyKey, ctx) {
+        const {
+            left,
+            top,
+            width,
+            variant,
+            addRect,
+            addLabel,
+            addCircle,
+            addLine,
+        } = ctx;
+
+        if (familyKey === 'story-sequencing' || familyKey === 'sequence-chain') {
+            const steps = familyKey === 'story-sequencing' ? 4 : 5;
+            const boxW = (width - (steps - 1) * 12) / steps;
+            for (let i = 0; i < steps; i++) {
+                const x = left + i * (boxW + 12);
+                addRect(x, top + 38, boxW, 140, 1.3);
+                addLabel(`Step ${i + 1}`, x + 8, top + 46, 13);
+                addRect(x, top + 188, boxW, 72, 1.1);
+                if (i < steps - 1) addLabel('→', x + boxW + 2, top + 108, 24, '#64748b');
+            }
+            return true;
+        }
+
+        if (familyKey === 'pattern-completion') {
+            const rows = 6 + variant;
+            for (let r = 0; r < rows; r++) {
+                const y = top + 30 + r * 58;
+                for (let c = 0; c < 6; c++) {
+                    const x = left + c * 92;
+                    addRect(x, y, 82, 46, 1.2);
+                    if (c === 5) addLabel('?', x + 34, y + 11, 22, '#0f172a');
+                }
+            }
+            addLabel('เติมรูปแบบที่หายไปในแต่ละแถว', left, top, 14);
+            return true;
+        }
+
+        if (familyKey === 'transition-cards' || familyKey === 'behavior-cue-cards') {
+            const rows = 3;
+            const cols = 3;
+            const cardW = (width - 20) / cols;
+            const cardH = 118;
+            let idx = 1;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const x = left + c * (cardW + 10);
+                    const y = top + r * (cardH + 12);
+                    addRect(x, y, cardW, cardH, 1.3);
+                    addRect(x + 10, y + 10, 36, 36, 1.1);
+                    addLabel(familyKey === 'transition-cards' ? `Transition ${idx}` : `Cue ${idx}`, x + 54, y + 16, 13);
+                    addRect(x + 10, y + 56, cardW - 20, 48, 1);
+                    idx += 1;
+                }
+            }
+            return true;
+        }
+
+        if (familyKey === 'i-spy-find-count') {
+            addRect(left, top + 20, width * 0.66, 390, 1.2);
+            addRect(left + width * 0.69, top + 20, width * 0.31, 390, 1.2);
+            for (let i = 0; i < 36; i++) {
+                const col = i % 6;
+                const row = Math.floor(i / 6);
+                addRect(left + 18 + col * 62, top + 38 + row * 58, 40, 34, 1);
+            }
+            for (let n = 0; n < 8; n++) {
+                const y = top + 38 + n * 42;
+                addLabel(`${n + 1}) จำนวน = ____`, left + width * 0.71, y, 13);
+            }
+            return true;
+        }
+
+        if (familyKey === 'ten-frames-icons') {
+            const frameW = 220;
+            const frameH = 96;
+            for (let i = 0; i < 4; i++) {
+                const x = left + (i % 2) * (frameW + 26);
+                const y = top + 26 + Math.floor(i / 2) * (frameH + 24);
+                addRect(x, y, frameW, frameH, 1.5);
+                const cellW = frameW / 5;
+                for (let c = 1; c < 5; c++) addLine(x + c * cellW, y, x + c * cellW, y + frameH, 1);
+                addLine(x, y + frameH / 2, x + frameW, y + frameH / 2, 1);
+                addLabel(`นับและเขียน ${i + 1}: ____`, x, y + frameH + 8, 13);
+            }
+            return true;
+        }
+
+        if (familyKey === 'compare-quantities') {
+            for (let i = 0; i < 8; i++) {
+                const y = top + 24 + i * 54;
+                addRect(left, y, width * 0.4, 42, 1.2);
+                addRect(left + width * 0.6, y, width * 0.4, 42, 1.2);
+                addRect(left + width * 0.45, y, width * 0.1, 42, 1.2);
+                addLabel('>', left + width * 0.482, y + 8, 16, '#64748b');
+                addLabel('<', left + width * 0.507, y + 8, 16, '#64748b');
+                addLabel('=', left + width * 0.495, y + 24, 14, '#64748b');
+            }
+            return true;
+        }
+
+        if (familyKey === 'beginning-sounds-match') {
+            addRect(left, top + 20, width * 0.48, 430, 1.2);
+            addRect(left + width * 0.52, top + 20, width * 0.48, 430, 1.2);
+            for (let i = 0; i < 10; i++) {
+                const y = top + 34 + i * 40;
+                addLabel(`${String.fromCharCode(65 + i)}.`, left + 12, y, 16);
+                addRect(left + width * 0.52 + 12, y - 4, width * 0.4, 28, 1);
+            }
+            addLabel('ลากเส้นจับคู่เสียงต้นคำกับภาพ', left, top - 2, 14);
+            return true;
+        }
+
+        if (familyKey === 'memory-match-cards' || familyKey === 'flashcards-picture-word') {
+            const cols = familyKey === 'memory-match-cards' ? 4 : 3;
+            const rows = familyKey === 'memory-match-cards' ? 4 : 4;
+            const cardW = (width - (cols - 1) * 10) / cols;
+            const cardH = familyKey === 'memory-match-cards' ? 86 : 108;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const x = left + c * (cardW + 10);
+                    const y = top + r * (cardH + 12);
+                    addRect(x, y, cardW, cardH, 1.2);
+                    addRect(x + 8, y + 8, 34, 34, 1);
+                    if (familyKey === 'flashcards-picture-word') addRect(x + 8, y + 50, cardW - 16, 46, 1);
+                }
+            }
+            return true;
+        }
+
+        if (familyKey === 'picture-bingo') {
+            const cell = Math.min(98, Math.floor((width - 24) / 5));
+            for (let r = 0; r < 5; r++) {
+                for (let c = 0; c < 5; c++) {
+                    addRect(left + c * cell, top + 36 + r * cell, cell, cell, 1.2);
+                    if (r === 2 && c === 2) addLabel('FREE', left + c * cell + 22, top + 36 + r * cell + 30, 16, '#334155');
+                }
+            }
+            addLabel('BINGO', left + 4, top, 20, '#1e293b');
+            return true;
+        }
+
+        if (familyKey === 'visual-daily-schedule' || familyKey === 'classroom-jobs-chart') {
+            const rows = familyKey === 'visual-daily-schedule' ? 8 : 10;
+            for (let i = 0; i < rows; i++) {
+                const y = top + 20 + i * 48;
+                addRect(left, y, width * 0.2, 40, 1.1);
+                addRect(left + width * 0.22, y, width * 0.16, 40, 1.1);
+                addRect(left + width * 0.4, y, width * 0.6, 40, 1.1);
+            }
+            return true;
+        }
+
+        if (familyKey === 'reward-sticker-charts') {
+            const cols = 7;
+            const rows = 8;
+            const cellW = Math.floor((width - 140) / cols);
+            for (let r = 0; r < rows; r++) {
+                addRect(left, top + 36 + r * 42, 120, 34, 1.1);
+                for (let c = 0; c < cols; c++) {
+                    const x = left + 130 + c * cellW;
+                    addRect(x, top + 36 + r * 42, cellW - 4, 34, 1);
+                }
+            }
+            return true;
+        }
+
+        if (familyKey === 'mind-map-icon-based' || familyKey === 'main-idea-details' || familyKey === 'frayer-model' || familyKey === 'venn-diagram' || familyKey === 'story-map' || familyKey === 'cause-effect-map') {
+            if (familyKey === 'venn-diagram') {
+                addCircle(left + width * 0.38, top + 160, 120, 1.5);
+                addCircle(left + width * 0.62, top + 160, 120, 1.5);
+                addLabel('A', left + width * 0.27, top + 48, 14);
+                addLabel('B', left + width * 0.73, top + 48, 14);
+                addRect(left, top + 320, width, 120, 1.1);
+                return true;
+            }
+            if (familyKey === 'frayer-model') {
+                addRect(left + width * 0.35, top + 140, width * 0.3, 70, 1.3);
+                addRect(left, top + 20, width * 0.47, 110, 1.2);
+                addRect(left + width * 0.53, top + 20, width * 0.47, 110, 1.2);
+                addRect(left, top + 220, width * 0.47, 110, 1.2);
+                addRect(left + width * 0.53, top + 220, width * 0.47, 110, 1.2);
+                return true;
+            }
+            return false;
+        }
+
+        return false;
+    }
+
+    function clearPreviousCatalogTemplateObjects() {
+        const objects = canvas.getObjects();
+        const removable = objects.filter(obj => obj && obj.smartwsTemplateGenerated === true);
+        removable.forEach(obj => canvas.remove(obj));
+    }
+
+    function clearCanvasForCatalogTemplate() {
+        const objects = canvas.getObjects().slice();
+        objects.forEach((obj) => canvas.remove(obj));
+    }
+
+    function addTemplateObject(obj, templateId) {
+        if (!obj) return;
+        obj.smartwsTemplateGenerated = true;
+        obj.smartwsTemplateId = templateId || '';
+        canvas.add(obj);
+    }
+
+    function addTemplateText(text, options, templateId) {
+        const node = new fabric.IText(text, options || {});
+        addTemplateObject(node, templateId);
+        return node;
+    }
+
+    function addTemplateRect(options, templateId) {
+        const node = new fabric.Rect(options || {});
+        addTemplateObject(node, templateId);
+        return node;
+    }
+
+    function getIconKeywordsForTemplate(template, generationOptions) {
+        const categoryMap = {
+            early_learning_games: ['puzzle', 'cards', 'gamepad-2'],
+            math_visuals: ['calculator', 'chart-line', 'shape'],
+            classroom_management_decor: ['calendar', 'clipboard-check', 'label'],
+            ela_graphic_organizers: ['book', 'mind-map', 'alphabet-latin'],
+            ela_reading: ['book', 'text', 'search'],
+            ela_writing: ['pencil', 'note', 'edit'],
+            vocabulary_phonics: ['abc', 'translate', 'language'],
+            math_basic: ['calculator', 'plus', 'ruler'],
+            math_middle: ['function', 'chart-line', 'percent'],
+            math_high_algebra: ['sigma', 'graph', 'formula'],
+            science_reading_lab: ['flask', 'microscope', 'atom'],
+            social_studies_history: ['globe', 'map', 'landmark'],
+            sel_reflection: ['heart', 'account', 'thought-bubble'],
+            games_word_crossword_maze_bingo: ['puzzle', 'gamepad', 'grid'],
+            taskcards_flashcards: ['cards', 'layers', 'lightning-bolt'],
+            graphic_organizers: ['vector-polyline', 'graph', 'shape'],
+            assessment_quiz_rubric: ['clipboard-check', 'checklist', 'target'],
+            projects_research_presentation: ['presentation', 'briefcase', 'timeline'],
+            seasonal_holiday_routines: ['calendar', 'sunny', 'leaf'],
+        };
+
+        const keywords = [];
+        const themeKeyword = String(generationOptions?.themeKeyword || '').trim();
+        if (themeKeyword) keywords.push(themeKeyword);
+        const mapped = categoryMap[String(template?.category || '').trim()] || [];
+        mapped.forEach((k) => keywords.push(k));
+
+        (template?.tags || [])
+            .map(tag => String(tag || '').replace(/[-_]/g, ' ').trim())
+            .filter(Boolean)
+            .slice(0, 3)
+            .forEach(tag => keywords.push(tag));
+
+        const titleWords = String(template?.title || '')
+            .toLowerCase()
+            .split(/[^a-z0-9]+/)
+            .filter(token => token.length >= 4)
+            .slice(0, 2);
+        titleWords.forEach(word => keywords.push(word));
+
+        return Array.from(new Set(keywords)).slice(0, 6);
+    }
+
+    async function fetchIconifyIdsForTemplate(template, maxIcons, generationOptions) {
+        const iconIds = [];
+        const keywords = getIconKeywordsForTemplate(template, generationOptions);
+        const iconMode = String(generationOptions?.iconMode || 'random').toLowerCase();
+        const fixedSeed = Number(String(template?.id || '').replace(/\D/g, '')) || 1;
+
+        for (let i = 0; i < keywords.length && iconIds.length < maxIcons; i++) {
+            try {
+                const list = typeof iconifyApi.searchIcons === 'function'
+                    ? await iconifyApi.searchIcons(keywords[i], { limit: 12, retries: 1, timeoutMs: 2600 })
+                    : [];
+                const picked = iconMode === 'fixed'
+                    ? list.slice(fixedSeed % 3, (fixedSeed % 3) + 6)
+                    : list.slice(0, 6);
+                picked.forEach((name) => {
+                    if (!iconIds.includes(name) && iconIds.length < maxIcons) {
+                        iconIds.push(name);
+                    }
+                });
+            } catch (error) {
+                console.warn('[SmartWS] Iconify query failed', keywords[i], error);
+            }
+        }
+        if (!iconIds.length && typeof iconifyApi.getFallbackIcons === 'function') {
+            const fallback = iconifyApi.getFallbackIcons(template?.category).slice(0, maxIcons);
+            fallback.forEach((name) => {
+                if (!iconIds.includes(name) && iconIds.length < maxIcons) iconIds.push(name);
+            });
+        }
+        return iconIds;
+    }
+
+    function loadSvgGroupFromUrl(url) {
+        if (typeof iconifyApi.loadSvgGroupFromUrl === 'function') {
+            return iconifyApi.loadSvgGroupFromUrl(url);
+        }
+        return new Promise((resolve, reject) => {
+            try {
+                fabric.loadSVGFromURL(url, (objects, options) => {
+                    if (!objects || !objects.length) {
+                        reject(new Error('Empty SVG objects'));
+                        return;
+                    }
+                    const group = fabric.util.groupSVGElements(objects, options || {});
+                    if (!group) {
+                        reject(new Error('SVG group failed'));
+                        return;
+                    }
+                    resolve(group);
+                });
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    async function injectIconifyVisuals(template, templateId, generationToken, left, top, width, variant, generationOptions) {
+        const maxIcons = [2, 3, 3, 4][variant];
+        const iconIds = await fetchIconifyIdsForTemplate(template, maxIcons, generationOptions);
+        if (!iconIds.length) return;
+
+        const placements = [];
+        const step = Math.max(120, Math.floor(width / Math.max(iconIds.length, 2)));
+        for (let i = 0; i < iconIds.length; i++) {
+            const x = left + 12 + i * step;
+            const y = top + 10;
+            placements.push({ x, y });
+        }
+
+        for (let i = 0; i < iconIds.length; i++) {
+            if (generationToken !== catalogGenerationToken) return;
+            const iconId = iconIds[i];
+            const target = placements[i] || { x: left + 12, y: top + 10 };
+            const url = `https://api.iconify.design/${iconId}.svg?color=%23334155`;
+            try {
+                const group = await loadSvgGroupFromUrl(url);
+                const baseW = Math.max(1, group.width || 24);
+                const iconSize = [30, 36, 42, 34][variant];
+                const scale = iconSize / baseW;
+                group.set({
+                    left: target.x,
+                    top: target.y,
+                    scaleX: scale,
+                    scaleY: scale,
+                    opacity: 0.95,
+                });
+                addTemplateObject(group, templateId);
+            } catch (error) {
+                console.warn('[SmartWS] Iconify load failed', iconId, error);
+            }
+        }
+        canvas.requestRenderAll();
+    }
+
+    function getTemplateGenerationOptions() {
+        return {
+            themeKeyword: document.getElementById('templateThemeKeyword')?.value || '',
+            iconMode: document.getElementById('templateIconMode')?.value || 'random',
+        };
+    }
+
+    function addWaveATemplateFromCatalog(template, generationOptions) {
+        if (!template) return;
+        catalogGenerationToken += 1;
+        const generationToken = catalogGenerationToken;
+        clearCanvasForCatalogTemplate();
+        const options = generationOptions || getTemplateGenerationOptions();
+
+        const preset = getPresetForFormat(template.format);
+        const mode = getCategoryRenderMode(template.category);
+        const variant = getTemplateVariantIndex(template);
+        const left = 90;
+        const top = 120;
+        const width = Math.max(420, (canvas.width || 900) - 180);
+        const title = template.title || 'Template';
+        const templateId = template.id || '';
+
+        addTemplateText(title, {
+            left,
+            top: 74,
+            fontFamily: 'Fredoka',
+            fontSize: 32,
+            fill: '#1e293b',
+        }, templateId);
+        addTemplateText(`ID: ${template.id} • ${template.category} • ${template.format}`, {
+            left,
+            top: 108,
+            fontFamily: 'Sarabun',
+            fontSize: 14,
+            fill: '#64748b',
+        }, templateId);
+
+        function addRect(x, y, w, h, strokeWidth) {
+            addTemplateRect({ left: x, top: y, width: w, height: h, fill: 'transparent', stroke: '#334155', strokeWidth: strokeWidth || 1.2 }, templateId);
+        }
+
+        function addCircle(cx, cy, r, strokeWidth) {
+            const node = new fabric.Circle({
+                left: cx - r,
+                top: cy - r,
+                radius: r,
+                fill: 'transparent',
+                stroke: '#334155',
+                strokeWidth: strokeWidth || 1.2,
+            });
+            addTemplateObject(node, templateId);
+        }
+
+        function addLine(x1, y1, x2, y2, strokeWidth) {
+            const node = new fabric.Line([x1, y1, x2, y2], {
+                stroke: '#334155',
+                strokeWidth: strokeWidth || 1.2,
+            });
+            addTemplateObject(node, templateId);
+        }
+
+        function addLabel(text, x, y, size, color) {
+            addTemplateText(text, {
+                left: x,
+                top: y,
+                fontFamily: 'Sarabun',
+                fontSize: size || 16,
+                fill: color || '#475569',
+            }, templateId);
+        }
+
+        const familyKey = resolveTemplateFamilyKey(template);
+        if (isNewVisualTemplate(template)) {
+            const handled = renderNewFamilyTemplate(familyKey, {
+                left,
+                top,
+                width,
+                variant,
+                addRect,
+                addLabel,
+                addCircle,
+                addLine,
+            });
+            if (handled) {
+                canvas.requestRenderAll();
+                markSaving();
+                window.showToast?.(`สร้าง ${template.id} แล้ว`);
+                return;
+            }
+        }
+
+        if (mode === 'reading_analysis') {
+            const passageH = [180, 210, 240, 200][variant];
+            const prompt = ['Key Details', 'Inference', 'Author Craft', 'Text Evidence'][variant];
+            addRect(left, top, width, passageH, 1.5);
+            addLabel(`Reading Passage (${prompt})`, left + 10, top + 10, 15);
+            const qTop = top + 226;
+            const qCount = [5, 6, 7, 6][variant];
+            for (let i = 0; i < qCount; i++) {
+                addLabel(`${i + 1}) Evidence-based question`, left, qTop + i * 44, 20, '#334155');
+            }
+        } else if (mode === 'writing_builder') {
+            const blockSets = [
+                ['Hook', 'Claim/Topic Sentence', 'Evidence 1', 'Evidence 2', 'Conclusion'],
+                ['Prompt Analysis', 'Thesis Draft', 'Reasoning', 'Counterclaim', 'Revision Goal'],
+                ['Narrative Setup', 'Conflict', 'Rising Action', 'Climax', 'Resolution'],
+                ['Topic', 'Facts', 'Examples', 'Transition Plan', 'Closing'],
+            ];
+            const blocks = blockSets[variant];
+            blocks.forEach((name, index) => {
+                const y = top + index * 96;
+                addRect(left, y, width, 86, 1.3);
+                addLabel(name, left + 10, y + 8, 15);
+            });
+        } else if (mode === 'vocab_stations') {
+            const layoutByVariant = [{ cols: 2, rows: 4 }, { cols: 3, rows: 3 }, { cols: 2, rows: 5 }, { cols: 3, rows: 2 }];
+            const cols = layoutByVariant[variant].cols;
+            const rows = layoutByVariant[variant].rows;
+            const cellW = (width - 14) / cols;
+            const cellH = [108, 96, 86, 124][variant];
+            const labels = ['Word', 'Definition', 'Example Sentence', 'Picture Clue', 'Prefix/Suffix', 'Synonym/Antonym', 'Syllables', 'Use in Context'];
+            let i = 0;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const x = left + c * (cellW + 14);
+                    const y = top + r * (cellH + 10);
+                    addRect(x, y, cellW, cellH, 1.2);
+                    addLabel(labels[i++] || 'Vocabulary Block', x + 8, y + 8, 14);
+                }
+            }
+        } else if (mode === 'math_drill' || mode === 'math_problem_set') {
+            const rows = mode === 'math_drill' ? 12 : 10;
+            for (let i = 0; i < rows; i++) {
+                addLabel(`${i + 1}) __________________  =  _______`, left, top + i * 42, 20, '#334155');
+            }
+            addRect(left + width - 220, top, 220, 180, 1.2);
+            addLabel('Work Area', left + width - 210, top + 8, 14);
+        } else if (mode === 'algebra_workspace') {
+            addRect(left, top, width * 0.56, 430, 1.4);
+            addLabel('Problem Steps', left + 10, top + 10, 15);
+            for (let i = 0; i < 7; i++) {
+                addLabel(`Step ${i + 1}: ______________________`, left + 12, top + 42 + i * 52, 17, '#334155');
+            }
+            addRect(left + width * 0.6, top, width * 0.4, 430, 1.4);
+            addLabel('Graph / Table Space', left + width * 0.6 + 10, top + 10, 15);
+        } else if (mode === 'science_lab_sheet') {
+            const blocks = ['Question', 'Hypothesis', 'Variables & Controls', 'Procedure', 'Data Table', 'Conclusion'];
+            blocks.forEach((name, index) => {
+                const y = top + index * 72;
+                addRect(left, y, width, 64, 1.2);
+                addLabel(name, left + 10, y + 8, 14);
+            });
+        } else if (mode === 'history_source_sheet') {
+            addRect(left, top, width, 160, 1.3);
+            addLabel('Primary Source Excerpt / Image Notes', left + 10, top + 10, 14);
+            addRect(left, top + 178, width * 0.48, 240, 1.2);
+            addRect(left + width * 0.52, top + 178, width * 0.48, 240, 1.2);
+            addLabel('Context & Bias', left + 8, top + 188, 14);
+            addLabel('Claim & Evidence', left + width * 0.52 + 8, top + 188, 14);
+        } else if (mode === 'sel_reflection_journal') {
+            addRect(left, top, width, 96, 1.2);
+            addLabel('Mood Check-in (1-5): ___', left + 10, top + 10, 15);
+            addRect(left, top + 112, width, 120, 1.2);
+            addLabel('Today I learned...', left + 10, top + 122, 15);
+            addRect(left, top + 248, width, 120, 1.2);
+            addLabel('Next action / personal goal', left + 10, top + 258, 15);
+            addRect(left, top + 384, width, 74, 1.2);
+            addLabel('Gratitude / reflection', left + 10, top + 394, 15);
+        } else if (mode === 'game_grid') {
+            const rows = [8, 10, 7, 9][variant];
+            const cols = [8, 10, 9, 7][variant];
+            const cell = Math.min(56, Math.floor((width - 20) / cols));
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    addRect(left + c * cell, top + r * cell, cell, cell, 1);
+                }
+            }
+            const footerTitle = ['Word Bank / Clues:', 'Puzzle Clues:', 'Rules / Constraints:', 'Challenge Inputs:'][variant];
+            addLabel(footerTitle, left, top + rows * cell + 10, 14);
+            addRect(left, top + rows * cell + 36, width, 100, 1.1);
+        } else if (mode === 'taskcards_layout') {
+            const gridByVariant = [{ cols: 2, rows: 4 }, { cols: 4, rows: 2 }, { cols: 3, rows: 3 }, { cols: 2, rows: 5 }];
+            const cols = gridByVariant[variant].cols;
+            const rows = gridByVariant[variant].rows;
+            const cardW = (width - 14) / cols;
+            const cardH = [102, 120, 88, 82][variant];
+            let idx = 1;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const x = left + c * (cardW + 14);
+                    const y = top + r * (cardH + 10);
+                    addRect(x, y, cardW, cardH, 1.2);
+                    addLabel(`Card ${idx++}`, x + 8, y + 8, 14);
+                }
+            }
+        } else if (mode === 'organizer_canvas') {
+            const centerY = [150, 190, 220, 170][variant];
+            addRect(left + width * 0.35, top + centerY, width * 0.3, 70, 1.3);
+            addLabel('Main Concept', left + width * 0.39, top + centerY + 24, 14);
+            const branchSets = [
+                [[left, top + 40], [left + width * 0.7, top + 40], [left, top + 290], [left + width * 0.7, top + 290]],
+                [[left, top + 70], [left + width * 0.7, top + 70], [left, top + 330], [left + width * 0.7, top + 330]],
+                [[left + width * 0.05, top + 90], [left + width * 0.65, top + 90], [left + width * 0.05, top + 360], [left + width * 0.65, top + 360]],
+                [[left, top + 110], [left + width * 0.7, top + 110], [left, top + 300], [left + width * 0.7, top + 300]],
+            ];
+            const branches = branchSets[variant];
+            branches.forEach((point, index) => {
+                addRect(point[0], point[1], width * 0.3, 68, 1.2);
+                addLabel(`Branch ${index + 1}`, point[0] + 10, point[1] + 22, 14);
+            });
+        } else if (mode === 'assessment_pack') {
+            const count = [10, 12, 8, 11][variant];
+            const promptByVariant = ['Question', 'Item', 'Prompt', 'Task'];
+            for (let i = 0; i < count; i++) {
+                addLabel(`${i + 1}) ${promptByVariant[variant]} _________________________________`, left, top + i * 36, 18, '#334155');
+            }
+            const notesTop = top + count * 36 + 28;
+            addRect(left, notesTop, width, 66, 1.2);
+            addLabel('Teacher Notes / Rubric Criteria', left + 10, notesTop + 18, 14);
+            if (template.hasAnswerKey) {
+                addLabel('Answer Key: Included', left, notesTop + 76, 14, '#64748b');
+            }
+        } else if (mode === 'project_planner') {
+            const cols = 2;
+            const rows = 3;
+            const boxW = (width - 14) / cols;
+            const boxH = 118;
+            const nameSets = [
+                ['Driving Question', 'Research Sources', 'Milestones', 'Team Roles', 'Presentation Plan', 'Success Criteria'],
+                ['Problem Frame', 'Data Sources', 'Work Sprint Plan', 'Dependencies', 'Checkpoint Review', 'Final Deliverable'],
+                ['Inquiry Goal', 'Evidence Collection', 'Risk Log', 'Role Ownership', 'Storyboard', 'Peer Critique'],
+                ['Outcome Statement', 'Resource Plan', 'Timeline Blocks', 'Task Delegation', 'Rehearsal Plan', 'Reflection'],
+            ];
+            const names = nameSets[variant];
+            let n = 0;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const x = left + c * (boxW + 14);
+                    const y = top + r * (boxH + 10);
+                    addRect(x, y, boxW, boxH, 1.2);
+                    addLabel(names[n++] || 'Project Block', x + 8, y + 8, 14);
+                }
+            }
+        } else if (mode === 'seasonal_routine') {
+            addRect(left, top, width, 86, 1.2);
+            const seasonLabels = ['Daily Focus / Theme', 'Weekly Ritual Focus', 'Event Routine Plan', 'Classroom Flow Focus'];
+            addLabel(seasonLabels[variant], left + 10, top + 10, 14);
+            const cols = 3;
+            const boxW = (width - 20) / cols;
+            const routineCount = [6, 9, 6, 8][variant];
+            for (let i = 0; i < routineCount; i++) {
+                const r = Math.floor(i / cols);
+                const c = i % cols;
+                const x = left + c * (boxW + 10);
+                const y = top + 104 + r * 128;
+                addRect(x, y, boxW, 118, 1.1);
+                addLabel(`Routine ${i + 1}`, x + 8, y + 8, 13);
+            }
+        } else if (template.format === 'organizer') {
+            const sections = Math.min(6, Math.max(3, Number(preset.sections || 4)));
+            const boxH = 96;
+            for (let i = 0; i < sections; i++) {
+                const y = top + i * (boxH + 8);
+                addRect(left, y, width, boxH, 1.5);
+                addLabel(`Section ${i + 1}`, left + 10, y + 8, 16);
+            }
+        } else if (template.format === 'activity') {
+            const rows = Math.min(12, Math.max(6, Number(preset.rows || 8)));
+            const cols = Math.min(3, Math.max(2, Number(preset.cols || 2)));
+            const cellW = (width - (cols - 1) * 10) / cols;
+            const cellH = 64;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const x = left + c * (cellW + 10);
+                    const y = top + r * (cellH + 8);
+                    addRect(x, y, cellW, cellH, 1.2);
+                }
+            }
+        } else if (template.format === 'assessment') {
+            const items = Math.min(18, Math.max(8, Number(preset.items || 10)));
+            for (let i = 0; i < items; i++) {
+                const y = top + i * 46;
+                addLabel(`${i + 1}) ____________________________________`, left, y, 21, '#334155');
+            }
+            if (template.hasAnswerKey) {
+                addLabel('Answer Key: Included', left, top + items * 46 + 8, 14, '#64748b');
+            }
+        } else if (template.format === 'planner') {
+            const blocks = Math.min(8, Math.max(4, Number(preset.blocks || 6)));
+            const h = 84;
+            for (let i = 0; i < blocks; i++) {
+                const y = top + i * (h + 8);
+                addRect(left, y, width, h, 1.2);
+                addLabel(`Plan Block ${i + 1}`, left + 10, y + 8, 15);
+            }
+        } else {
+            const rows = Math.min(16, Math.max(8, Number(preset.rows || 10)));
+            for (let i = 0; i < rows; i++) {
+                const y = top + i * 44;
+                addLabel(`${i + 1}. _________________________________`, left, y, 22, '#334155');
+            }
+        }
+
+        canvas.requestRenderAll();
+        markSaving();
+        window.showToast?.(`สร้าง ${template.id} แล้ว`);
+    }
+
+    function setupCatalogTemplatePanel(rootId, catalog, handlerMap, emptyText) {
+        const root = document.getElementById(rootId);
+        if (!root) return;
+        if (!catalog.length) {
+            root.innerHTML = `<div class="template-empty">${emptyText}</div>`;
+            return;
+        }
+        root.innerHTML = catalog
+            .map(item => `<button class="wavea-template-btn" id="btnTpl_${item.id}" data-template-id="${item.id}" title="${item.title}">${item.id} — ${item.title}</button>`)
+            .join('');
+
+        root.querySelectorAll('.wavea-template-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const id = btn.dataset.templateId;
+                const item = catalog.find(x => x.id === id);
+                const handlerKey = typeof templateHandlersApi.resolveHandlerKey === 'function'
+                    ? templateHandlersApi.resolveHandlerKey(item, handlerMap)
+                    : 'generate_from_catalog';
+                if (handlerKey !== 'generate_from_catalog') return;
+                addWaveATemplateFromCatalog(item);
+            });
+        });
+    }
+
     function setupEvents() {
         document.getElementById('templateSearch')?.addEventListener('input', refreshTemplateGallery);
+        document.getElementById('templateCategoryFilter')?.addEventListener('change', refreshTemplateGallery);
+        document.getElementById('templateThemeKeyword')?.addEventListener('input', refreshTemplateGallery);
+        document.getElementById('templateIconMode')?.addEventListener('change', refreshTemplateGallery);
         document.getElementById('templateGradeBand')?.addEventListener('change', () => {
             syncGradeOptions();
             refreshTemplateGallery();
@@ -2621,6 +3972,21 @@
                 refreshTemplateGallery();
             });
         });
+        document.getElementById('btnGenerateTemplateFromCatalog')?.addEventListener('click', () => {
+            const state = buildTemplateFilterState();
+            const template = pickPrimaryCatalogTemplate(state);
+            if (!template) {
+                window.showToast?.('ไม่พบ Catalog template ที่ตรงกับตัวกรอง');
+                return;
+            }
+            addWaveATemplateFromCatalog(template, getTemplateGenerationOptions());
+            emitTelemetry('template_generate_one_click', {
+                templateId: template.id,
+                category: template.category,
+                iconMode: state.iconMode,
+                hasThemeKeyword: !!state.themeKeyword,
+            });
+        });
 
         document.getElementById('btnAddBasicShape')?.addEventListener('click', () => {
             const type = document.getElementById('basicShapeSelect')?.value || 'square';
@@ -2649,25 +4015,7 @@
             window.showToast?.('อัปเดต Writing preset แล้ว');
         });
 
-        document.getElementById('btnGenMath')?.addEventListener('click', addMathProblems);
-        document.getElementById('btnGenAdvancedMath')?.addEventListener('click', addAdvancedMathProblems);
-        document.getElementById('btnGenFractions')?.addEventListener('click', addFractionProblems);
-        document.getElementById('btnGenAlgebra')?.addEventListener('click', addAlgebraProblems);
-        document.getElementById('btnGenGeometry')?.addEventListener('click', addGeometryProblems);
-        document.getElementById('btnGenGraph')?.addEventListener('click', addGraphGenerator);
-        document.getElementById('btnGenParabola')?.addEventListener('click', addParabolaGenerator);
-        document.getElementById('btnGenNumberLine')?.addEventListener('click', addNumberLineGenerator);
-        document.getElementById('btnGenCoordinate')?.addEventListener('click', addCoordinatePlaneGenerator);
-        document.getElementById('btnGenWordSearch')?.addEventListener('click', addWordSearch);
-        document.getElementById('btnGenCrossword')?.addEventListener('click', addCrossword);
-        document.getElementById('btnGenTaskCards')?.addEventListener('click', addTaskCardsWorksheet);
-        document.getElementById('btnGenMazePattern')?.addEventListener('click', addMazePatternWorksheet);
-        document.getElementById('btnGenShapeNets')?.addEventListener('click', addShapeNetsWorksheet);
-        document.getElementById('btnGenComicStrip')?.addEventListener('click', addComicStripWorksheet);
-        document.getElementById('btnGenTracing')?.addEventListener('click', addTracingWorksheet);
-        document.getElementById('btnGenMatching')?.addEventListener('click', addMatchingWorksheet);
-        document.getElementById('btnGenFillBlank')?.addEventListener('click', addFillBlankWorksheet);
-        document.getElementById('btnGenBingo')?.addEventListener('click', addBingoCardsWorksheet);
+        bindGeneratorRegistryEvents();
         document.getElementById('btnGenerateAnswerKey')?.addEventListener('click', () => window.wbGenerateAnswerKeyPage?.());
         document.getElementById('btnPlaySlideshow')?.addEventListener('click', startSlideshow);
 
@@ -2675,8 +4023,6 @@
         document.getElementById('btnInsertSubheadingQuick')?.addEventListener('click', () => addTextPreset('subheading'));
         document.getElementById('btnInsertBodyQuick')?.addEventListener('click', () => addTextPreset('body'));
         document.getElementById('btnTextCurveQuick')?.addEventListener('click', convertTextToCurve);
-        document.getElementById('btnGenTaskCardsQuick')?.addEventListener('click', addTaskCardsWorksheet);
-        document.getElementById('btnGenShapeNetsQuick')?.addEventListener('click', addShapeNetsWorksheet);
         document.getElementById('btnGoBordersTab')?.addEventListener('click', () => activateSidebarTab('bordersTab'));
         document.getElementById('btnOpenMarketDashboard')?.addEventListener('click', () => {
             document.getElementById('marketDashboardModal')?.style.setProperty('display', 'flex');
@@ -2767,6 +4113,9 @@
         createChipButtons('templateSkillChips', SKILLS, templateFilterState.skills, refreshTemplateGallery);
         refreshTemplateGallery();
         buildBorderGallery('borderGallery', allBorderCards, (item) => addBorder(item.key));
+        setupCatalogTemplatePanel('waveATemplateList', waveACatalog, waveAHandlerMap, 'ยังไม่มี Wave A catalog');
+        setupCatalogTemplatePanel('waveBTemplateList', waveBCatalog, waveBHandlerMap, 'ยังไม่มี Wave B catalog');
+        setupCatalogTemplatePanel('waveCTemplateList', waveCCatalog, waveCHandlerMap, 'ยังไม่มี Wave C catalog');
     }
 
     window.wbSetSaveIndicator = setSaveIndicator;

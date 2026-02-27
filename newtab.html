@@ -108,7 +108,6 @@
                     </select>
                     <div class="toolbar-mini-grid">
                         <button class="tool-btn" id="btnToggleGrid" title="เปิด/ปิด Grid">#</button>
-                        <button class="tool-btn" id="btnToggleSnap" title="เปิด/ปิด Snap">🧲</button>
                         <button class="tool-btn" id="btnZoomOut" title="Zoom Out">－</button>
                         <button class="tool-btn" id="btnZoomIn" title="Zoom In">＋</button>
                         <button class="tool-btn" id="btnZoomFit" title="Zoom to Fit">⛶</button>
@@ -228,6 +227,13 @@
                 <div class="panel-search-wrap template-filter-toolbar">
                     <input type="text" id="templateSearch" class="panel-search" placeholder="🔎 ค้นหา template..." />
                     <div class="template-filter-grid">
+                        <select id="templateCategoryFilter" class="toolbar-select" title="หมวดหมู่" style="width:100%">
+                            <option value="all">All Categories</option>
+                            <option value="early_learning_games">Early Learning & Games</option>
+                            <option value="math_visuals">Math Visuals</option>
+                            <option value="classroom_management_decor">Classroom Management & Decor</option>
+                            <option value="ela_graphic_organizers">ELA & Graphic Organizers</option>
+                        </select>
                         <select id="templateGradeBand" class="toolbar-select" title="ระดับชั้น" style="width:100%">
                             <option value="all">All Bands (ทุกระดับ)</option>
                             <option value="elementary">Elementary</option>
@@ -253,6 +259,14 @@
                             <option value="activity">Activity</option>
                         </select>
                     </div>
+                    <div class="template-filter-grid">
+                        <input type="text" id="templateThemeKeyword" class="panel-search"
+                            placeholder="Theme keyword (animals, space...)" />
+                        <select id="templateIconMode" class="toolbar-select" title="โหมดไอคอน" style="width:100%">
+                            <option value="random">Random icons</option>
+                            <option value="fixed">Fixed icons</option>
+                        </select>
+                    </div>
                     <div class="template-chip-label">Subjects</div>
                     <div id="templateSubjectChips" class="template-chip-wrap"></div>
                     <div class="template-chip-label">Skills</div>
@@ -264,6 +278,8 @@
                         <button class="template-segment" data-segment="new">New</button>
                     </div>
                     <div class="template-filter-actions">
+                        <button class="action-btn save-btn" id="btnGenerateTemplateFromCatalog"
+                            style="width:100%">Generate จาก Catalog</button>
                         <button class="action-btn load-btn" id="btnTemplateClearFilters"
                             style="width:100%">ล้างตัวกรอง</button>
                     </div>
@@ -453,6 +469,18 @@
                         Search</button>
                     <button class="action-btn load-btn" id="btnGenCrossword" style="width:100%;margin-top:6px">🧩
                         Crossword</button>
+                    <button class="action-btn load-btn" id="btnGenWordScramble" style="width:100%;margin-top:6px">🔀
+                        Word Scramble</button>
+                    <button class="action-btn load-btn" id="btnGenCryptogram" style="width:100%;margin-top:6px">🕵️
+                        Cryptogram</button>
+                    <button class="action-btn load-btn" id="btnGenMissingLetters" style="width:100%;margin-top:6px">🧩
+                        Missing Letters</button>
+                    <button class="action-btn load-btn" id="btnGenMultipleChoice" style="width:100%;margin-top:6px">✅
+                        Multiple Choice Quiz</button>
+                    <button class="action-btn load-btn" id="btnGenShortAnswer" style="width:100%;margin-top:6px">🗒
+                        Short Answer / Exit Ticket</button>
+                    <button class="action-btn load-btn" id="btnGenAbcOrder" style="width:100%;margin-top:6px">🔤
+                        ABC Order Cut & Glue</button>
                     <button class="action-btn load-btn" id="btnGenTaskCards" style="width:100%;margin-top:6px">🗂
                         Task Cards</button>
                     <button class="action-btn load-btn" id="btnGenMazePattern" style="width:100%;margin-top:6px">🧭
@@ -798,6 +826,11 @@
     <script src="data/svgLibrary.js"></script>
     <script src="data/borderLibrary.js"></script>
     <script src="data/marketTrends.js"></script>
+    <script src="data/templateTaxonomy.v1.js"></script>
+    <script src="data/templatePresets.v1.js"></script>
+    <script src="data/templateCatalog.v1.js"></script>
+    <script src="data/templateHandlers.v1.js"></script>
+    <script src="iconify.utils.js"></script>
     <script src="app.js"></script>
     <script src="panel.js"></script>
     <script src="toolbar.js"></script>

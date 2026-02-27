@@ -1636,6 +1636,37 @@ body.is-slideshow .page-grid {
     cursor: pointer;
 }
 
+.wavea-panel-wrap {
+    margin: 8px 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface2);
+}
+
+.wavea-template-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    max-height: 260px;
+    overflow: auto;
+}
+
+.wavea-template-btn {
+    width: 100%;
+    text-align: left;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 11px;
+    padding: 8px 9px;
+    cursor: pointer;
+}
+
+.wavea-template-btn:hover {
+    border-color: var(--blue);
+}
+
 body.panning,
 body.panning * {
     cursor: grab !important;
