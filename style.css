@@ -128,6 +128,57 @@ body {
 }
 
 .toolbar-select {
+.auth-widget {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 2px;
+    padding-left: 8px;
+    border-left: 1px solid var(--border);
+}
+.auth-status-badge {
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+}
+.auth-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 5300;
+    background: rgba(0, 0, 0, .52);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.auth-overlay-card {
+    width: min(460px, 92vw);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow: 0 20px 64px rgba(0, 0, 0, .45);
+    padding: 22px 20px;
+    text-align: center;
+}
+.auth-overlay-title {
+    font-size: 18px;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+.auth-overlay-text {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+#authOverlayLoginBtn {
+    min-width: 200px;
+}
     height: 34px;
     min-width: 108px;
     padding: 0 8px;

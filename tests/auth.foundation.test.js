@@ -64,3 +64,14 @@ test('phase 1 wiring exists in manifest and newtab', () => {
     assert.ok(manifest.host_permissions.includes('http://localhost:3000/*'));
     assert.ok(newtabHtml.includes('<script src="auth.js"></script>'));
 });
+
+test('phase 2 auth UI shell exists in newtab', () => {
+    const projectRoot = path.resolve(__dirname, '..');
+    const newtabPath = path.join(projectRoot, 'newtab.html');
+    const newtabHtml = fs.readFileSync(newtabPath, 'utf8');
+
+    assert.ok(newtabHtml.includes('id="authWidget"'));
+    assert.ok(newtabHtml.includes('id="authOverlay"'));
+    assert.ok(newtabHtml.includes('id="authLoginBtn"'));
+    assert.ok(newtabHtml.includes('id="authOverlayLoginBtn"'));
+});

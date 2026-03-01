@@ -44,8 +44,21 @@
             </details>
             <span id="autosaveStatus" class="autosave-status">Saved</span>
             <button class="action-btn load-btn" id="themeToggle" title="สลับ Light / Dark">🌙</button>
+            <div id="authWidget" class="auth-widget" aria-live="polite">
+                <span id="authStatusBadge" class="auth-status-badge">Guest</span>
+                <button class="action-btn load-btn" id="authLoginBtn" type="button">🔐 Login</button>
+                <button class="action-btn load-btn" id="authLogoutBtn" type="button" style="display:none">🚪 Logout</button>
+            </div>
         </div>
     </header>
+
+    <div id="authOverlay" class="auth-overlay" style="display:none">
+        <div class="auth-overlay-card">
+            <h3 class="auth-overlay-title">Sign in to continue</h3>
+            <p class="auth-overlay-text">เข้าสู่ระบบ Nexus เพื่อปลดล็อกการใช้งาน Smart-WS Pro</p>
+            <button id="authOverlayLoginBtn" class="action-btn save-btn" type="button">🔐 Login with Nexus</button>
+        </div>
+    </div>
 
     <!-- ═══ CONTEXTUAL BAR ═══════════════════════════════════════ -->
     <div class="context-bar" id="contextBar">
