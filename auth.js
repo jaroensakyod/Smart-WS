@@ -1,6 +1,8 @@
 const HUB_DEFAULT_BASE_URL = 'https://simple-eq-hub.vercel.app';
 const DEFAULT_PRODUCT_SLUG = 'smart-ws';
 const AUTH_POLL_INTERVAL_MS = 45_000;
+const HUB_STORAGE_KEY = 'smartws_hub_base_url';
+const PRODUCT_STORAGE_KEY = 'smartws_product_slug';
 
 function normalizeHubBaseUrl(input) {
     if (typeof input !== 'string') return HUB_DEFAULT_BASE_URL;
@@ -15,6 +17,84 @@ function normalizeProductSlug(input) {
     return trimmed || DEFAULT_PRODUCT_SLUG;
 }
 
+function getSearchParam(name, locationObj) {
+    if (!locationObj || typeof locationObj.search !== 'string') return '';
+    try {
+        const params = new URLSearchParams(locationObj.search);
+        return params.get(name) || '';
+    } catch {
+        return '';
+    }
+}
+
+function resolveRuntimeConfig(globalScope) {
+    const scope = globalScope || (typeof window !== 'undefined' ? window : null);
+    const configFromWindow = scope && scope.__SMARTWS_AUTH_CONFIG__ && typeof scope.__SMARTWS_AUTH_CONFIG__ === 'object'
+        ? scope.__SMARTWS_AUTH_CONFIG__
+        : {};
+
+    const queryHub = getSearchParam('hub', scope?.location);
+    const queryProduct = getSearchParam('product', scope?.location);
+
+    let storageHub = '';
+    let storageProduct = '';
+    try {
+        if (scope?.localStorage) {
+            storageHub = scope.localStorage.getItem(HUB_STORAGE_KEY) || '';
+            storageProduct = scope.localStorage.getItem(PRODUCT_STORAGE_KEY) || '';
+        }
+    } catch {
+        storageHub = '';
+        storageProduct = '';
+    }
+
+    const rawBaseUrl = configFromWindow.baseUrl
+        || scope?.__SMARTWS_HUB_BASE_URL__
+        || queryHub
+        || storageHub
+        || HUB_DEFAULT_BASE_URL;
+
+    const rawProductSlug = configFromWindow.productSlug
+        || scope?.__SMARTWS_PRODUCT_SLUG__
+        || queryProduct
+        || storageProduct
+        || DEFAULT_PRODUCT_SLUG;
+
+    return {
+        baseUrl: normalizeHubBaseUrl(rawBaseUrl),
+        productSlug: normalizeProductSlug(rawProductSlug),
+        source: {
+            baseUrl: configFromWindow.baseUrl
+                ? 'window-config'
+                : (scope?.__SMARTWS_HUB_BASE_URL__
+                    ? 'window-variable'
+                    : (queryHub ? 'query-param' : (storageHub ? 'local-storage' : 'default'))),
+            productSlug: configFromWindow.productSlug
+                ? 'window-config'
+                : (scope?.__SMARTWS_PRODUCT_SLUG__
+                    ? 'window-variable'
+                    : (queryProduct ? 'query-param' : (storageProduct ? 'local-storage' : 'default'))),
+        },
+    };
+}
+
+function persistRuntimeConfig(baseUrl, productSlug, globalScope) {
+    const scope = globalScope || (typeof window !== 'undefined' ? window : null);
+    if (!scope?.localStorage) return false;
+
+    try {
+        if (baseUrl) {
+            scope.localStorage.setItem(HUB_STORAGE_KEY, normalizeHubBaseUrl(baseUrl));
+        }
+        if (productSlug) {
+            scope.localStorage.setItem(PRODUCT_STORAGE_KEY, normalizeProductSlug(productSlug));
+        }
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 function buildUserStatusUrl(baseUrl, productSlug = DEFAULT_PRODUCT_SLUG) {
     const safeBaseUrl = normalizeHubBaseUrl(baseUrl);
     const safeSlug = encodeURIComponent(normalizeProductSlug(productSlug));
@@ -23,7 +103,7 @@ function buildUserStatusUrl(baseUrl, productSlug = DEFAULT_PRODUCT_SLUG) {
 
 function buildLoginUrl(baseUrl) {
     const safeBaseUrl = normalizeHubBaseUrl(baseUrl);
-    return `${safeBaseUrl}/login`;
+    return `${safeBaseUrl}/auth/login`;
 }
 
 function buildLogoutUrl(baseUrl) {
@@ -51,8 +131,9 @@ function createAuthClient(options = {}) {
         ? options.fetchImpl
         : (typeof fetch === 'function' ? fetch.bind(globalThis) : null);
 
-    const baseUrl = normalizeHubBaseUrl(options.baseUrl || HUB_DEFAULT_BASE_URL);
-    const productSlug = normalizeProductSlug(options.productSlug || DEFAULT_PRODUCT_SLUG);
+    const runtimeConfig = resolveRuntimeConfig(options.globalScope);
+    const baseUrl = normalizeHubBaseUrl(options.baseUrl || runtimeConfig.baseUrl || HUB_DEFAULT_BASE_URL);
+    const productSlug = normalizeProductSlug(options.productSlug || runtimeConfig.productSlug || DEFAULT_PRODUCT_SLUG);
 
     async function checkStatus() {
         if (!fetchImpl) {
@@ -138,6 +219,7 @@ function createAuthClient(options = {}) {
     return {
         baseUrl,
         productSlug,
+        runtimeSource: runtimeConfig.source,
         buildUserStatusUrl: () => buildUserStatusUrl(baseUrl, productSlug),
         buildLoginUrl: () => buildLoginUrl(baseUrl),
         buildLogoutUrl: () => buildLogoutUrl(baseUrl),
@@ -207,6 +289,10 @@ function openLoginWindow(baseUrl) {
 }
 
 function initAuth(options = {}) {
+    if (options.persistConfig) {
+        persistRuntimeConfig(options.baseUrl, options.productSlug, options.globalScope);
+    }
+
     const elements = resolveAuthElements();
     const client = createAuthClient(options);
 
@@ -270,8 +356,12 @@ const SmartWSAuth = {
     HUB_DEFAULT_BASE_URL,
     DEFAULT_PRODUCT_SLUG,
     AUTH_POLL_INTERVAL_MS,
+    HUB_STORAGE_KEY,
+    PRODUCT_STORAGE_KEY,
     normalizeHubBaseUrl,
     normalizeProductSlug,
+    resolveRuntimeConfig,
+    persistRuntimeConfig,
     buildUserStatusUrl,
     buildLoginUrl,
     buildLogoutUrl,

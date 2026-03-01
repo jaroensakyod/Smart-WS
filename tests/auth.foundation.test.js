@@ -7,11 +7,15 @@ const {
     HUB_DEFAULT_BASE_URL,
     DEFAULT_PRODUCT_SLUG,
     AUTH_POLL_INTERVAL_MS,
+    HUB_STORAGE_KEY,
+    PRODUCT_STORAGE_KEY,
     normalizeHubBaseUrl,
     buildUserStatusUrl,
     buildLoginUrl,
     buildLogoutUrl,
     normalizeAuthStatus,
+    resolveRuntimeConfig,
+    persistRuntimeConfig,
     createAuthClient,
     initAuth,
 } = require('../auth.js');
@@ -27,7 +31,7 @@ test('buildUserStatusUrl includes encoded product slug', () => {
 });
 
 test('phase 3 url helpers build login/logout endpoints', () => {
-    assert.equal(buildLoginUrl('https://hub.example/'), 'https://hub.example/login');
+    assert.equal(buildLoginUrl('https://hub.example/'), 'https://hub.example/auth/login');
     assert.equal(buildLogoutUrl('https://hub.example/'), 'https://hub.example/api/v1/auth/sign-out');
 });
 
@@ -130,4 +134,58 @@ test('phase 3 exports runtime init and polling config', () => {
     assert.equal(typeof initAuth, 'function');
     assert.equal(Number.isInteger(AUTH_POLL_INTERVAL_MS), true);
     assert.ok(AUTH_POLL_INTERVAL_MS >= 30_000);
+});
+
+test('phase 4 resolveRuntimeConfig prioritizes query and storage values', () => {
+    const storage = new Map();
+    const fakeScope = {
+        location: {
+            search: '?hub=http://localhost:3000&product=smart-ws-dev',
+        },
+        localStorage: {
+            getItem(key) {
+                return storage.has(key) ? storage.get(key) : null;
+            },
+            setItem(key, value) {
+                storage.set(key, String(value));
+            },
+        },
+    };
+
+    const cfgFromQuery = resolveRuntimeConfig(fakeScope);
+    assert.equal(cfgFromQuery.baseUrl, 'http://localhost:3000');
+    assert.equal(cfgFromQuery.productSlug, 'smart-ws-dev');
+
+    fakeScope.location.search = '';
+    persistRuntimeConfig('http://127.0.0.1:3000/', 'smart-ws-local', fakeScope);
+    const cfgFromStorage = resolveRuntimeConfig(fakeScope);
+    assert.equal(cfgFromStorage.baseUrl, 'http://127.0.0.1:3000');
+    assert.equal(cfgFromStorage.productSlug, 'smart-ws-local');
+});
+
+test('phase 4 createAuthClient picks runtime config from global scope', () => {
+    const storage = new Map([
+        [HUB_STORAGE_KEY, 'http://localhost:3000'],
+        [PRODUCT_STORAGE_KEY, 'smart-ws-local'],
+    ]);
+
+    const client = createAuthClient({
+        globalScope: {
+            location: { search: '' },
+            localStorage: {
+                getItem(key) {
+                    return storage.has(key) ? storage.get(key) : null;
+                },
+                setItem(key, value) {
+                    storage.set(key, String(value));
+                },
+            },
+        },
+        fetchImpl: async () => ({ ok: true, status: 200, async json() { return { status: 'PRO' }; } }),
+    });
+
+    assert.equal(client.baseUrl, 'http://localhost:3000');
+    assert.equal(client.productSlug, 'smart-ws-local');
+    assert.equal(client.runtimeSource.baseUrl, 'local-storage');
+    assert.equal(client.runtimeSource.productSlug, 'local-storage');
 });
