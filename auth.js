@@ -314,6 +314,7 @@ function setAuthUiState(input, elements, options = {}) {
     const isPro = safeStatus === 'PRO';
     const isFree = safeStatus === 'FREE';
     const isLocked = presentation.locked;
+    const logoutBusy = Boolean(options.logoutBusy);
 
     let lastSyncText = '';
     if (options.lastCheckedAt instanceof Date) {
@@ -339,9 +340,12 @@ function setAuthUiState(input, elements, options = {}) {
 
     if (elements.loginBtn) {
         elements.loginBtn.style.display = isAnonymous ? '' : 'none';
+        elements.loginBtn.disabled = logoutBusy;
     }
     if (elements.logoutBtn) {
         elements.logoutBtn.style.display = isAnonymous ? 'none' : '';
+        elements.logoutBtn.disabled = logoutBusy;
+        elements.logoutBtn.textContent = logoutBusy ? '⏳ Logging out...' : '🚪 Logout';
     }
     if (elements.overlay) {
         elements.overlay.style.display = isLocked ? 'flex' : 'none';
@@ -360,6 +364,10 @@ function setAuthUiState(input, elements, options = {}) {
     }
     if (elements.overlayLoginBtn) {
         elements.overlayLoginBtn.textContent = presentation.actionLabel;
+        elements.overlayLoginBtn.disabled = logoutBusy;
+    }
+    if (elements.overlayRefreshBtn) {
+        elements.overlayRefreshBtn.disabled = logoutBusy;
     }
     if (typeof document !== 'undefined' && document.body) {
         document.body.classList.toggle('auth-locked', isLocked);
@@ -418,20 +426,43 @@ function initAuth(options = {}) {
     let pollHandle = null;
     let authActionUrl = client.buildLoginUrl();
     let lastCheckedAt = null;
+    let isLoggingOut = false;
 
-    const applyUiState = (result) => {
+    const runPostLogoutReset = async (result) => {
+        const fallbackHandler = typeof window !== 'undefined' && typeof window.wbResetWorkspaceAfterLogout === 'function'
+            ? window.wbResetWorkspaceAfterLogout
+            : null;
+
+        const handler = typeof options.onPostLogoutReset === 'function'
+            ? options.onPostLogoutReset
+            : fallbackHandler;
+
+        if (typeof handler !== 'function') return;
+
+        try {
+            await handler({
+                ok: result?.ok === true,
+                status: normalizeAuthStatus(result?.status, result?.httpStatus),
+            });
+        } catch {
+            return;
+        }
+    };
+
+    const applyUiState = (result, uiOptions = {}) => {
         lastCheckedAt = new Date();
         const presentation = setAuthUiState(result, elements, {
             baseUrl: client.baseUrl,
             lastCheckedAt,
+            logoutBusy: Boolean(uiOptions.logoutBusy),
         });
         authActionUrl = presentation.actionUrl || client.buildLoginUrl();
         return presentation;
     };
 
-    const refresh = async () => {
+    const refresh = async (uiOptions = {}) => {
         const result = await client.checkStatus();
-        applyUiState(result);
+        applyUiState(result, uiOptions);
         return result;
     };
 
@@ -440,8 +471,29 @@ function initAuth(options = {}) {
     };
 
     const onLogout = async () => {
-        await client.logout();
-        await refresh();
+        if (isLoggingOut) return;
+
+        isLoggingOut = true;
+        applyUiState({ status: 'ANONYMOUS' }, { logoutBusy: true });
+        if (elements.overlayTitle) {
+            elements.overlayTitle.textContent = 'Signing out...';
+        }
+        if (elements.overlayText) {
+            elements.overlayText.textContent = 'กำลังออกจากระบบ และล้างข้อมูลใบงานชั่วคราว';
+        }
+        if (elements.overlayMeta) {
+            elements.overlayMeta.textContent = 'ระบบจะตรวจสอบสถานะอัตโนมัติทุก 45 วินาที';
+        }
+
+        let logoutResult = null;
+        try {
+            logoutResult = await client.logout();
+        } finally {
+            await runPostLogoutReset(logoutResult);
+            isLoggingOut = false;
+        }
+
+        await refresh({ logoutBusy: false });
     };
 
     if (elements.loginBtn) {

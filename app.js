@@ -2286,6 +2286,16 @@ window.wbGetWorkbookData = () => {
         pages: workbook.pages.map(p => p.json),
     };
 };
+window.wbResetWorkspaceAfterLogout = async () => {
+    worksheetMode = 'student';
+    syncUiToggles();
+    workbook.pages = [createPageState(BLANK_PAGE_JSON)];
+    activePageIndex = 0;
+    await loadCanvasJson(BLANK_PAGE_JSON);
+    updatePageIndicator();
+    clearPropsPanel();
+    clearTelemetryState();
+};
 window.wbLoadWorkbookData = async (payload) => {
     if (payload?.paperSize) applyPaperLayout(payload.paperSize);
     worksheetMode = payload?.worksheetMode === 'answer' ? 'answer' : 'student';

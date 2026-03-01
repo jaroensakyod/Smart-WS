@@ -16,6 +16,7 @@ const {
     buildOnboardingUrl,
     normalizeAuthStatus,
     resolveAuthPresentation,
+    setAuthUiState,
     resolveRuntimeConfig,
     persistRuntimeConfig,
     createAuthClient,
@@ -154,6 +155,55 @@ test('phase 3 exports runtime init and polling config', () => {
     assert.equal(typeof initAuth, 'function');
     assert.equal(Number.isInteger(AUTH_POLL_INTERVAL_MS), true);
     assert.ok(AUTH_POLL_INTERVAL_MS >= 30_000);
+});
+
+test('setAuthUiState applies logout loading state and disables controls', () => {
+    const elements = {
+        statusBadge: { classList: { remove() {}, add() {} }, textContent: '' },
+        loginBtn: { style: { display: '' }, disabled: false },
+        logoutBtn: { style: { display: '' }, disabled: false, textContent: '' },
+        overlay: { style: { display: '' } },
+        overlayTitle: { textContent: '' },
+        overlayText: { textContent: '' },
+        overlayMeta: { textContent: '' },
+        overlayLoginBtn: { textContent: '', disabled: false },
+        overlayRefreshBtn: { disabled: false },
+    };
+
+    setAuthUiState({ status: 'FREE' }, elements, {
+        baseUrl: 'https://hub.example',
+        logoutBusy: true,
+    });
+
+    assert.equal(elements.logoutBtn.disabled, true);
+    assert.equal(elements.logoutBtn.textContent, '⏳ Logging out...');
+    assert.equal(elements.loginBtn.disabled, true);
+    assert.equal(elements.overlayLoginBtn.disabled, true);
+    assert.equal(elements.overlayRefreshBtn.disabled, true);
+});
+
+test('setAuthUiState restores logout button label when not busy', () => {
+    const elements = {
+        statusBadge: { classList: { remove() {}, add() {} }, textContent: '' },
+        loginBtn: { style: { display: '' }, disabled: false },
+        logoutBtn: { style: { display: '' }, disabled: true, textContent: '⏳ Logging out...' },
+        overlay: { style: { display: '' } },
+        overlayTitle: { textContent: '' },
+        overlayText: { textContent: '' },
+        overlayMeta: { textContent: '' },
+        overlayLoginBtn: { textContent: '', disabled: true },
+        overlayRefreshBtn: { disabled: true },
+    };
+
+    setAuthUiState({ status: 'PRO' }, elements, {
+        baseUrl: 'https://hub.example',
+        logoutBusy: false,
+    });
+
+    assert.equal(elements.logoutBtn.disabled, false);
+    assert.equal(elements.logoutBtn.textContent, '🚪 Logout');
+    assert.equal(elements.overlayLoginBtn.disabled, false);
+    assert.equal(elements.overlayRefreshBtn.disabled, false);
 });
 
 test('phase 4 resolveRuntimeConfig prioritizes query and storage values', () => {
