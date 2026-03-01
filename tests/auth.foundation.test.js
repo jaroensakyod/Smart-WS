@@ -13,7 +13,9 @@ const {
     buildUserStatusUrl,
     buildLoginUrl,
     buildLogoutUrl,
+    buildOnboardingUrl,
     normalizeAuthStatus,
+    resolveAuthPresentation,
     resolveRuntimeConfig,
     persistRuntimeConfig,
     createAuthClient,
@@ -33,6 +35,22 @@ test('buildUserStatusUrl includes encoded product slug', () => {
 test('phase 3 url helpers build login/logout endpoints', () => {
     assert.equal(buildLoginUrl('https://hub.example/'), 'https://hub.example/auth/login');
     assert.equal(buildLogoutUrl('https://hub.example/'), 'https://hub.example/api/v1/auth/sign-out');
+    assert.equal(buildOnboardingUrl('https://hub.example/'), 'https://hub.example/onboarding');
+});
+
+test('resolveAuthPresentation maps FREE onboarding state from payload', () => {
+    const presentation = resolveAuthPresentation({
+        status: 'FREE',
+        raw: {
+            onboardingRequired: true,
+            onboardingLink: 'https://hub.example/onboarding',
+        },
+    }, 'https://hub.example');
+
+    assert.equal(presentation.status, 'FREE');
+    assert.equal(presentation.locked, true);
+    assert.equal(presentation.actionUrl, 'https://hub.example/onboarding');
+    assert.equal(presentation.actionLabel, '🚀 Continue Onboarding');
 });
 
 test('normalizeAuthStatus maps payload and http fallback correctly', () => {
@@ -128,6 +146,8 @@ test('phase 2 auth UI shell exists in newtab', () => {
     assert.ok(newtabHtml.includes('id="authLoginBtn"'));
     assert.ok(newtabHtml.includes('id="authLogoutBtn"'));
     assert.ok(newtabHtml.includes('id="authOverlayLoginBtn"'));
+    assert.ok(newtabHtml.includes('id="authOverlayRefreshBtn"'));
+    assert.ok(newtabHtml.includes('id="authOverlayMeta"'));
 });
 
 test('phase 3 exports runtime init and polling config', () => {

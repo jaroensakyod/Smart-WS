@@ -111,6 +111,11 @@ function buildLogoutUrl(baseUrl) {
     return `${safeBaseUrl}/api/v1/auth/sign-out`;
 }
 
+function buildOnboardingUrl(baseUrl) {
+    const safeBaseUrl = normalizeHubBaseUrl(baseUrl);
+    return `${safeBaseUrl}/onboarding`;
+}
+
 function normalizeAuthStatus(rawStatus, httpStatus) {
     if (typeof rawStatus === 'string' && rawStatus.trim()) {
         const upper = rawStatus.trim().toUpperCase();
@@ -228,11 +233,92 @@ function createAuthClient(options = {}) {
     };
 }
 
-function setAuthUiState(status, elements) {
-    const safeStatus = normalizeAuthStatus(status);
+function resolveAuthPresentation(input, baseUrl) {
+    const authResult = input && typeof input === 'object' ? input : { status: input };
+    const status = normalizeAuthStatus(authResult.status);
+    const raw = authResult.raw && typeof authResult.raw === 'object' ? authResult.raw : {};
+
+    const payloadLink = typeof raw.link === 'string' && raw.link.trim() ? raw.link.trim() : '';
+    const payloadOnboardingLink = typeof raw.onboardingLink === 'string' && raw.onboardingLink.trim()
+        ? raw.onboardingLink.trim()
+        : '';
+    const onboardingRequired = Boolean(raw.onboardingRequired);
+
+    const loginUrl = payloadLink || buildLoginUrl(baseUrl);
+    const onboardingUrl = payloadOnboardingLink || payloadLink || buildOnboardingUrl(baseUrl);
+
+    if (status === 'PRO') {
+        return {
+            status,
+            locked: false,
+            actionLabel: '🔐 Login with Nexus',
+            actionUrl: loginUrl,
+            message: '',
+            title: '',
+            meta: '',
+        };
+    }
+
+    if (status === 'FREE' && onboardingRequired) {
+        return {
+            status,
+            locked: true,
+            actionLabel: '🚀 Continue Onboarding',
+            actionUrl: onboardingUrl,
+            title: 'Activation required',
+            message: 'ชำระเงิน/ส่งหลักฐานที่ Nexus Hub ก่อน เพื่อเปิดใช้งาน Smart-WS Pro',
+            meta: 'ระบบจะตรวจสอบสถานะอัตโนมัติทุก 45 วินาที',
+        };
+    }
+
+    if (status === 'FREE') {
+        return {
+            status,
+            locked: true,
+            actionLabel: '💳 Open Nexus Hub',
+            actionUrl: onboardingUrl,
+            title: 'PRO license required',
+            message: 'บัญชีนี้ยังไม่มีสิทธิ์ใช้งาน Smart-WS Pro',
+            meta: 'หากเพิ่งอัปเกรด ให้รอสักครู่แล้วกด Refresh Status',
+        };
+    }
+
+    if (status === 'ANONYMOUS') {
+        return {
+            status,
+            locked: true,
+            actionLabel: '🔐 Login with Nexus',
+            actionUrl: loginUrl,
+            title: 'Sign in to continue',
+            message: 'เข้าสู่ระบบ Nexus เพื่อปลดล็อกการใช้งาน Smart-WS Pro',
+            meta: 'ระบบจะตรวจสอบสถานะอัตโนมัติทุก 45 วินาที',
+        };
+    }
+
+    return {
+        status,
+        locked: true,
+        actionLabel: '🔄 Retry Nexus',
+        actionUrl: loginUrl,
+        title: 'Status unavailable',
+        message: 'ยังไม่สามารถยืนยันสิทธิ์การใช้งานได้ในขณะนี้',
+        meta: 'ลอง Refresh Status หรือเปิด Nexus Hub เพื่อตรวจสอบบัญชี',
+    };
+}
+
+function setAuthUiState(input, elements, options = {}) {
+    const baseUrl = normalizeHubBaseUrl(options.baseUrl || HUB_DEFAULT_BASE_URL);
+    const presentation = resolveAuthPresentation(input, baseUrl);
+    const safeStatus = presentation.status;
     const isAnonymous = safeStatus === 'ANONYMOUS';
     const isPro = safeStatus === 'PRO';
     const isFree = safeStatus === 'FREE';
+    const isLocked = presentation.locked;
+
+    let lastSyncText = '';
+    if (options.lastCheckedAt instanceof Date) {
+        lastSyncText = options.lastCheckedAt.toLocaleTimeString('th-TH', { hour12: false });
+    }
 
     if (elements.statusBadge) {
         elements.statusBadge.classList.remove('is-pro', 'is-free', 'is-anonymous', 'is-unknown');
@@ -243,7 +329,7 @@ function setAuthUiState(status, elements) {
             elements.statusBadge.textContent = 'FREE';
             elements.statusBadge.classList.add('is-free');
         } else if (isAnonymous) {
-            elements.statusBadge.textContent = 'Guest';
+            elements.statusBadge.textContent = 'LOGIN';
             elements.statusBadge.classList.add('is-anonymous');
         } else {
             elements.statusBadge.textContent = safeStatus;
@@ -258,11 +344,28 @@ function setAuthUiState(status, elements) {
         elements.logoutBtn.style.display = isAnonymous ? 'none' : '';
     }
     if (elements.overlay) {
-        elements.overlay.style.display = isAnonymous ? 'flex' : 'none';
+        elements.overlay.style.display = isLocked ? 'flex' : 'none';
+    }
+    if (elements.overlayTitle) {
+        elements.overlayTitle.textContent = presentation.title;
+    }
+    if (elements.overlayText) {
+        elements.overlayText.textContent = presentation.message;
+    }
+    if (elements.overlayMeta) {
+        const metaParts = [];
+        if (presentation.meta) metaParts.push(presentation.meta);
+        if (lastSyncText) metaParts.push(`ตรวจล่าสุด ${lastSyncText}`);
+        elements.overlayMeta.textContent = metaParts.join(' • ');
+    }
+    if (elements.overlayLoginBtn) {
+        elements.overlayLoginBtn.textContent = presentation.actionLabel;
     }
     if (typeof document !== 'undefined' && document.body) {
-        document.body.classList.toggle('auth-locked', isAnonymous);
+        document.body.classList.toggle('auth-locked', isLocked);
     }
+
+    return presentation;
 }
 
 function resolveAuthElements() {
@@ -275,17 +378,21 @@ function resolveAuthElements() {
         statusBadge: document.getElementById('authStatusBadge'),
         loginBtn: document.getElementById('authLoginBtn'),
         overlayLoginBtn: document.getElementById('authOverlayLoginBtn'),
+        overlayRefreshBtn: document.getElementById('authOverlayRefreshBtn'),
         logoutBtn: document.getElementById('authLogoutBtn'),
         overlay: document.getElementById('authOverlay'),
+        overlayTitle: document.getElementById('authOverlayTitle'),
+        overlayText: document.getElementById('authOverlayText'),
+        overlayMeta: document.getElementById('authOverlayMeta'),
     };
 }
 
-function openLoginWindow(baseUrl) {
-    const loginUrl = buildLoginUrl(baseUrl);
+function openAuthWindow(url, baseUrl) {
+    const targetUrl = typeof url === 'string' && url.trim() ? url.trim() : buildLoginUrl(baseUrl);
     if (typeof window !== 'undefined' && typeof window.open === 'function') {
-        window.open(loginUrl, '_blank', 'noopener');
+        window.open(targetUrl, '_blank', 'noopener');
     }
-    return loginUrl;
+    return targetUrl;
 }
 
 function initAuth(options = {}) {
@@ -309,15 +416,27 @@ function initAuth(options = {}) {
         : AUTH_POLL_INTERVAL_MS;
 
     let pollHandle = null;
+    let authActionUrl = client.buildLoginUrl();
+    let lastCheckedAt = null;
+
+    const applyUiState = (result) => {
+        lastCheckedAt = new Date();
+        const presentation = setAuthUiState(result, elements, {
+            baseUrl: client.baseUrl,
+            lastCheckedAt,
+        });
+        authActionUrl = presentation.actionUrl || client.buildLoginUrl();
+        return presentation;
+    };
 
     const refresh = async () => {
         const result = await client.checkStatus();
-        setAuthUiState(result.status, elements);
+        applyUiState(result);
         return result;
     };
 
     const onLogin = () => {
-        openLoginWindow(client.baseUrl);
+        openAuthWindow(authActionUrl, client.baseUrl);
     };
 
     const onLogout = async () => {
@@ -330,6 +449,11 @@ function initAuth(options = {}) {
     }
     if (elements.overlayLoginBtn) {
         elements.overlayLoginBtn.addEventListener('click', onLogin);
+    }
+    if (elements.overlayRefreshBtn) {
+        elements.overlayRefreshBtn.addEventListener('click', () => {
+            void refresh();
+        });
     }
     if (elements.logoutBtn) {
         elements.logoutBtn.addEventListener('click', onLogout);
@@ -368,7 +492,9 @@ const SmartWSAuth = {
     normalizeAuthStatus,
     resolveAuthElements,
     setAuthUiState,
-    openLoginWindow,
+    buildOnboardingUrl,
+    openAuthWindow,
+    resolveAuthPresentation,
     createAuthClient,
     initAuth,
 };

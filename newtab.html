@@ -54,9 +54,13 @@
 
     <div id="authOverlay" class="auth-overlay" style="display:none">
         <div class="auth-overlay-card">
-            <h3 class="auth-overlay-title">Sign in to continue</h3>
-            <p class="auth-overlay-text">เข้าสู่ระบบ Nexus เพื่อปลดล็อกการใช้งาน Smart-WS Pro</p>
-            <button id="authOverlayLoginBtn" class="action-btn save-btn" type="button">🔐 Login with Nexus</button>
+            <h3 id="authOverlayTitle" class="auth-overlay-title">Sign in to continue</h3>
+            <p id="authOverlayText" class="auth-overlay-text">เข้าสู่ระบบ Nexus เพื่อปลดล็อกการใช้งาน Smart-WS Pro</p>
+            <p id="authOverlayMeta" class="auth-overlay-meta">ระบบจะตรวจสอบสถานะอัตโนมัติทุก 45 วินาที</p>
+            <div class="auth-overlay-actions">
+                <button id="authOverlayLoginBtn" class="action-btn save-btn" type="button">🔐 Login with Nexus</button>
+                <button id="authOverlayRefreshBtn" class="action-btn load-btn" type="button">🔄 Refresh Status</button>
+            </div>
         </div>
     </div>
 
