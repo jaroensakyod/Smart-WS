@@ -88,6 +88,7 @@ test('createAuthClient checkStatus calls fetch with credentials include', async 
 
     assert.equal(capturedUrl, 'https://simple-eq-hub.vercel.app/api/v1/user/status?product=smart-ws');
     assert.equal(capturedOptions.credentials, 'include');
+    assert.equal(capturedOptions.cache, 'no-store');
     assert.equal(result.ok, true);
     assert.equal(result.status, 'PRO');
 });
@@ -119,6 +120,7 @@ test('createAuthClient logout calls sign-out endpoint with credentials include',
     assert.equal(capturedUrl, 'https://simple-eq-hub.vercel.app/api/v1/auth/sign-out');
     assert.equal(capturedOptions.credentials, 'include');
     assert.equal(capturedOptions.method, 'POST');
+    assert.equal(capturedOptions.cache, 'no-store');
     assert.equal(result.ok, true);
     assert.equal(result.status, 'ANONYMOUS');
 });

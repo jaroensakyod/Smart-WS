@@ -156,6 +156,7 @@ function createAuthClient(options = {}) {
             const response = await fetchImpl(url, {
                 method: 'GET',
                 credentials: 'include',
+                cache: 'no-store',
                 headers: {
                     Accept: 'application/json',
                 },
@@ -202,6 +203,7 @@ function createAuthClient(options = {}) {
             const response = await fetchImpl(buildLogoutUrl(baseUrl), {
                 method: 'POST',
                 credentials: 'include',
+                cache: 'no-store',
                 headers: {
                     Accept: 'application/json',
                 },
