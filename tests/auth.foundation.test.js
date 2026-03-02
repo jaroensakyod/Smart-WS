@@ -137,6 +137,8 @@ test('phase 1 wiring exists in manifest and newtab', () => {
     const newtabHtml = fs.readFileSync(newtabPath, 'utf8');
 
     assert.ok(Array.isArray(manifest.host_permissions));
+    assert.equal(typeof manifest.key, 'string');
+    assert.ok(manifest.key.length > 0);
     assert.ok(manifest.host_permissions.includes('https://simple-eq-hub.vercel.app/*'));
     assert.ok(manifest.host_permissions.includes('http://localhost:3000/*'));
     assert.ok(newtabHtml.includes('<script src="auth.js"></script>'));

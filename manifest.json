@@ -2,6 +2,7 @@
     "manifest_version": 3,
     "name": "Smart WS",
     "version": "1.0.0",
+    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA77JrUg8kFEDV1CvU+8LJ2lvenQ4xAbXE3uygPZ7cCXirP1053hEvr2Xup2ILSQomSoiELs1TUeAA4Mf2NOCLNSVE7m4gtvSVo7GB0cIB9kh2opZQvMGHRaogipHKOesJOvf7Mj0X6+wHIm9loXZSimysxNpZJGQwx0bRj93SBJZ00JoZ1tc+D/kN6Zq/8Af3vwEtqz7I7JncQWP4EJqSHRTjqwRZ1m0LM7YX/6S2yZr2LxYPGO1N9OV6yjZzWWY3ju+qVpvThQhz3i7XNiyl2DlpNH8snxfQfEgnWhBWNjXjnH3mam577E5Th6SMBkM5lZXc+JOdJnCul8MlnK65gwIDAQAB",
     "description": "สร้างแบบฝึกหัดด้วย Canvas ลาก-วาง Vector ได้ง่ายๆ",
     "icons": {
         "16": "icons/icon16.png",
