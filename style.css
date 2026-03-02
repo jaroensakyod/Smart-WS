@@ -1596,6 +1596,33 @@ body.is-slideshow .page-grid {
     color: var(--muted);
 }
 
+.template-card-thumb {
+    width: 100%;
+    height: 116px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    margin-bottom: 8px;
+}
+
+.template-card-action {
+    width: 100%;
+    margin-top: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 8px;
+    cursor: pointer;
+}
+
+.template-card-action:hover {
+    border-color: var(--blue);
+}
+
 .template-empty {
     border: 1px dashed var(--border);
     border-radius: 10px;

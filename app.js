@@ -165,13 +165,109 @@ function updatePageIndicator() {
 }
 
 function serializeCanvasNow() {
-    return JSON.stringify(canvas.toJSON(SERIALIZE_PROPS));
+    try {
+        return JSON.stringify(canvas.toJSON(SERIALIZE_PROPS));
+    } catch (error) {
+        trackTelemetry('canvas_serialize_error', {
+            message: String(error?.message || error || 'unknown-error'),
+        });
+        return buildSafeCanvasJsonSnapshot();
+    }
+}
+
+function sanitizeSerializableValue(value) {
+    if (value === null || value === undefined) return value;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    if (typeof value === 'function') return undefined;
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => sanitizeSerializableValue(item))
+            .filter((item) => item !== undefined);
+    }
+    if (typeof value === 'object') {
+        const output = {};
+        Object.entries(value).forEach(([key, raw]) => {
+            if (key === 'canvas' || key === 'group' || key === '_objects') return;
+            const sanitized = sanitizeSerializableValue(raw);
+            if (sanitized !== undefined) output[key] = sanitized;
+        });
+        return output;
+    }
+    return value;
+}
+
+function sanitizeFabricLikeObject(raw) {
+    const obj = sanitizeSerializableValue(raw);
+    if (!obj || typeof obj !== 'object') return null;
+    if (!obj.type) return null;
+    if (obj.type === 'rect') {
+        obj.width = Math.abs(Number(obj.width || 0));
+        obj.height = Math.abs(Number(obj.height || 0));
+    }
+    return obj;
+}
+
+function buildSafeCanvasJsonSnapshot() {
+    try {
+        const safeObjects = [];
+        const objects = canvas.getObjects();
+        objects.forEach((obj, index) => {
+            try {
+                const raw = obj.toObject(SERIALIZE_PROPS);
+                const normalized = sanitizeFabricLikeObject(raw);
+                if (normalized) safeObjects.push(normalized);
+            } catch (error) {
+                trackTelemetry('canvas_object_serialize_error', {
+                    index,
+                    type: obj?.type || 'unknown',
+                    message: String(error?.message || error || 'unknown-error'),
+                });
+            }
+        });
+        return JSON.stringify({
+            version: fabric?.version || '5.2.4',
+            objects: safeObjects,
+        });
+    } catch (error) {
+        trackTelemetry('canvas_safe_snapshot_error', {
+            message: String(error?.message || error || 'unknown-error'),
+        });
+        return currentPage()?.json || BLANK_PAGE_JSON;
+    }
+}
+
+function sanitizeTemplateCanvasData(canvasData) {
+    const root = sanitizeSerializableValue(canvasData || {});
+    const objects = Array.isArray(root?.objects)
+        ? root.objects
+            .map((item) => sanitizeFabricLikeObject(item))
+            .filter(Boolean)
+            .map((item) => ({
+                ...item,
+                data: {
+                    ...(item.data || {}),
+                    curatedTemplateObject: true,
+                },
+            }))
+        : [];
+    return {
+        version: root?.version || fabric?.version || '5.2.4',
+        objects,
+    };
 }
 
 function persistCurrentPage() {
     const page = currentPage();
     if (!page) return;
-    page.json = serializeCanvasNow();
+    try {
+        page.json = serializeCanvasNow();
+    } catch (error) {
+        trackTelemetry('page_persist_error', {
+            message: String(error?.message || error || 'unknown-error'),
+            activePageIndex,
+        });
+        return;
+    }
     if (!page.undoStack.length) page.undoStack = [page.json];
 }
 
@@ -226,13 +322,23 @@ async function jumpToPageFromInput() {
 }
 
 async function addPageAndGo() {
-    persistCurrentPage();
-    workbook.pages.push(createPageState());
-    activePageIndex = workbook.pages.length - 1;
-    await loadCanvasJson(currentPage().json);
-    clearPropsPanel();
-    updatePageIndicator();
-    showToast('➕ เพิ่มหน้าใหม่แล้ว');
+    try {
+        persistCurrentPage();
+        workbook.pages.push(createPageState());
+        activePageIndex = workbook.pages.length - 1;
+        await loadCanvasJson(currentPage().json);
+        clearPropsPanel();
+        updatePageIndicator();
+        showToast('➕ เพิ่มหน้าใหม่แล้ว');
+    } catch (error) {
+        trackTelemetry('page_add_error', {
+            message: String(error?.message || error || 'unknown-error'),
+            activePageIndex,
+            pageCount: workbook.pages.length,
+        });
+        showToast('ไม่สามารถเพิ่มหน้าใหม่ได้');
+        throw error;
+    }
 }
 
 async function duplicateCurrentPage() {
@@ -320,7 +426,16 @@ function saveHistory() {
     if (!page) return;
 
     page.redoStack = [];
-    const snapshot = serializeCanvasNow();
+    let snapshot = '';
+    try {
+        snapshot = serializeCanvasNow();
+    } catch (error) {
+        trackTelemetry('history_serialize_error', {
+            message: String(error?.message || error || 'unknown-error'),
+            activePageIndex,
+        });
+        return;
+    }
     if (page.undoStack[page.undoStack.length - 1] !== snapshot) {
         page.undoStack.push(snapshot);
         if (page.undoStack.length > HISTORY_MAX) page.undoStack.shift();
@@ -547,6 +662,11 @@ function generateAnswerKeyPage() {
 
 function applyTemplate(type) {
     if (!type) return;
+    if (String(type).startsWith('curated_')) {
+        const curatedId = String(type).replace(/^curated_/, '');
+        applyCuratedTemplateById(curatedId, { mode: 'replace', skipConfirm: false });
+        return;
+    }
     if (!window.confirm('ใช้เทมเพลตนี้และล้างหน้าปัจจุบัน?')) {
         trackTelemetry('template_apply_cancelled', { template: type });
         return;
@@ -1439,6 +1559,73 @@ function applyTemplate(type) {
     showToast('📄 ใส่เทมเพลตแล้ว');
 }
 
+function applyCuratedTemplateById(templateId, options = {}) {
+    const api = window.SMARTWS_CURATED_TEMPLATES_API || {};
+    const resolver = typeof api.getCuratedTemplateById === 'function'
+        ? api.getCuratedTemplateById
+        : null;
+    if (!resolver) return false;
+
+    const template = resolver(templateId);
+    if (!template || !template.canvasData) {
+        showToast('ไม่พบ curated template ที่เลือก');
+        trackTelemetry('curated_template_apply_missing', { templateId: templateId || 'unknown' });
+        return false;
+    }
+
+    const mode = String(options.mode || 'replace');
+    const skipConfirm = !!options.skipConfirm;
+
+    const loadTemplateData = () => {
+        const normalizedData = sanitizeTemplateCanvasData(template.canvasData);
+        const json = JSON.stringify(normalizedData);
+        return loadCanvasJson(json)
+            .then(() => {
+                saveHistory();
+                persistCurrentPage();
+                updatePageIndicator();
+                trackTelemetry('curated_template_apply_success', {
+                    templateId: template.id,
+                    mode,
+                    objectCount: canvas.getObjects().length,
+                });
+                showToast(`📄 เพิ่มเทมเพลต: ${template.title}`);
+                return true;
+            })
+            .catch((error) => {
+                trackTelemetry('curated_template_apply_error', {
+                    templateId: template.id,
+                    mode,
+                    message: String(error?.message || error || 'unknown-error'),
+                });
+                showToast('ไม่สามารถเพิ่ม curated template ได้');
+                return false;
+            });
+    };
+
+    if (mode === 'new-page') {
+        Promise.resolve(addPageAndGo())
+            .then(() => loadTemplateData())
+            .catch((error) => {
+                trackTelemetry('curated_template_apply_error', {
+                    templateId: template.id,
+                    mode,
+                    message: String(error?.message || error || 'unknown-error'),
+                });
+                showToast('ไม่สามารถสร้างหน้าใหม่สำหรับ template ได้');
+            });
+        return true;
+    }
+
+    if (!skipConfirm && !window.confirm('ใช้เทมเพลตนี้และล้างหน้าปัจจุบัน?')) {
+        trackTelemetry('curated_template_apply_cancelled', { templateId: template.id });
+        return false;
+    }
+
+    loadTemplateData();
+    return true;
+}
+
 function getBoundsForSnap(obj) {
     const b = obj.getBoundingRect(true, true);
     return {
@@ -1455,6 +1642,7 @@ function getBoundsForSnap(obj) {
 
 function snapMovingObject(obj) {
     if (!obj) return;
+    if (obj.data?.curatedTemplateObject) return;
     const bounds = getBoundsForSnap(obj);
     let nextLeft = obj.left;
     let nextTop = obj.top;
@@ -2189,6 +2377,11 @@ document.getElementById('toolAutoNumber')?.addEventListener('click', () => {
 document.getElementById('btnApplyTemplate')?.addEventListener('click', () => {
     const value = document.getElementById('templateSelect')?.value || '';
     trackTelemetry('template_apply_requested', { source: 'template_select_button', template: value || 'none' });
+    if (String(value).startsWith('curated_')) {
+        const curatedId = String(value).replace(/^curated_/, '');
+        applyCuratedTemplateById(curatedId, { mode: 'replace', skipConfirm: false });
+        return;
+    }
     applyTemplate(value);
 });
 document.getElementById('propAnswerOnly')?.addEventListener('change', (e) => {
@@ -2247,6 +2440,7 @@ window.wbGetLineSettings = () => ({ ...lineSettings });
 window.wbGetPaperConfig = () => ({ ...getPaperConfig() });
 window.wbSetPaperSize = (size) => applyPaperLayout(size);
 window.wbApplyTemplate = applyTemplate;
+window.wbApplyCuratedTemplate = applyCuratedTemplateById;
 window.wbTrackTelemetry = trackTelemetry;
 window.wbGetTelemetrySnapshot = getTelemetrySnapshot;
 window.wbClearTelemetry = clearTelemetryState;

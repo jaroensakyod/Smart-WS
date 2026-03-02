@@ -14,6 +14,7 @@
     const SAVED_STORE = 'elements';
     const templateCatalogApi = window.SMARTWS_TEMPLATE_CATALOG || {};
     const templateHandlersApi = window.SMARTWS_TEMPLATE_HANDLERS || {};
+    const curatedTemplatesApi = window.SMARTWS_CURATED_TEMPLATES_API || {};
     const iconifyApi = window.SMARTWS_ICONIFY_UTILS || {};
     const fullCatalog = Array.isArray(templateCatalogApi.TEMPLATE_CATALOG)
         ? templateCatalogApi.TEMPLATE_CATALOG
@@ -32,6 +33,9 @@
     const waveCHandlerMap = typeof templateHandlersApi.buildWaveCHandlerMap === 'function'
         ? templateHandlersApi.buildWaveCHandlerMap(fullCatalog)
         : {};
+    const curatedTemplateCatalog = Array.isArray(curatedTemplatesApi.CURATED_TEMPLATES)
+        ? curatedTemplatesApi.CURATED_TEMPLATES
+        : [];
 
     const baseTemplateCards = [
         { key: 'taskcards4', title: 'Task Cards 4 (การ์ดงาน 4)', desc: 'การ์ดงาน 4 ช่องพร้อมเส้นตัด' },
@@ -331,9 +335,36 @@
             });
     }
 
+    function buildTemplateCardsFromCurated(catalog) {
+        const list = Array.isArray(catalog) ? catalog : [];
+        return list.map((tpl, index) => {
+            const item = {
+                key: `curated_${tpl.id}`,
+                title: String(tpl.title || 'Curated Template').trim(),
+                desc: String(tpl.desc || `${tpl.id || ''} • curated`).trim(),
+                category: String(tpl.category || 'curated_worksheet').trim(),
+                subCategory: String(tpl.subCategory || '').trim(),
+                gradeBands: Array.isArray(tpl.gradeBands) && tpl.gradeBands.length ? tpl.gradeBands : ['elementary', 'middle', 'high', 'adult'],
+                grades: Array.isArray(tpl.grades) && tpl.grades.length ? tpl.grades : ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10', 'g11', 'g12', 'adult'],
+                subjects: Array.isArray(tpl.subjects) && tpl.subjects.length ? tpl.subjects : ['project'],
+                skills: Array.isArray(tpl.skills) && tpl.skills.length ? tpl.skills : ['communication'],
+                difficulty: tpl.difficulty || 'beginner',
+                format: tpl.format || 'worksheet',
+                isFeatured: index < 6,
+                isNew: true,
+                popularityScore: 88 - Math.min(24, index * 2),
+                thumbnail: tpl.thumbnail || '',
+                curatedTemplate: tpl,
+            };
+            item.searchText = `${item.title} ${item.desc} ${(tpl.tags || []).join(' ')} ${item.category} ${item.subCategory} ${item.subjects.join(' ')} ${item.skills.join(' ')}`.toLowerCase();
+            return item;
+        });
+    }
+
     const templateCards = [
         ...baseTemplateCards.map(normalizeTemplateMeta),
         ...buildTemplateCardsFromCatalog(newVisualCatalog),
+        ...buildTemplateCardsFromCurated(curatedTemplateCatalog),
     ];
 
     const templateFilterState = {
@@ -341,6 +372,7 @@
         subjects: new Set(),
         skills: new Set(),
     };
+    let lastGeneratedCatalogTemplateId = '';
     let lastTemplateViewSignature = '';
 
     function emitTelemetry(eventName, payload = {}) {
@@ -444,7 +476,14 @@
         cards.forEach(item => {
             const el = document.createElement('div');
             el.className = 'template-card';
-            el.innerHTML = `<div class="template-card-title">${item.title}</div><div class="template-card-desc">${item.desc}</div>`;
+            const actionLabel = item.curatedTemplate ? 'เพิ่มเทมเพลต' : 'ใช้เทมเพลต';
+            el.innerHTML = `${item.thumbnail ? `<img class="template-card-thumb" src="${item.thumbnail}" alt="${item.title}" />` : ''}<div class="template-card-title">${item.title}</div><div class="template-card-desc">${item.desc}</div><button class="template-card-action" type="button">${actionLabel}</button>`;
+            const actionBtn = el.querySelector('.template-card-action');
+            actionBtn?.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                onClick(item);
+            });
             el.addEventListener('click', () => onClick(item));
             root.appendChild(el);
         });
@@ -537,18 +576,61 @@
             .map(item => ({ item, score: computeTemplateRank(item, state) }))
             .filter(entry => entry.score >= 0);
 
+        const curatedGroupOrder = {
+            handwriting: 1,
+            fillblank: 2,
+            matching: 3,
+            reading: 4,
+            math: 5,
+            science: 6,
+            organizer: 7,
+            assessment: 8,
+            planner: 9,
+            activity: 10,
+            mindmap: 11,
+        };
+        const curatedRank = (entry) => {
+            if (!entry?.item?.curatedTemplate) return 99;
+            const key = String(entry.item.subCategory || '').trim().toLowerCase();
+            return curatedGroupOrder[key] || 50;
+        };
+        const blockRank = (entry) => (entry?.item?.curatedTemplate ? 0 : 1);
+
         if (state.segment === 'popular') {
-            ranked.sort((a, b) => b.item.popularityScore - a.item.popularityScore || b.score - a.score);
+            ranked.sort((a, b) => {
+                if (state.category === 'all') {
+                    const blockDiff = blockRank(a) - blockRank(b);
+                    if (blockDiff !== 0) return blockDiff;
+                }
+                const curatedDiff = curatedRank(a) - curatedRank(b);
+                if (curatedDiff !== 0) return curatedDiff;
+                return b.item.popularityScore - a.item.popularityScore || b.score - a.score;
+            });
         } else {
-            ranked.sort((a, b) => b.score - a.score || b.item.popularityScore - a.item.popularityScore);
+            ranked.sort((a, b) => {
+                if (state.category === 'all') {
+                    const blockDiff = blockRank(a) - blockRank(b);
+                    if (blockDiff !== 0) return blockDiff;
+                }
+                const curatedDiff = curatedRank(a) - curatedRank(b);
+                if (curatedDiff !== 0) return curatedDiff;
+                return b.score - a.score || b.item.popularityScore - a.item.popularityScore;
+            });
         }
         return ranked.map(entry => entry.item);
     }
 
     function pickPrimaryCatalogTemplate(state) {
-        const list = filterAndSortTemplates(state);
-        const firstCatalogCard = list.find(item => !!item.catalogTemplate);
-        return firstCatalogCard?.catalogTemplate || null;
+        const list = filterAndSortTemplates(state)
+            .filter(item => !!item.catalogTemplate)
+            .map(item => item.catalogTemplate);
+        if (!list.length) return null;
+        const topPool = list.slice(0, Math.min(12, list.length));
+        let candidates = topPool.filter(item => item.id !== lastGeneratedCatalogTemplateId);
+        if (!candidates.length) candidates = topPool;
+        const picked = candidates[Math.floor(Math.random() * candidates.length)] || topPool[0];
+        lastGeneratedCatalogTemplateId = picked?.id || '';
+        return picked || null;
     }
 
     function updateTemplateSummary(total, shown, state) {
@@ -593,12 +675,28 @@
         }
         buildCardGallery('templateGallery', list, (item) => {
             const select = document.getElementById('templateSelect');
-            if (select && !item.catalogTemplate) select.value = item.key;
+            if (select && !item.catalogTemplate && !item.curatedTemplate) select.value = item.key;
             emitTelemetry('template_apply_requested', {
                 source: 'template_gallery',
-                template: item.catalogTemplate?.id || item.key,
+                template: item.curatedTemplate?.id || item.catalogTemplate?.id || item.key,
             });
-            if (item.catalogTemplate) {
+            if (item.curatedTemplate) {
+                const currentObjects = canvas.getObjects().length;
+                let mode = 'replace';
+                if (currentObjects > 0) {
+                    const shouldAddPage = window.confirm('ต้องการเพิ่มเทมเพลตนี้เป็นหน้าใหม่หรือไม่?\nกด "ตกลง" = หน้าใหม่\nกด "ยกเลิก" = แทนที่หน้าปัจจุบัน');
+                    if (shouldAddPage) {
+                        mode = 'new-page';
+                    } else {
+                        const confirmReplace = window.confirm('แทนที่หน้าปัจจุบันด้วยเทมเพลตนี้ใช่หรือไม่?');
+                        if (!confirmReplace) return;
+                    }
+                }
+                window.wbApplyCuratedTemplate?.(item.curatedTemplate.id, {
+                    mode,
+                    skipConfirm: true,
+                });
+            } else if (item.catalogTemplate) {
                 addWaveATemplateFromCatalog(item.catalogTemplate, getTemplateGenerationOptions());
             } else {
                 window.wbApplyTemplate?.(item.key);

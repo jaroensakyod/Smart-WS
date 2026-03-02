@@ -64,40 +64,317 @@ function toJsPdfImageType(imageType) {
     return imageType === 'jpeg' ? 'JPEG' : 'PNG';
 }
 
+function isTaintedCanvasError(error) {
+    const msg = String(error?.message || error || '').toLowerCase();
+    return msg.includes('tainted') || msg.includes('insecure') || msg.includes('cross-origin');
+}
+
+function getPdfRetryProfiles(pageCount) {
+    const primary = getPdfRenderProfile(pageCount);
+    const fallback = [
+        primary,
+        { multiplier: 1.55, imageType: 'jpeg', quality: 0.84, label: 'Fallback-1' },
+        { multiplier: 1.2, imageType: 'jpeg', quality: 0.76, label: 'Fallback-2' },
+    ];
+    const unique = [];
+    const seen = new Set();
+    fallback.forEach((p) => {
+        const key = `${p.multiplier}|${p.imageType}|${p.quality}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        unique.push(p);
+    });
+    return unique;
+}
+
+async function exportPdfInBatches(selectedPages, pageSpec, options = {}) {
+    const JsPDF = window.jspdf?.jsPDF || window.jsPDF;
+    if (!JsPDF) throw new Error('jspdf-not-ready');
+
+    const chunkSize = Math.max(2, Number(options.chunkSize) || 8);
+    const profile = options.profile || { multiplier: 1.0, imageType: 'jpeg', quality: 0.7, label: 'Batch-Low-Memory' };
+    const baseName = `worksheet_${Date.now()}`;
+    const skippedAll = [];
+    const skippedDetailsAll = [];
+    let part = 0;
+    let exportedParts = 0;
+
+    for (let offset = 0; offset < selectedPages.length; offset += chunkSize) {
+        part += 1;
+        const chunk = selectedPages.slice(offset, offset + chunkSize);
+        if (!chunk.length) continue;
+
+        window.showToast?.(`⏳ กำลังแยกไฟล์ PDF part ${part} (${chunk.length} หน้า)`);
+        const pdf = new JsPDF({
+            unit: 'mm',
+            format: pageSpec.format,
+            orientation: pageSpec.orientation,
+        });
+
+        const result = await forEachWorkbookPageImage(profile, async (imgData, index) => {
+            if (index > 0) pdf.addPage(pageSpec.format, pageSpec.orientation);
+            pdf.addImage(
+                imgData,
+                toJsPdfImageType(profile.imageType),
+                0,
+                0,
+                pageSpec.pageWmm,
+                pageSpec.pageHmm,
+                undefined,
+                'FAST'
+            );
+        }, {
+            pageIndices: chunk,
+            skipOnError: true,
+        });
+
+        if (!result?.rendered) {
+            skippedAll.push(...chunk.map((x) => x + 1));
+            if (Array.isArray(result?.skippedDetails)) skippedDetailsAll.push(...result.skippedDetails);
+            continue;
+        }
+
+        skippedAll.push(...(result.skippedPages || []));
+        if (Array.isArray(result?.skippedDetails)) skippedDetailsAll.push(...result.skippedDetails);
+        pdf.save(`${baseName}_part${String(part).padStart(2, '0')}.pdf`);
+        exportedParts += 1;
+        await waitForUiBreath();
+    }
+
+    return {
+        exportedParts,
+        skippedPages: skippedAll.sort((a, b) => a - b),
+        skippedDetails: skippedDetailsAll,
+    };
+}
+
 function waitForUiBreath() {
     return new Promise(resolve => setTimeout(resolve, 0));
 }
 
-async function forEachWorkbookPageImage(profile, onPage) {
-    const canvas = window.wbCanvas;
-    if (!canvas || !window.wbGetPageCount || !window.wbGoToPage || !window.wbGetActivePageIndex) return;
+function createAllPageIndices(total) {
+    return Array.from({ length: total }, (_, i) => i);
+}
 
-    window.wbPersistCurrentPage?.();
-    const originalIndex = window.wbGetActivePageIndex();
-    const pageCount = getSafePageCount(window.wbGetPageCount?.());
+function parsePageSelectionInput(input, totalPages) {
+    const total = Math.max(1, Math.floor(Number(totalPages) || 1));
+    const raw = String(input || '').trim().toLowerCase();
+    if (!raw || raw === 'all' || raw === '*') return createAllPageIndices(total);
 
-    const originalZoom = window.wbGetZoom?.() || 1;
-    if (window.wbSetZoom) window.wbSetZoom(1);
+    const tokens = raw
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean);
+    if (!tokens.length) return createAllPageIndices(total);
 
-    try {
-        for (let i = 0; i < pageCount; i++) {
-            await window.wbGoToPage(i);
-            canvas.discardActiveObject();
-            canvas.renderAll();
+    const include = new Set();
+    const exclude = new Set();
+    let hasInclude = false;
 
-            const dataUrl = canvas.toDataURL({
-                format: profile.imageType === 'jpeg' ? 'jpeg' : 'png',
-                quality: profile.quality,
-                multiplier: profile.multiplier,
-            });
+    const addRange = (targetSet, start, end) => {
+        const lo = Math.max(1, Math.min(start, end));
+        const hi = Math.min(total, Math.max(start, end));
+        for (let p = lo; p <= hi; p++) targetSet.add(p - 1);
+    };
 
-            await onPage(dataUrl, i, pageCount);
-            await waitForUiBreath();
+    for (const token of tokens) {
+        const isExclude = token.startsWith('!');
+        const body = isExclude ? token.slice(1).trim() : token;
+        if (!body) throw new Error('รูปแบบไม่ถูกต้อง');
+
+        const rangeMatch = body.match(/^(\d+)\s*-\s*(\d+)$/);
+        const singleMatch = body.match(/^\d+$/);
+        const target = isExclude ? exclude : include;
+
+        if (rangeMatch) {
+            const start = Number(rangeMatch[1]);
+            const end = Number(rangeMatch[2]);
+            if (!Number.isFinite(start) || !Number.isFinite(end)) throw new Error('ช่วงหน้าไม่ถูกต้อง');
+            addRange(target, start, end);
+            if (!isExclude) hasInclude = true;
+            continue;
         }
-    } finally {
-        await window.wbGoToPage(originalIndex);
-        if (window.wbSetZoom) window.wbSetZoom(originalZoom);
+
+        if (singleMatch) {
+            const page = Number(body);
+            if (!Number.isFinite(page) || page < 1 || page > total) throw new Error(`หน้าต้องอยู่ระหว่าง 1-${total}`);
+            target.add(page - 1);
+            if (!isExclude) hasInclude = true;
+            continue;
+        }
+
+        throw new Error(`ไม่รองรับรูปแบบ: ${token}`);
     }
+
+    const base = hasInclude ? include : new Set(createAllPageIndices(total));
+    exclude.forEach((idx) => base.delete(idx));
+    return Array.from(base).sort((a, b) => a - b);
+}
+
+function askExportPageIndices(totalPages, label) {
+    const total = Math.max(1, Math.floor(Number(totalPages) || 1));
+    const answer = window.prompt(
+        `เลือกหน้าที่ต้องการส่งออก (${label})\n` +
+        `ทั้งหมด ${total} หน้า\n` +
+        `ตัวอย่าง: all, 1, 1-5, 1-10,!4,!7`,
+        'all'
+    );
+    if (answer === null) return null;
+    try {
+        return parsePageSelectionInput(answer, total);
+    } catch (error) {
+        window.showToast?.(`❌ รูปแบบหน้าไม่ถูกต้อง: ${error?.message || 'invalid input'}`);
+        return [];
+    }
+}
+
+function getWorkbookSnapshotForExport() {
+    const payload = window.wbGetWorkbookData?.();
+    if (!payload || !Array.isArray(payload.pages) || !payload.pages.length) return null;
+    return payload;
+}
+
+function normalizePageJsonForExport(pageJson, options = {}) {
+    let parsed = pageJson;
+    if (typeof parsed === 'string') {
+        try {
+            parsed = JSON.parse(parsed);
+        } catch {
+            parsed = { version: '5.2.4', objects: [] };
+        }
+    }
+
+    const root = parsed && typeof parsed === 'object' ? parsed : { version: '5.2.4', objects: [] };
+    const rawObjects = Array.isArray(root.objects) ? root.objects : [];
+    const dropImages = !!options.dropImages;
+
+    const sanitizedObjects = rawObjects
+        .filter((obj) => obj && typeof obj === 'object' && typeof obj.type === 'string')
+        .filter((obj) => !(dropImages && obj.type === 'image'))
+        .map((obj) => {
+            const out = { ...obj };
+            ['left', 'top', 'width', 'height', 'scaleX', 'scaleY', 'fontSize', 'strokeWidth', 'angle', 'opacity'].forEach((key) => {
+                if (out[key] === undefined) return;
+                const n = Number(out[key]);
+                if (!Number.isFinite(n)) delete out[key];
+            });
+            return out;
+        });
+
+    return {
+        ...root,
+        objects: sanitizedObjects,
+    };
+}
+
+function applyWorksheetVisibilityForCanvas(targetCanvas) {
+    const mode = window.wbGetWorksheetMode?.() === 'answer' ? 'answer' : 'student';
+    targetCanvas.getObjects().forEach((obj) => {
+        const answerOnly = !!obj?.data?.answerOnly;
+        obj.visible = mode === 'answer' ? true : !answerOnly;
+    });
+}
+
+async function renderPageJsonToImage(pageJson, profile, width, height) {
+    if (!window.fabric) throw new Error('Fabric.js not available');
+    const el = document.createElement('canvas');
+    el.width = Math.max(1, Math.floor(Number(width) || 794));
+    el.height = Math.max(1, Math.floor(Number(height) || 1123));
+
+    const TempCanvasCtor = window.fabric.StaticCanvas || window.fabric.Canvas;
+    const tempCanvas = new TempCanvasCtor(el, {
+        width: el.width,
+        height: el.height,
+        backgroundColor: '#ffffff',
+        selection: false,
+        renderOnAddRemove: false,
+    });
+
+    const loadAndRender = async (jsonLike) => {
+        await new Promise((resolve) => {
+            tempCanvas.loadFromJSON(jsonLike || '{}', () => {
+                applyWorksheetVisibilityForCanvas(tempCanvas);
+                tempCanvas.discardActiveObject();
+                tempCanvas.renderAll();
+                resolve();
+            });
+        });
+
+        if (document.fonts?.ready) {
+            try { await document.fonts.ready; } catch { }
+        }
+
+        return tempCanvas.toDataURL({
+            format: profile.imageType === 'jpeg' ? 'jpeg' : 'png',
+            quality: profile.quality,
+            multiplier: profile.multiplier,
+        });
+    };
+
+    const normalized = normalizePageJsonForExport(pageJson, { dropImages: false });
+    let dataUrl = '';
+    try {
+        dataUrl = await loadAndRender(normalized);
+    } catch (error) {
+        if (!isTaintedCanvasError(error)) {
+            tempCanvas.dispose?.();
+            throw error;
+        }
+
+        const noImageJson = normalizePageJsonForExport(pageJson, { dropImages: true });
+        try {
+            tempCanvas.clear();
+            dataUrl = await loadAndRender(noImageJson);
+        } catch (fallbackErr) {
+            tempCanvas.dispose?.();
+            throw fallbackErr;
+        }
+    }
+
+    tempCanvas.dispose?.();
+    return dataUrl;
+}
+
+async function forEachWorkbookPageImage(profile, onPage, options = {}) {
+    const snapshot = getWorkbookSnapshotForExport();
+    const paper = window.wbGetPaperConfig?.() || { width: 794, height: 1123 };
+    if (!snapshot) return;
+
+    const pages = Array.isArray(snapshot.pages) ? snapshot.pages : [];
+    const requested = Array.isArray(options.pageIndices) && options.pageIndices.length
+        ? options.pageIndices.filter((idx) => idx >= 0 && idx < pages.length)
+        : createAllPageIndices(pages.length);
+    const total = requested.length;
+    const skipOnError = !!options.skipOnError;
+    const skippedPages = [];
+    const skippedDetails = [];
+    let rendered = 0;
+
+    for (let i = 0; i < total; i++) {
+        const pageIndex = requested[i];
+        try {
+            const dataUrl = await renderPageJsonToImage(
+                pages[pageIndex],
+                profile,
+                Number(paper.width) || 794,
+                Number(paper.height) || 1123
+            );
+            await onPage(dataUrl, rendered, total, pageIndex + 1);
+            rendered += 1;
+        } catch (error) {
+            if (!skipOnError) throw error;
+            skippedPages.push(pageIndex + 1);
+            skippedDetails.push({
+                page: pageIndex + 1,
+                message: String(error?.message || error || 'unknown-error'),
+                tainted: isTaintedCanvasError(error),
+            });
+            console.error('[export.page.skip]', pageIndex + 1, error);
+        }
+        await waitForUiBreath();
+    }
+
+    return { requested: total, rendered, skippedPages, skippedDetails };
 }
 
 async function collectAllPagesPng(multiplier = 2) {
@@ -141,42 +418,111 @@ document.getElementById('btnExportPDF')?.addEventListener('click', async () => {
 
     try {
         const pageCount = getSafePageCount(window.wbGetPageCount?.());
-        const profile = getPdfRenderProfile(pageCount);
+        const selectedPages = askExportPageIndices(pageCount, 'PDF');
+        if (selectedPages === null) {
+            window.showToast?.('ยกเลิกการส่งออก PDF');
+            return;
+        }
+        if (!selectedPages.length) {
+            window.showToast?.('❌ ไม่มีหน้าที่เลือกสำหรับส่งออก PDF');
+            return;
+        }
+
+        const profiles = getPdfRetryProfiles(pageCount);
         const paper = window.wbGetPaperConfig?.();
         const pageSpec = getPdfPageSpec(paper);
+        let lastError = null;
+        for (let attempt = 0; attempt < profiles.length; attempt++) {
+            const profile = profiles[attempt];
+            try {
+                window.showToast?.(`⏳ กำลังสร้าง PDF (${profile.label})...`);
+                const JsPDF = window.jspdf?.jsPDF || window.jsPDF;
+                const pdf = new JsPDF({
+                    unit: 'mm',
+                    format: pageSpec.format,
+                    orientation: pageSpec.orientation,
+                });
 
-        window.showToast?.(`⏳ กำลังสร้าง PDF (${profile.label})...`);
+                const result = await forEachWorkbookPageImage(profile, async (imgData, index, total) => {
+                    if (index > 0) pdf.addPage(pageSpec.format, pageSpec.orientation);
+                    pdf.addImage(
+                        imgData,
+                        toJsPdfImageType(profile.imageType),
+                        0,
+                        0,
+                        pageSpec.pageWmm,
+                        pageSpec.pageHmm,
+                        undefined,
+                        profile.imageType === 'jpeg' ? 'FAST' : 'NONE'
+                    );
 
-        const JsPDF = window.jspdf?.jsPDF || window.jsPDF;
-        const pdf = new JsPDF({
-            unit: 'mm',
-            format: pageSpec.format,
-            orientation: pageSpec.orientation,
-        });
+                    if ((index + 1) % 2 === 0 || index === total - 1) {
+                        window.showToast?.(`⏳ กำลังสร้าง PDF: ${index + 1}/${total}`);
+                    }
+                }, {
+                    pageIndices: selectedPages,
+                    skipOnError: true,
+                });
 
-        await forEachWorkbookPageImage(profile, async (imgData, index, total) => {
-            if (index > 0) pdf.addPage(pageSpec.format, pageSpec.orientation);
-            pdf.addImage(
-                imgData,
-                toJsPdfImageType(profile.imageType),
-                0,
-                0,
-                pageSpec.pageWmm,
-                pageSpec.pageHmm,
-                undefined,
-                profile.imageType === 'jpeg' ? 'FAST' : 'NONE'
-            );
+                if (!result?.rendered) {
+                    throw new Error('no-pages-rendered');
+                }
 
-            if ((index + 1) % 2 === 0 || index === total - 1) {
-                window.showToast?.(`⏳ กำลังสร้าง PDF: ${index + 1}/${total}`);
+                pdf.save(`worksheet_${Date.now()}.pdf`);
+                if (result.skippedPages.length) {
+                    window.showToast?.(`📄 ดาวน์โหลด PDF แล้ว (ข้ามหน้า: ${result.skippedPages.join(', ')})`);
+                } else {
+                    window.showToast?.('📄 ดาวน์โหลด PDF เรียบร้อย');
+                }
+                return;
+            } catch (err) {
+                lastError = err;
+                console.error('[export.pdf.attempt]', attempt + 1, err);
+                if (isTaintedCanvasError(err)) break;
+                if (attempt < profiles.length - 1) {
+                    window.showToast?.(`⚠️ หน่วยความจำสูง กำลังลองใหม่ (${attempt + 2}/${profiles.length})`);
+                }
             }
+        }
+
+        if (isTaintedCanvasError(lastError)) {
+            window.showToast?.('❌ ส่งออก PDF ไม่สำเร็จ: มีรูปจากเว็บที่ไม่อนุญาต export (CORS)');
+            return;
+        }
+
+        const allowSplit = window.confirm('หน่วยความจำไม่พอสำหรับไฟล์ PDF เดียว\nต้องการแยกส่งออกเป็นหลายไฟล์ (part) อัตโนมัติหรือไม่?');
+        if (!allowSplit) {
+            window.showToast?.('❌ ส่งออก PDF ไม่สำเร็จ (หน่วยความจำไม่พอ)');
+            return;
+        }
+
+        const split = await exportPdfInBatches(selectedPages, pageSpec, {
+            chunkSize: 8,
+            profile: { multiplier: 1.0, imageType: 'jpeg', quality: 0.7, label: 'Batch-Low-Memory' },
         });
 
-        pdf.save(`worksheet_${Date.now()}.pdf`);
-        window.showToast?.('📄 ดาวน์โหลด PDF เรียบร้อย');
+        if (!split.exportedParts) {
+            const tainted = (split.skippedDetails || []).some((x) => !!x.tainted);
+            if (tainted) {
+                window.showToast?.('❌ ส่งออกแบบแยกไฟล์ก็ไม่สำเร็จ: มีรูปเว็บบางหน้าไม่อนุญาต export (CORS)');
+            } else {
+                window.showToast?.('❌ ส่งออกแบบแยกไฟล์ก็ไม่สำเร็จ: สคริปต์เจอหน้าเสียหลายหน้า (ดู Console)');
+            }
+            return;
+        }
+
+        if (split.skippedPages.length) {
+            window.showToast?.(`📄 ส่งออกแบบแยกไฟล์แล้ว (ข้ามหน้า: ${split.skippedPages.join(', ')})`);
+        } else {
+            window.showToast?.(`📄 ส่งออกแบบแยกไฟล์สำเร็จ (${split.exportedParts} ไฟล์)`);
+        }
     } catch (err) {
         console.error('[export.pdf]', err);
-        window.showToast?.('❌ ส่งออก PDF ไม่สำเร็จ (ลองลดจำนวนหน้าหรือปิดโปรแกรมอื่น)');
+        if (isTaintedCanvasError(err)) {
+            window.showToast?.('❌ ส่งออก PDF ไม่สำเร็จ: มีรูปจากเว็บที่ไม่อนุญาต export (CORS)');
+        } else {
+            window.showToast?.('❌ ส่งออก PDF ไม่สำเร็จ (ลองลดจำนวนหน้าหรือปิดโปรแกรมอื่น)');
+        }
     }
 });
 
@@ -198,6 +544,16 @@ document.getElementById('btnExportPPTX')?.addEventListener('click', async () => 
 
     try {
         const pageCount = getSafePageCount(window.wbGetPageCount?.());
+        const selectedPages = askExportPageIndices(pageCount, 'PPTX');
+        if (selectedPages === null) {
+            window.showToast?.('ยกเลิกการส่งออก PPTX');
+            return;
+        }
+        if (!selectedPages.length) {
+            window.showToast?.('❌ ไม่มีหน้าที่เลือกสำหรับส่งออก PPTX');
+            return;
+        }
+
         const profile = getPptxRenderProfile(pageCount);
         const paper = window.wbGetPaperConfig?.();
         const layout = getPptxLayoutSpec(paper);
@@ -210,17 +566,28 @@ document.getElementById('btnExportPPTX')?.addEventListener('click', async () => 
             pptx.layout = layout.name;
         }
 
-        await forEachWorkbookPageImage(profile, async (imgData, index, total) => {
+        const result = await forEachWorkbookPageImage(profile, async (imgData, index, total) => {
             const slide = pptx.addSlide();
             slide.addImage({ data: imgData, x: 0, y: 0, w: layout.widthIn, h: layout.heightIn });
 
             if ((index + 1) % 2 === 0 || index === total - 1) {
                 window.showToast?.(`⏳ กำลังสร้าง PPTX: ${index + 1}/${total}`);
             }
+        }, {
+            pageIndices: selectedPages,
+            skipOnError: true,
         });
 
+        if (!result?.rendered) {
+            throw new Error('no-pages-rendered');
+        }
+
         await pptx.writeFile({ fileName: `worksheet_${Date.now()}.pptx`, compression: true });
-        window.showToast?.('📊 ดาวน์โหลด PPTX เรียบร้อย');
+        if (result.skippedPages.length) {
+            window.showToast?.(`📊 ดาวน์โหลด PPTX แล้ว (ข้ามหน้า: ${result.skippedPages.join(', ')})`);
+        } else {
+            window.showToast?.('📊 ดาวน์โหลด PPTX เรียบร้อย');
+        }
     } catch (err) {
         console.error('[export.pptx]', err);
         window.showToast?.('❌ ส่งออก PPTX ไม่สำเร็จ');
@@ -228,21 +595,27 @@ document.getElementById('btnExportPPTX')?.addEventListener('click', async () => 
 });
 
 document.getElementById('btnExportPreview')?.addEventListener('click', async () => {
-    const canvas = window.wbCanvas;
-    if (!canvas) return;
+    const snapshot = getWorkbookSnapshotForExport();
+    if (!snapshot) return;
 
     try {
-        window.wbPersistCurrentPage?.();
-        canvas.discardActiveObject();
-
-        const originalZoom = window.wbGetZoom?.() || 1;
-        if (window.wbSetZoom) window.wbSetZoom(1);
-
-        canvas.renderAll();
-
-        const src = canvas.toDataURL({ format: 'png', quality: 0.9, multiplier: 1.2 });
-
-        if (window.wbSetZoom) window.wbSetZoom(originalZoom);
+        const paper = window.wbGetPaperConfig?.() || { width: 794, height: 1123 };
+        const selected = askExportPageIndices(snapshot.pages.length, 'Preview (เลือกหน้าเดียว)');
+        if (selected === null) {
+            window.showToast?.('ยกเลิกการส่งออก Preview');
+            return;
+        }
+        if (!selected.length) {
+            window.showToast?.('❌ ไม่มีหน้าที่เลือกสำหรับ Preview');
+            return;
+        }
+        const activeIndex = selected[0];
+        const src = await renderPageJsonToImage(
+            snapshot.pages[activeIndex],
+            { format: 'png', quality: 0.9, multiplier: 1.2, imageType: 'png' },
+            Number(paper.width) || 794,
+            Number(paper.height) || 1123
+        );
 
         const img = await new Promise((resolve, reject) => {
             const el = new Image();

@@ -11,6 +11,7 @@ Smart WS คือ Chrome New Tab Extension สำหรับสร้างใ
 ## ฟีเจอร์หลักแบบสั้น
 - Multi-page Workbook: เพิ่ม/ลบ/ทำซ้ำ/จัดลำดับหน้า
 - Template + Generator: ใบงานหลายรูปแบบพร้อมใช้งาน
+- Curated Free Templates: แกลเลอรีเทมเพลตพร้อม preview และกดเพิ่มได้ทันที
 - AI Prompt Guide: คัดลอก prompt ไปใช้กับ AI ภายนอก
 - Market Analysis: ช่วยดูแนวโน้มไอเดียสินค้า
 - Export Engine: รองรับงานหลายหน้าได้เสถียร
@@ -22,6 +23,7 @@ Smart WS คือ Chrome New Tab Extension สำหรับสร้างใ
 - `proFeatures.js` ฟีเจอร์เสริม + generators + modal logic
 - `export.js`, `export.utils.js` ระบบ export
 - `data/` ข้อมูล templates และ taxonomy
+- `data/curatedTemplates.v1.js` ชุด curated templates (preview + canvasData)
 - `vendor/` ไลบรารีภายนอก
 - `docs/` เอกสารแผน/บันทึกการพัฒนา
 
@@ -40,6 +42,7 @@ Smart WS คือ Chrome New Tab Extension สำหรับสร้างใ
 node --test tests/export.utils.test.js
 node --test tests/iconify.utils.test.js
 node --test tests/odl.import.utils.test.js
+node --test tests/curated.templates.test.js
 node --test tests/template.catalog.test.js
 node --test tests/template.handlers.test.js
 ```
