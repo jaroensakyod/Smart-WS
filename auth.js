@@ -106,9 +106,10 @@ function buildLoginUrl(baseUrl) {
     return `${safeBaseUrl}/auth/login`;
 }
 
-function buildLogoutUrl(baseUrl) {
+function buildLogoutUrl(baseUrl, productSlug = DEFAULT_PRODUCT_SLUG) {
     const safeBaseUrl = normalizeHubBaseUrl(baseUrl);
-    return `${safeBaseUrl}/api/v1/auth/sign-out`;
+    const safeSlug = encodeURIComponent(normalizeProductSlug(productSlug));
+    return `${safeBaseUrl}/api/v1/auth/sign-out?product=${safeSlug}`;
 }
 
 function buildOnboardingUrl(baseUrl) {
@@ -200,7 +201,7 @@ function createAuthClient(options = {}) {
         }
 
         try {
-            const response = await fetchImpl(buildLogoutUrl(baseUrl), {
+            const response = await fetchImpl(buildLogoutUrl(baseUrl, productSlug), {
                 method: 'POST',
                 credentials: 'include',
                 cache: 'no-store',
@@ -231,7 +232,7 @@ function createAuthClient(options = {}) {
         runtimeSource: runtimeConfig.source,
         buildUserStatusUrl: () => buildUserStatusUrl(baseUrl, productSlug),
         buildLoginUrl: () => buildLoginUrl(baseUrl),
-        buildLogoutUrl: () => buildLogoutUrl(baseUrl),
+        buildLogoutUrl: () => buildLogoutUrl(baseUrl, productSlug),
         checkStatus,
         logout,
     };
