@@ -206,7 +206,9 @@ function createAuthClient(options = {}) {
                 cache: 'no-store',
                 headers: {
                     Accept: 'application/json',
+                    'Content-Type': 'application/json',
                 },
+                body: JSON.stringify({}),
             });
 
             return {
@@ -463,6 +465,14 @@ function initAuth(options = {}) {
     };
 
     const refresh = async (uiOptions = {}) => {
+        if (isLoggingOut) {
+            return {
+                ok: false,
+                status: 'ANONYMOUS',
+                reason: 'logout-in-progress',
+            };
+        }
+
         const result = await client.checkStatus();
         applyUiState(result, uiOptions);
         return result;
@@ -492,6 +502,7 @@ function initAuth(options = {}) {
             logoutResult = await client.logout();
         } finally {
             await runPostLogoutReset(logoutResult);
+            await new Promise((resolve) => setTimeout(resolve, 1000));
             isLoggingOut = false;
         }
 

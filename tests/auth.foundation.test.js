@@ -121,6 +121,9 @@ test('createAuthClient logout calls sign-out endpoint with credentials include',
     assert.equal(capturedOptions.credentials, 'include');
     assert.equal(capturedOptions.method, 'POST');
     assert.equal(capturedOptions.cache, 'no-store');
+    assert.equal(capturedOptions.headers.Accept, 'application/json');
+    assert.equal(capturedOptions.headers['Content-Type'], 'application/json');
+    assert.equal(capturedOptions.body, '{}');
     assert.equal(result.ok, true);
     assert.equal(result.status, 'ANONYMOUS');
 });
