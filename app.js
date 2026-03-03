@@ -349,10 +349,12 @@ async function jumpToPageFromInput() {
     return changed;
 }
 
-async function addPageAndGo() {
+async function addPageAndGo(initialContent = BLANK_PAGE_JSON) {
     try {
         persistCurrentPage();
-        workbook.pages.push(createPageState());
+        const sanitizedInitial = sanitizeImportedData(initialContent || BLANK_PAGE_JSON);
+        const initialJson = JSON.stringify(sanitizedInitial);
+        workbook.pages.push(createPageState(initialJson));
         activePageIndex = workbook.pages.length - 1;
         await loadCanvasJson(currentPage().json);
         clearPropsPanel();

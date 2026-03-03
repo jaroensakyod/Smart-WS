@@ -203,3 +203,93 @@ test('phase3 safety buffer: failed page load restores previous page and data', a
         true,
     );
 });
+
+function createAtomicAddPageHarness(options = {}) {
+    const BLANK_PAGE_JSON = options.blankPageJson || JSON.stringify({ version: '5.2.4', objects: [] });
+    const workbook = {
+        pages: [{ json: JSON.stringify({ version: '5.2.4', objects: [{ id: 'p1' }] }) }],
+    };
+
+    let activePageIndex = 0;
+    let canvasState = workbook.pages[0].json;
+
+    function sanitizeImportedData(input) {
+        if (!input) return JSON.parse(BLANK_PAGE_JSON);
+        if (typeof input === 'string') return JSON.parse(input);
+        return input;
+    }
+
+    function serializeCanvasNow() {
+        return canvasState;
+    }
+
+    function persistCurrentPage() {
+        workbook.pages[activePageIndex].json = serializeCanvasNow();
+    }
+
+    function loadCanvasJson(json) {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                canvasState = json;
+                resolve();
+            }, 20);
+        });
+    }
+
+    function currentPage() {
+        return workbook.pages[activePageIndex];
+    }
+
+    function createPageState(json = BLANK_PAGE_JSON) {
+        return {
+            json,
+            undoStack: [json],
+            redoStack: [],
+        };
+    }
+
+    async function addPageAndGo(initialContent = BLANK_PAGE_JSON) {
+        persistCurrentPage();
+        const sanitizedInitial = sanitizeImportedData(initialContent || BLANK_PAGE_JSON);
+        const initialJson = JSON.stringify(sanitizedInitial);
+        workbook.pages.push(createPageState(initialJson));
+        activePageIndex = workbook.pages.length - 1;
+        await loadCanvasJson(currentPage().json);
+        return true;
+    }
+
+    return {
+        BLANK_PAGE_JSON,
+        workbook,
+        addPageAndGo,
+        getActivePageIndex: () => activePageIndex,
+    };
+}
+
+test('phase1 atomic add-page: new page is born with provided template JSON before async load resolves', async () => {
+    const harness = createAtomicAddPageHarness();
+    const templateSeed = {
+        version: '5.2.4',
+        objects: [{ id: 'tpl-1', type: 'textbox', text: 'seeded-template' }],
+    };
+
+    const pending = harness.addPageAndGo(templateSeed);
+
+    assert.equal(harness.getActivePageIndex(), 1);
+    assert.equal(
+        harness.workbook.pages[1].json,
+        JSON.stringify(templateSeed),
+        'new page state should already contain seeded JSON immediately after creation',
+    );
+
+    await pending;
+});
+
+test('phase1 atomic add-page: default call still creates blank page payload', async () => {
+    const harness = createAtomicAddPageHarness();
+
+    await harness.addPageAndGo();
+
+    assert.equal(harness.getActivePageIndex(), 1);
+    assert.equal(harness.workbook.pages[1].json, harness.BLANK_PAGE_JSON);
+});
