@@ -41,6 +41,54 @@ function createUnsafePager(initialPages) {
     };
 }
 
+function createSafePager(initialPages) {
+    const workbook = {
+        pages: initialPages.map((json) => ({ json })),
+    };
+
+    let activePageIndex = 0;
+    let canvasState = workbook.pages[0].json;
+    let isPageLoading = false;
+
+    function serializeCanvasNow() {
+        return canvasState;
+    }
+
+    function persistCurrentPage() {
+        if (isPageLoading) return;
+        workbook.pages[activePageIndex].json = serializeCanvasNow();
+    }
+
+    function loadCanvasJson(json) {
+        return new Promise((resolve) => {
+            canvasState = 'EMPTY_CANVAS';
+            setTimeout(() => {
+                canvasState = json;
+                resolve();
+            }, 20);
+        });
+    }
+
+    async function goToPage(index) {
+        if (index < 0 || index >= workbook.pages.length || index === activePageIndex) return false;
+        if (isPageLoading) return false;
+        persistCurrentPage();
+        activePageIndex = index;
+        isPageLoading = true;
+        try {
+            await loadCanvasJson(workbook.pages[activePageIndex].json);
+            return true;
+        } finally {
+            isPageLoading = false;
+        }
+    }
+
+    return {
+        workbook,
+        goToPage,
+    };
+}
+
 test('phase1 diagnostic: rapid page switching reproduces data corruption in unsafe lifecycle', async () => {
     const pager = createUnsafePager(['PAGE_1_DATA', 'PAGE_2_DATA', 'PAGE_3_DATA']);
 
@@ -63,4 +111,17 @@ test('phase1 control: sequential switch keeps page payload stable', async () => 
 
     assert.equal(pager.workbook.pages[0].json, 'PAGE_1_DATA');
     assert.equal(pager.workbook.pages[1].json, 'PAGE_2_DATA');
+});
+
+test('phase2 lock: rapid switch is blocked while loading and page data stays intact', async () => {
+    const pager = createSafePager(['PAGE_1_DATA', 'PAGE_2_DATA', 'PAGE_3_DATA']);
+
+    const firstSwitch = pager.goToPage(1);
+    const secondSwitch = pager.goToPage(2);
+
+    const results = await Promise.all([firstSwitch, secondSwitch]);
+
+    assert.deepEqual(results, [true, false]);
+    assert.equal(pager.workbook.pages[1].json, 'PAGE_2_DATA');
+    assert.equal(pager.workbook.pages[2].json, 'PAGE_3_DATA');
 });

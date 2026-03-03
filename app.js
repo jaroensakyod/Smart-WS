@@ -104,6 +104,7 @@ const HISTORY_MAX = 30;
 let activePageIndex = 0;
 let workbook = { pages: [] };
 let isReplaying = false;
+let isPageLoading = false;
 
 const BLANK_PAGE_JSON = JSON.stringify(canvas.toJSON(SERIALIZE_PROPS));
 
@@ -215,6 +216,12 @@ function sanitizeImportedData(input) {
 }
 
 function persistCurrentPage() {
+    if (isPageLoading) {
+        trackTelemetry('page_persist_skipped_loading', {
+            activePageIndex,
+        });
+        return;
+    }
     const page = currentPage();
     if (!page) return;
     try {
@@ -245,12 +252,25 @@ function loadCanvasJson(json) {
 
 async function goToPage(index) {
     if (index < 0 || index >= workbook.pages.length || index === activePageIndex) return false;
+    if (isPageLoading) {
+        trackTelemetry('page_switch_blocked_loading', {
+            from: activePageIndex,
+            to: index,
+            pageCount: workbook.pages.length,
+        });
+        return false;
+    }
     persistCurrentPage();
     activePageIndex = index;
-    await loadCanvasJson(currentPage().json);
-    clearPropsPanel();
-    updatePageIndicator();
-    return true;
+    isPageLoading = true;
+    try {
+        await loadCanvasJson(currentPage().json);
+        clearPropsPanel();
+        updatePageIndicator();
+        return true;
+    } finally {
+        isPageLoading = false;
+    }
 }
 
 async function jumpToPageFromInput() {
