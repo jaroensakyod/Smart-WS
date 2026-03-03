@@ -1,51 +1,156 @@
-# Smart WS
+# Smart WS — Webapp
 
-Smart WS คือ Chrome New Tab Extension สำหรับสร้างใบงาน/สื่อการสอนแบบลากวางบน Canvas และส่งออกได้ทันที
+**Smart WS** เป็นเครื่องมือสร้างใบงานและสื่อการสอนแบบ drag-and-drop บน Canvas ใช้งานได้ทันทีในเบราว์เซอร์ ไม่ต้องติดตั้งอะไรเพิ่ม
 
-## ใช้ทำอะไรได้บ้าง
-- สร้างเอกสารหลายหน้า (Worksheet / Activity Pack / Slide)
-- ใช้เทมเพลตและตัวช่วย Generator เพื่อลดเวลาทำงาน
-- เพิ่มข้อความ สมการ รูปภาพ ไอคอน และองค์ประกอบกราฟิก
-- ส่งออกเป็น PNG, PDF, PPTX
+> **Branch นี้ (`webapp`)** = Standalone Web App — เปิดด้วย `index.html` หรือ deploy บน web server ได้เลย  
+> **Branch `main`** = Chrome Extension เวอร์ชัน (มี `manifest.json` + override New Tab)
 
-## ฟีเจอร์หลักแบบสั้น
-- Multi-page Workbook: เพิ่ม/ลบ/ทำซ้ำ/จัดลำดับหน้า
-- Template + Generator: ใบงานหลายรูปแบบพร้อมใช้งาน
-- Curated Free Templates: แกลเลอรีเทมเพลตพร้อม preview และกดเพิ่มได้ทันที
-- AI Prompt Guide: คัดลอก prompt ไปใช้กับ AI ภายนอก
-- Market Analysis: ช่วยดูแนวโน้มไอเดียสินค้า
-- Export Engine: รองรับงานหลายหน้าได้เสถียร
+---
 
-## โครงสร้างไฟล์สำคัญ
-- `newtab.html` หน้าหลักของแอป
-- `style.css` สไตล์ทั้งหมด
-- `app.js` แกน canvas/workbook
-- `proFeatures.js` ฟีเจอร์เสริม + generators + modal logic
-- `export.js`, `export.utils.js` ระบบ export
-- `data/` ข้อมูล templates และ taxonomy
-- `data/curatedTemplates.v1.js` ชุด curated templates (preview + canvasData)
-- `vendor/` ไลบรารีภายนอก
-- `docs/` เอกสารแผน/บันทึกการพัฒนา
+## เริ่มใช้งาน
 
-## เอกสารใหม่
-- ความรู้รวมไฟล์เดียว: `docs/SMARTWS_KNOWLEDGE_BASE.md`
-
-## ติดตั้ง (Developer Mode)
-1. เปิด `chrome://extensions`
-2. เปิด `Developer mode`
-3. กด `Load unpacked`
-4. เลือกโฟลเดอร์โปรเจกต์ `Smart-WS`
-5. เปิดแท็บใหม่เพื่อใช้งาน
-
-## ทดสอบ
 ```bash
-node --test tests/export.utils.test.js
-node --test tests/iconify.utils.test.js
-node --test tests/odl.import.utils.test.js
-node --test tests/curated.templates.test.js
-node --test tests/template.catalog.test.js
-node --test tests/template.handlers.test.js
+# Clone repo
+git clone -b webapp https://github.com/<owner>/Smart-WS.git
+cd Smart-WS
+
+# เปิดด้วย local server (แนะนำ — เพื่อให้โหลด vendor files ได้ถูกต้อง)
+npx serve .
+# แล้วเปิด http://localhost:3000
+
+# หรือเปิดไฟล์ตรง (บาง feature อาจ CORS-blocked)
+open index.html
 ```
 
-## หมายเหตุ
-- โปรเจกต์นี้เป็น Chrome Extension: หากย้ายไฟล์ runtime ต้องอัปเดต path ใน `manifest.json` และ `newtab.html` ให้ครบ
+> **หมายเหตุ**: ควรใช้ local server เสมอ เพราะ vendor libraries (Fabric.js, jsPDF, KaTeX) โหลดด้วย HTTP fetch
+
+---
+
+## ฟีเจอร์
+
+| ฟีเจอร์ | รายละเอียด |
+|---|---|
+| 🗂 Multi-page Workbook | เพิ่ม / ลบ / ทำซ้ำ / จัดลำดับหน้าได้ไม่จำกัด |
+| 🎨 Canvas Editor | ลากวางข้อความ รูปภาพ รูปทรง สมการ ไอคอน SVG |
+| 📋 Curated Templates | เทมเพลตพร้อมใช้ 15+ แบบ พร้อม preview — เพิ่มหน้าใหม่ได้ทันที |
+| ⚙️ Generators | สร้างใบงาน MCQ / Matching / Fill-in / Mind Map / Rubric ฯลฯ อัตโนมัติ |
+| ➗ Equation Editor | เขียน LaTeX / สมการแบบ mixed text+math พร้อม KaTeX preview |
+| 🖼 Web Images | ค้นหาและแทรกรูปจาก Flickr / Wikimedia |
+| 🤖 AI Prompt Guide | คัดลอก prompt สำเร็จรูปสำหรับสร้างสื่อด้วย AI ภายนอก |
+| 📤 Export Engine | PNG / PDF (multi-page) / PPTX — รองรับงานขนาดใหญ่ |
+| 💾 Auto-save | บันทึกลง `localStorage` อัตโนมัติ (ไม่ต้องการ server) |
+| 🌙 Dark Mode | สลับธีมได้ทันที |
+
+---
+
+## โครงสร้างไฟล์
+
+```
+Smart-WS/
+├── index.html              ← จุดเริ่มต้นของแอป
+├── style.css               ← สไตล์ทั้งหมด (Light + Dark theme)
+├── app.js                  ← Canvas core, Workbook, Page management, Undo/Redo
+├── proFeatures.js          ← Generators, AI guide, Market analysis, modals
+├── export.js               ← PNG / PDF / PPTX export engine
+├── export.utils.js         ← Helper functions สำหรับ export
+├── toolbar.js              ← Toolbar interactions
+├── panel.js                ← Side panel (SVG library, icons)
+├── clipboard.js            ← Copy/paste objects
+├── equation.js             ← LaTeX / KaTeX equation editor
+├── webImages.js            ← Flickr / Wikimedia image search
+├── market_analysis.js      ← Market trend dashboard
+├── odl.import.js           ← นำเข้า Open Document Layout JSON
+│
+├── data/
+│   ├── curatedTemplates.v1.js   ← 15 Curated Templates (canvas data + thumbnail)
+│   ├── templateCatalog.v1.js    ← แคตตาล็อกเทมเพลต 185 รายการ
+│   ├── templateHandlers.v1.js   ← ฟังก์ชันสร้างเทมเพลตแต่ละแบบ
+│   ├── templatePresets.v1.js    ← Preset ค่าเริ่มต้น
+│   ├── templateTaxonomy.v1.js   ← โครงสร้างหมวดหมู่
+│   ├── svgLibrary.js            ← คลัง SVG inline
+│   ├── borderLibrary.js         ← กรอบตกแต่ง
+│   └── marketTrends.js          ← ข้อมูล trend สำหรับ dashboard
+│
+├── vendor/
+│   ├── fabric.min.js            ← Fabric.js 5.x (Canvas engine)
+│   ├── jspdf.umd.min.js         ← jsPDF (PDF export)
+│   ├── pptxgen.bundle.js        ← PptxGenJS (PPTX export)
+│   └── katex/                   ← KaTeX (Equation rendering)
+│
+├── tests/                       ← Node.js test suite
+└── docs/                        ← เอกสารแผนและบันทึกการพัฒนา
+```
+
+---
+
+## รัน Tests
+
+```bash
+# ต้องการ Node.js 18+
+node --test tests/*.test.js
+
+# หรือเลือกเฉพาะไฟล์
+node --test tests/curated.templates.test.js
+node --test tests/export.utils.test.js
+node --test tests/template.catalog.test.js
+node --test tests/template.handlers.test.js
+node --test tests/iconify.utils.test.js
+node --test tests/odl.import.utils.test.js
+```
+
+---
+
+## การบันทึกข้อมูล
+
+| สภาพแวดล้อม | วิธีบันทึก |
+|---|---|
+| Web App (branch นี้) | `localStorage` — ข้อมูลอยู่ใน browser |
+| Chrome Extension (main) | `chrome.storage.local` พร้อม fallback `localStorage` |
+
+ข้อมูลไม่ถูกส่งไปที่ server ใด ทำงานได้ออฟไลน์ทั้งหมด
+
+---
+
+## Branches
+
+| Branch | วัตถุประสงค์ |
+|---|---|
+| `main` | Chrome Extension — override New Tab, packaged เป็น `.crx` |
+| `webapp` | Standalone Web App — deploy บน Vercel / Netlify / GitHub Pages |
+| `staging` | Integration testing |
+
+---
+
+## Deploy บน GitHub Pages / Netlify / Vercel
+
+เนื่องจากทุก dependency อยู่ใน `vendor/` แล้ว ไม่มี build step:
+
+```bash
+# GitHub Pages: push branch webapp แล้วตั้ง Source = webapp / root
+# Netlify / Vercel: เชื่อม repo แล้วเลือก branch webapp, Build command = (none), Publish dir = .
+```
+
+---
+
+## Dependencies
+
+ทุก library bundled ใน `vendor/` — ไม่ต้องรัน `npm install`
+
+| Library | เวอร์ชัน | ใช้ทำอะไร |
+|---|---|---|
+| Fabric.js | 5.x | Canvas rendering & object model |
+| jsPDF | 2.x | PDF generation |
+| PptxGenJS | 3.x | PPTX generation |
+| KaTeX | 0.16.x | Math equation rendering |
+
+---
+
+## ความแตกต่างระหว่าง Webapp กับ Extension
+
+| ด้าน | Webapp (`webapp` branch) | Extension (`main` branch) |
+|---|---|---|
+| เปิดใช้ | เปิด URL / deploy | Override New Tab ใน Chrome |
+| การบันทึก | `localStorage` | `chrome.storage.local` |
+| Download | Blob URL + `<a>` click | `chrome.downloads` API |
+| ไฟล์พิเศษ | — | `manifest.json`, `icons/` |
+| Deploy | Vercel / Netlify / GitHub Pages | Chrome Web Store / Load unpacked |
