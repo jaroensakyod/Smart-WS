@@ -168,36 +168,38 @@
             let seq = 0;
             group.families.forEach((family, familyIndex) => {
                 const familySlug = slug(family.key || family.name);
-                const variant = 0;
-                seq += 1;
-                const gradeBand = pick(GRADE_BANDS, familyIndex + groupIndex);
-                const difficulty = pick(DIFFICULTIES, seq + groupIndex);
-                const theme = pick(THEME_PACKS, seq + familyIndex + groupIndex);
-                list.push({
-                    id: `${group.prefix}-${pad3(seq)}`,
-                    title: family.name,
-                    category: group.category,
-                    familyKey: familySlug,
-                    variantIndex: variant,
-                    gradeBand,
-                    format: family.format,
-                    tags: [
-                        'iconify-visual',
-                        'cohort-new',
-                        'quality-curated',
-                        group.prefix.toLowerCase(),
-                        familySlug,
-                        `family-${familyIndex + 1}`,
-                        `difficulty-${difficulty}`,
-                        `theme-${theme}`,
-                        ...family.tags,
-                    ],
-                    hasAnswerKey: family.format === 'assessment',
-                    visualDensity: 'high',
-                    iconifyTags: [...family.tags, theme].slice(0, 5),
-                    difficulty,
-                    isDynamic: true,
-                });
+                const variants = Math.max(1, Number(family.variants) || 1);
+                for (let variant = 0; variant < variants; variant++) {
+                    seq += 1;
+                    const gradeBand = pick(GRADE_BANDS, familyIndex + groupIndex + variant);
+                    const difficulty = pick(DIFFICULTIES, seq + groupIndex);
+                    const theme = pick(THEME_PACKS, seq + familyIndex + groupIndex + variant);
+                    list.push({
+                        id: `${group.prefix}-${pad3(seq)}`,
+                        title: variants > 1 ? `${family.name} — Visual ${variant + 1}` : family.name,
+                        category: group.category,
+                        familyKey: familySlug,
+                        variantIndex: variant,
+                        gradeBand,
+                        format: family.format,
+                        tags: [
+                            'iconify-visual',
+                            'cohort-new',
+                            'quality-curated',
+                            group.prefix.toLowerCase(),
+                            familySlug,
+                            `family-${familyIndex + 1}`,
+                            `difficulty-${difficulty}`,
+                            `theme-${theme}`,
+                            ...family.tags,
+                        ],
+                        hasAnswerKey: family.format === 'assessment',
+                        visualDensity: 'high',
+                        iconifyTags: [...family.tags, theme].slice(0, 5),
+                        difficulty,
+                        isDynamic: true,
+                    });
+                }
             });
         });
         return list;

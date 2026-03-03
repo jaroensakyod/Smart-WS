@@ -17,6 +17,7 @@ const GRID_SIZE = 24;
 const SNAP_TOLERANCE = 8;
 const TELEMETRY_KEY = 'smartws_telemetry_v1';
 const TELEMETRY_MAX_EVENTS = 120;
+const PERSISTENCE_UTILS = window.SMARTWS_PERSISTENCE_UTILS || {};
 
 function readTelemetryState() {
     try {
@@ -176,6 +177,9 @@ function serializeCanvasNow() {
 }
 
 function sanitizeSerializableValue(value) {
+    if (typeof PERSISTENCE_UTILS.sanitizeSerializableValue === 'function') {
+        return PERSISTENCE_UTILS.sanitizeSerializableValue(value);
+    }
     if (value === null || value === undefined) return value;
     if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
     if (typeof value === 'function') return undefined;
@@ -197,6 +201,9 @@ function sanitizeSerializableValue(value) {
 }
 
 function sanitizeFabricLikeObject(raw) {
+    if (typeof PERSISTENCE_UTILS.sanitizeFabricLikeObject === 'function') {
+        return PERSISTENCE_UTILS.sanitizeFabricLikeObject(raw);
+    }
     const obj = sanitizeSerializableValue(raw);
     if (!obj || typeof obj !== 'object') return null;
     if (!obj.type) return null;
@@ -237,7 +244,7 @@ function buildSafeCanvasJsonSnapshot() {
 }
 
 function sanitizeTemplateCanvasData(canvasData) {
-    const root = sanitizeSerializableValue(canvasData || {});
+    const root = sanitizeImportedData(canvasData || {});
     const objects = Array.isArray(root?.objects)
         ? root.objects
             .map((item) => sanitizeFabricLikeObject(item))
@@ -252,6 +259,37 @@ function sanitizeTemplateCanvasData(canvasData) {
         : [];
     return {
         version: root?.version || fabric?.version || '5.2.4',
+        objects,
+    };
+}
+
+function sanitizeImportedData(input) {
+    if (typeof PERSISTENCE_UTILS.sanitizeImportedData === 'function') {
+        return PERSISTENCE_UTILS.sanitizeImportedData(input);
+    }
+    const rootData = typeof input === 'string'
+        ? (() => {
+            try {
+                return JSON.parse(input);
+            } catch {
+                return { version: '5.2.4', objects: [] };
+            }
+        })()
+        : input;
+
+    const rootObj = rootData && typeof rootData === 'object'
+        ? rootData
+        : { version: '5.2.4', objects: [] };
+
+    const objects = Array.isArray(rootObj.objects)
+        ? rootObj.objects
+            .map((item) => sanitizeFabricLikeObject(item))
+            .filter(Boolean)
+        : [];
+
+    return {
+        ...rootObj,
+        version: rootObj.version || fabric?.version || '5.2.4',
         objects,
     };
 }
@@ -274,7 +312,8 @@ function persistCurrentPage() {
 function loadCanvasJson(json) {
     return new Promise((resolve) => {
         isReplaying = true;
-        canvas.loadFromJSON(json || BLANK_PAGE_JSON, () => {
+        const sanitizedJson = sanitizeImportedData(json || BLANK_PAGE_JSON);
+        canvas.loadFromJSON(sanitizedJson, () => {
             canvas.backgroundColor = '#ffffff';
             applyWorksheetVisibilityMode();
             canvas.renderAll();
@@ -2494,12 +2533,24 @@ window.wbLoadWorkbookData = async (payload) => {
         return;
     }
 
-    workbook.pages = payload.pages.map(p => createPageState(p || BLANK_PAGE_JSON));
+    workbook.pages = payload.pages
+        .map((p) => sanitizeImportedData(p || BLANK_PAGE_JSON))
+        .map((sanitizedPage) => createPageState(JSON.stringify(sanitizedPage)));
     activePageIndex = Math.min(Math.max(payload.activePageIndex || 0, 0), workbook.pages.length - 1);
     await loadCanvasJson(workbook.pages[activePageIndex].json);
     updatePageIndicator();
     clearPropsPanel();
 };
+
+window.addEventListener('error', (event) => {
+    trackTelemetry('global_runtime_error', {
+        message: String(event?.message || 'unknown-error'),
+        source: String(event?.filename || 'unknown-source'),
+        line: Number(event?.lineno) || 0,
+        column: Number(event?.colno) || 0,
+    });
+    showToast('⚠️ ระบบพบข้อผิดพลาด โปรดบันทึกงานและลองใหม่');
+});
 
 initThemeToggle();
 applyPaperLayout(paperSize);
