@@ -536,90 +536,57 @@ function addAutoNumberAt(x = 72, y = 96) {
     canvas.renderAll();
 }
 
+const TEMPLATE_FACTORY = window.SMARTWS_TEMPLATE_FACTORY || {};
+
+function getTemplateFactoryContext() {
+    return {
+        canvas,
+        fabric,
+        workbook,
+        getPaperWidth: () => PAPER_W,
+        getPaperHeight: () => PAPER_H,
+        getWorksheetMode: () => worksheetMode,
+        setWorksheetMode: (nextMode) => { worksheetMode = nextMode; },
+        setActivePageIndex: (nextIndex) => { activePageIndex = nextIndex; },
+        persistCurrentPage,
+        currentPage,
+        createPageState,
+        loadCanvasJson,
+        syncUiToggles,
+        updatePageIndicator,
+        showToast,
+        trackTelemetry,
+        saveHistory,
+        applyWorksheetVisibilityMode,
+        sanitizeTemplateCanvasData,
+        addPageAndGo,
+        BLANK_PAGE_JSON,
+        applyTemplateImpl,
+    };
+}
+
 function markAnswerOnlyForSelection(enabled) {
-    const obj = canvas.getActiveObject();
-    if (!obj) return;
-    obj.data = { ...(obj.data || {}), answerOnly: !!enabled };
-    applyWorksheetVisibilityMode();
+    if (typeof TEMPLATE_FACTORY.markAnswerOnlyForSelection === 'function') {
+        return TEMPLATE_FACTORY.markAnswerOnlyForSelection(getTemplateFactoryContext(), enabled);
+    }
+    return false;
 }
 
 function duplicateAsAnswerKey() {
-    persistCurrentPage();
-    const source = currentPage()?.json || BLANK_PAGE_JSON;
-    workbook.pages.push(createPageState(source));
-    activePageIndex = workbook.pages.length - 1;
-    loadCanvasJson(source).then(() => {
-        worksheetMode = 'answer';
-        syncUiToggles();
-        const title = new fabric.IText('Answer Key', {
-            left: PAPER_W - 170,
-            top: 24,
-            fontFamily: 'Fredoka',
-            fontSize: 24,
-            fill: '#dc2626',
-        });
-        title.data = { type: 'answerLabel', answerOnly: true };
-        canvas.add(title);
-        applyWorksheetVisibilityMode();
-        updatePageIndicator();
-        showToast('🧪 สร้างหน้าเฉลยแล้ว');
-    });
-}
-
-function collectTextObjects(root, bucket) {
-    if (!root) return;
-    if (root.type === 'i-text' || root.type === 'text' || root.type === 'textbox') {
-        bucket.push(root);
-        return;
+    if (typeof TEMPLATE_FACTORY.duplicateAsAnswerKey === 'function') {
+        return TEMPLATE_FACTORY.duplicateAsAnswerKey(getTemplateFactoryContext());
     }
-    if (root.type === 'group' && typeof root.getObjects === 'function') {
-        root.getObjects().forEach(item => collectTextObjects(item, bucket));
-    }
+    return false;
 }
 
 function generateAnswerKeyPage() {
-    persistCurrentPage();
-    const source = currentPage()?.json || BLANK_PAGE_JSON;
-    workbook.pages.push(createPageState(source));
-    activePageIndex = workbook.pages.length - 1;
-    loadCanvasJson(source).then(() => {
-        worksheetMode = 'answer';
-        syncUiToggles();
-
-        const allText = [];
-        canvas.getObjects().forEach(obj => collectTextObjects(obj, allText));
-        allText.forEach(txt => {
-            const raw = String(txt.text || '');
-            const m = raw.match(/\[([^\]]+)\]/);
-            if (m) {
-                txt.set({ text: raw.replace(/\[([^\]]+)\]/g, '$1'), fill: '#dc2626', fontWeight: '700' });
-                txt.data = { ...(txt.data || {}), answerOnly: true, answerText: m[1] };
-            }
-        });
-
-        const watermark = new fabric.Text('ANSWER KEY', {
-            left: PAPER_W / 2,
-            top: PAPER_H / 2,
-            originX: 'center',
-            originY: 'center',
-            angle: -20,
-            opacity: 0.14,
-            fontFamily: 'Fredoka',
-            fontSize: 96,
-            fill: '#dc2626',
-            selectable: false,
-            evented: false,
-        });
-        watermark.data = { type: 'answerWatermark', answerOnly: true };
-        canvas.add(watermark);
-
-        applyWorksheetVisibilityMode();
-        updatePageIndicator();
-        showToast('🧪 สร้างหน้าเฉลย (Answer Key) แล้ว');
-    });
+    if (typeof TEMPLATE_FACTORY.generateAnswerKeyPage === 'function') {
+        return TEMPLATE_FACTORY.generateAnswerKeyPage(getTemplateFactoryContext());
+    }
+    return false;
 }
 
-function applyTemplate(type) {
+function applyTemplateImpl(type) {
     if (!type) return;
     if (String(type).startsWith('curated_')) {
         const curatedId = String(type).replace(/^curated_/, '');
@@ -1518,71 +1485,18 @@ function applyTemplate(type) {
     showToast('📄 ใส่เทมเพลตแล้ว');
 }
 
+function applyTemplate(type) {
+    if (typeof TEMPLATE_FACTORY.applyTemplate === 'function') {
+        return TEMPLATE_FACTORY.applyTemplate(getTemplateFactoryContext(), type);
+    }
+    return applyTemplateImpl(type);
+}
+
 function applyCuratedTemplateById(templateId, options = {}) {
-    const api = window.SMARTWS_CURATED_TEMPLATES_API || {};
-    const resolver = typeof api.getCuratedTemplateById === 'function'
-        ? api.getCuratedTemplateById
-        : null;
-    if (!resolver) return false;
-
-    const template = resolver(templateId);
-    if (!template || !template.canvasData) {
-        showToast('ไม่พบ curated template ที่เลือก');
-        trackTelemetry('curated_template_apply_missing', { templateId: templateId || 'unknown' });
-        return false;
+    if (typeof TEMPLATE_FACTORY.applyCuratedTemplateById === 'function') {
+        return TEMPLATE_FACTORY.applyCuratedTemplateById(getTemplateFactoryContext(), templateId, options);
     }
-
-    const mode = String(options.mode || 'replace');
-    const skipConfirm = !!options.skipConfirm;
-
-    const loadTemplateData = () => {
-        const normalizedData = sanitizeTemplateCanvasData(template.canvasData);
-        const json = JSON.stringify(normalizedData);
-        return loadCanvasJson(json)
-            .then(() => {
-                saveHistory();
-                persistCurrentPage();
-                updatePageIndicator();
-                trackTelemetry('curated_template_apply_success', {
-                    templateId: template.id,
-                    mode,
-                    objectCount: canvas.getObjects().length,
-                });
-                showToast(`📄 เพิ่มเทมเพลต: ${template.title}`);
-                return true;
-            })
-            .catch((error) => {
-                trackTelemetry('curated_template_apply_error', {
-                    templateId: template.id,
-                    mode,
-                    message: String(error?.message || error || 'unknown-error'),
-                });
-                showToast('ไม่สามารถเพิ่ม curated template ได้');
-                return false;
-            });
-    };
-
-    if (mode === 'new-page') {
-        Promise.resolve(addPageAndGo())
-            .then(() => loadTemplateData())
-            .catch((error) => {
-                trackTelemetry('curated_template_apply_error', {
-                    templateId: template.id,
-                    mode,
-                    message: String(error?.message || error || 'unknown-error'),
-                });
-                showToast('ไม่สามารถสร้างหน้าใหม่สำหรับ template ได้');
-            });
-        return true;
-    }
-
-    if (!skipConfirm && !window.confirm('ใช้เทมเพลตนี้และล้างหน้าปัจจุบัน?')) {
-        trackTelemetry('curated_template_apply_cancelled', { templateId: template.id });
-        return false;
-    }
-
-    loadTemplateData();
-    return true;
+    return false;
 }
 
 function getBoundsForSnap(obj) {
