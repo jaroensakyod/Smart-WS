@@ -164,52 +164,52 @@
         const mode = String(options.mode || 'replace');
         const skipConfirm = !!options.skipConfirm;
 
-        const loadTemplateData = () => {
-            const normalizedData = typeof sanitizeTemplateCanvasData === 'function'
-                ? sanitizeTemplateCanvasData(template.canvasData)
-                : template.canvasData;
+        const normalizedData = typeof sanitizeTemplateCanvasData === 'function'
+            ? sanitizeTemplateCanvasData(template.canvasData)
+            : template.canvasData;
 
-            return Promise.resolve(loadCanvasJson(JSON.stringify(normalizedData)))
-                .then(() => {
-                    if (typeof saveHistory === 'function') saveHistory();
-                    if (typeof persistCurrentPage === 'function') persistCurrentPage();
-                    if (typeof updatePageIndicator === 'function') updatePageIndicator();
-                    if (typeof trackTelemetry === 'function') {
-                        trackTelemetry('curated_template_apply_success', {
-                            templateId: template.id,
-                            mode,
-                            objectCount: canvas?.getObjects?.().length || 0,
-                        });
-                    }
-                    if (typeof showToast === 'function') showToast(`📄 เพิ่มเทมเพลต: ${template.title}`);
-                    return true;
-                })
-                .catch((error) => {
-                    if (typeof trackTelemetry === 'function') {
-                        trackTelemetry('curated_template_apply_error', {
-                            templateId: template.id,
-                            mode,
-                            message: String(error?.message || error || 'unknown-error'),
-                        });
-                    }
-                    if (typeof showToast === 'function') showToast('ไม่สามารถเพิ่ม curated template ได้');
-                    return false;
+        const finalizeTemplateApplied = () => {
+            if (typeof saveHistory === 'function') saveHistory();
+            if (typeof persistCurrentPage === 'function') persistCurrentPage();
+            if (typeof updatePageIndicator === 'function') updatePageIndicator();
+            if (typeof trackTelemetry === 'function') {
+                trackTelemetry('curated_template_apply_success', {
+                    templateId: template.id,
+                    mode,
+                    objectCount: canvas?.getObjects?.().length || 0,
                 });
+            }
+            if (typeof showToast === 'function') showToast(`📄 เพิ่มเทมเพลต: ${template.title}`);
+            return true;
+        };
+
+        const handleTemplateApplyError = (error, fallbackMessage = 'ไม่สามารถเพิ่ม curated template ได้') => {
+            if (typeof trackTelemetry === 'function') {
+                trackTelemetry('curated_template_apply_error', {
+                    templateId: template.id,
+                    mode,
+                    message: String(error?.message || error || 'unknown-error'),
+                });
+            }
+            if (typeof showToast === 'function') showToast(fallbackMessage);
+            return false;
+        };
+
+        const loadTemplateData = () => {
+            return Promise.resolve(loadCanvasJson(JSON.stringify(normalizedData)))
+                .then(() => finalizeTemplateApplied())
+                .catch((error) => handleTemplateApplyError(error));
         };
 
         if (mode === 'new-page') {
-            Promise.resolve(typeof addPageAndGo === 'function' ? addPageAndGo() : false)
-                .then(() => loadTemplateData())
-                .catch((error) => {
-                    if (typeof trackTelemetry === 'function') {
-                        trackTelemetry('curated_template_apply_error', {
-                            templateId: template.id,
-                            mode,
-                            message: String(error?.message || error || 'unknown-error'),
-                        });
+            Promise.resolve(typeof addPageAndGo === 'function' ? addPageAndGo(normalizedData) : false)
+                .then((created) => {
+                    if (created === false) {
+                        throw new Error('create-page-failed');
                     }
-                    if (typeof showToast === 'function') showToast('ไม่สามารถสร้างหน้าใหม่สำหรับ template ได้');
-                });
+                    return finalizeTemplateApplied();
+                })
+                .catch((error) => handleTemplateApplyError(error, 'ไม่สามารถสร้างหน้าใหม่สำหรับ template ได้'));
             return true;
         }
 
