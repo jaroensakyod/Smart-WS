@@ -138,3 +138,44 @@ test('applyCuratedTemplateById replace mode still loads normalized template JSON
         globalThis.SMARTWS_CURATED_TEMPLATES_API = originalApi;
     }
 });
+
+test('applyCuratedTemplateById new-page handles addPageAndGo failure with error telemetry and fallback toast', async () => {
+    const originalApi = globalThis.SMARTWS_CURATED_TEMPLATES_API;
+    const events = [];
+
+    globalThis.SMARTWS_CURATED_TEMPLATES_API = {
+        getCuratedTemplateById: () => ({
+            id: 'curated-new-page-error',
+            title: 'Template Error Path',
+            canvasData: { version: '5.2.4', objects: [{ id: 'raw-error' }] },
+        }),
+    };
+
+    try {
+        const ok = factory.applyCuratedTemplateById({
+            sanitizeTemplateCanvasData: (input) => input,
+            addPageAndGo: async () => false,
+            saveHistory: () => events.push(['saveHistory']),
+            persistCurrentPage: () => events.push(['persistCurrentPage']),
+            updatePageIndicator: () => events.push(['updatePageIndicator']),
+            showToast: (message) => events.push(['showToast', message]),
+            trackTelemetry: (eventName, payload) => events.push(['trackTelemetry', eventName, payload?.mode]),
+        }, 'curated-new-page-error', { mode: 'new-page', skipConfirm: true });
+
+        assert.equal(ok, true);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        assert.equal(events.some((entry) => entry[0] === 'saveHistory'), false);
+        assert.equal(events.some((entry) => entry[0] === 'persistCurrentPage'), false);
+        assert.equal(
+            events.some((entry) => entry[0] === 'trackTelemetry' && entry[1] === 'curated_template_apply_error' && entry[2] === 'new-page'),
+            true,
+        );
+        assert.equal(
+            events.some((entry) => entry[0] === 'showToast' && entry[1] === 'ไม่สามารถสร้างหน้าใหม่สำหรับ template ได้'),
+            true,
+        );
+    } finally {
+        globalThis.SMARTWS_CURATED_TEMPLATES_API = originalApi;
+    }
+});
