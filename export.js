@@ -408,13 +408,23 @@ async function renderPageJsonToImage(pageJson, profile, width, height) {
     });
 
     const loadAndRender = async (jsonLike) => {
-        await new Promise((resolve) => {
-            tempCanvas.loadFromJSON(jsonLike || '{}', () => {
-                applyWorksheetVisibilityForCanvas(tempCanvas);
-                tempCanvas.discardActiveObject();
-                tempCanvas.renderAll();
-                resolve();
-            });
+        await new Promise((resolve, reject) => {
+            try {
+                tempCanvas.loadFromJSON(jsonLike || '{}', () => {
+                    try {
+                        applyWorksheetVisibilityForCanvas(tempCanvas);
+                        if (typeof tempCanvas.discardActiveObject === 'function') {
+                            tempCanvas.discardActiveObject();
+                        }
+                        tempCanvas.renderAll();
+                        resolve();
+                    } catch (callbackError) {
+                        reject(callbackError);
+                    }
+                });
+            } catch (loadError) {
+                reject(loadError);
+            }
         });
 
         const imageWait = await waitForCanvasImagesReady(tempCanvas, { timeoutMs: 6000, pollMs: 60 });
