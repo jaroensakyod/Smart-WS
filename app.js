@@ -2552,6 +2552,14 @@ window.addEventListener('error', (event) => {
     showToast('⚠️ ระบบพบข้อผิดพลาด โปรดบันทึกงานและลองใหม่');
 });
 
+window.addEventListener('unhandledrejection', (event) => {
+    const reason = event?.reason;
+    trackTelemetry('global_unhandled_rejection', {
+        message: String(reason?.message || reason || 'unknown-rejection'),
+    });
+    showToast('⚠️ ระบบพบข้อผิดพลาดระหว่างประมวลผล โปรดบันทึกงานและลองใหม่');
+});
+
 initThemeToggle();
 applyPaperLayout(paperSize);
 syncUiToggles();

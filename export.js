@@ -267,6 +267,13 @@ function waitForUiBreath() {
     return new Promise(resolve => setTimeout(resolve, 0));
 }
 
+function reportExportError(eventName, error, payload = {}) {
+    window.wbTrackTelemetry?.(eventName, {
+        message: String(error?.message || error || 'unknown-error'),
+        ...payload,
+    });
+}
+
 function createAllPageIndices(total) {
     return Array.from({ length: total }, (_, i) => i);
 }
@@ -526,6 +533,10 @@ async function forEachWorkbookPageImage(profile, onPage, options = {}) {
                 message: String(error?.message || error || 'unknown-error'),
                 tainted: isTaintedCanvasError(error),
             });
+            reportExportError('export_page_skip', error, {
+                page: pageIndex + 1,
+                tainted: isTaintedCanvasError(error),
+            });
             console.error('[export.page.skip]', pageIndex + 1, error);
         }
         await waitForUiBreath();
@@ -547,23 +558,30 @@ document.getElementById('btnExportPNG')?.addEventListener('click', () => {
     const canvas = window.wbCanvas;
     if (!canvas) return;
 
-    window.wbPersistCurrentPage?.();
-    canvas.discardActiveObject();
+    try {
+        window.wbPersistCurrentPage?.();
+        canvas.discardActiveObject?.();
 
-    const originalZoom = window.wbGetZoom?.() || 1;
-    if (window.wbSetZoom) window.wbSetZoom(1);
+        const originalZoom = window.wbGetZoom?.() || 1;
+        if (window.wbSetZoom) window.wbSetZoom(1);
 
-    canvas.renderAll();
+        canvas.renderAll();
 
-    const dataUrl = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 2 });
+        const dataUrl = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 2 });
 
-    if (window.wbSetZoom) window.wbSetZoom(originalZoom);
+        if (window.wbSetZoom) window.wbSetZoom(originalZoom);
 
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = `worksheet_page_${(window.wbGetActivePageIndex?.() ?? 0) + 1}_${Date.now()}.png`;
-    a.click();
-    window.showToast?.('📥 ดาวน์โหลด PNG เรียบร้อย');
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = `worksheet_page_${(window.wbGetActivePageIndex?.() ?? 0) + 1}_${Date.now()}.png`;
+        a.click();
+        window.showToast?.('📥 ดาวน์โหลด PNG เรียบร้อย');
+    } catch (err) {
+        reportExportError('export_png_error', err, {
+            page: (window.wbGetActivePageIndex?.() ?? 0) + 1,
+        });
+        window.showToast?.('❌ ส่งออก PNG ไม่สำเร็จ');
+    }
 });
 
 /* ── 2. EXPORT PDF (ALL PAGES) ─────────────────────────────── */
@@ -651,6 +669,9 @@ document.getElementById('btnExportPDF')?.addEventListener('click', async () => {
                 return;
             } catch (err) {
                 lastError = err;
+                reportExportError('export_pdf_attempt_error', err, {
+                    attempt: attempt + 1,
+                });
                 console.error('[export.pdf.attempt]', attempt + 1, err);
                 if (isTaintedCanvasError(err)) break;
                 if (attempt < profiles.length - 1) {
@@ -691,6 +712,7 @@ document.getElementById('btnExportPDF')?.addEventListener('click', async () => {
             window.showToast?.(`📄 ส่งออกแบบแยกไฟล์สำเร็จ (${split.exportedParts} ไฟล์)`);
         }
     } catch (err) {
+        reportExportError('export_pdf_error', err);
         console.error('[export.pdf]', err);
         if (isTaintedCanvasError(err)) {
             window.showToast?.('❌ ส่งออก PDF ไม่สำเร็จ: มีรูปจากเว็บที่ไม่อนุญาต export (CORS)');
@@ -780,6 +802,7 @@ document.getElementById('btnExportPPTX')?.addEventListener('click', async () => 
             window.showToast?.('📊 ดาวน์โหลด PPTX เรียบร้อย');
         }
     } catch (err) {
+        reportExportError('export_pptx_error', err);
         console.error('[export.pptx]', err);
         window.showToast?.('❌ ส่งออก PPTX ไม่สำเร็จ');
     }
@@ -837,6 +860,7 @@ document.getElementById('btnExportPreview')?.addEventListener('click', async () 
         a.click();
         window.showToast?.('👁 ดาวน์โหลด Preview (Watermark) แล้ว');
     } catch (err) {
+        reportExportError('export_preview_error', err);
         console.error('[export.preview]', err);
         window.showToast?.('❌ ส่งออก Preview ไม่สำเร็จ');
     }
@@ -848,23 +872,36 @@ document.getElementById('btnSave')?.addEventListener('click', () => {
     const payload = window.wbGetWorkbookData?.() || null;
     if (!payload) return;
 
-    const json = JSON.stringify(payload);
+    try {
+        const json = JSON.stringify(payload);
 
-    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-        window.wbSetSaveIndicator?.('saving');
-        chrome.storage.local.set({ [key]: json }, () => {
+        if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+            window.wbSetSaveIndicator?.('saving');
+            chrome.storage.local.set({ [key]: json }, () => {
+                const runtimeError = chrome.runtime?.lastError;
+                if (runtimeError) {
+                    reportExportError('save_workbook_error', runtimeError);
+                    window.wbSetSaveIndicator?.('idle');
+                    window.showToast?.('❌ บันทึกไม่สำเร็จ');
+                    return;
+                }
+                window.wbSetSaveIndicator?.('saved');
+                window.showToast?.('💾 บันทึกแล้ว');
+            });
+        } else {
+            const blob = new Blob([json], { type: 'application/smartws+json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `worksheet_${Date.now()}.smartws`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 5000);
             window.wbSetSaveIndicator?.('saved');
-            window.showToast?.('💾 บันทึกแล้ว');
-        });
-    } else {
-        const blob = new Blob([json], { type: 'application/smartws+json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `worksheet_${Date.now()}.smartws`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-        window.wbSetSaveIndicator?.('saved');
-        window.showToast?.('💾 ดาวน์โหลด Project .smartws แล้ว');
+            window.showToast?.('💾 ดาวน์โหลด Project .smartws แล้ว');
+        }
+    } catch (err) {
+        reportExportError('save_workbook_error', err);
+        window.wbSetSaveIndicator?.('idle');
+        window.showToast?.('❌ บันทึกไม่สำเร็จ');
     }
 });
 
@@ -874,6 +911,12 @@ document.getElementById('btnLoad')?.addEventListener('click', () => {
 
     if (typeof chrome !== 'undefined' && chrome.storage?.local) {
         chrome.storage.local.get([key], (result) => {
+            const runtimeError = chrome.runtime?.lastError;
+            if (runtimeError) {
+                reportExportError('load_workbook_storage_error', runtimeError);
+                window.showToast?.('❌ โหลด Project ไม่สำเร็จ');
+                return;
+            }
             if (result[key]) {
                 loadJson(result[key]);
             } else {
@@ -903,6 +946,7 @@ async function loadJson(json) {
 
         window.showToast?.('❌ รูปแบบไฟล์ไม่รองรับ');
     } catch (err) {
+        reportExportError('load_workbook_json_error', err);
         console.error('[export.loadJson]', err);
         window.showToast?.('❌ โหลดไฟล์ไม่สำเร็จ');
     }
@@ -916,6 +960,10 @@ function openFilePicker() {
         const file = fi.files[0];
         if (!file) return;
         const reader = new FileReader();
+        reader.onerror = () => {
+            reportExportError('load_workbook_file_read_error', reader.error || 'file-read-error');
+            window.showToast?.('❌ อ่านไฟล์ไม่สำเร็จ');
+        };
         reader.onload = e => loadJson(e.target.result);
         reader.readAsText(file);
     };
