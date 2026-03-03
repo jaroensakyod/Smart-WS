@@ -217,9 +217,10 @@ function sanitizeImportedData(input) {
 }
 
 function persistCurrentPage() {
-    if (isPageLoading) {
+    if (isPageLoading || isReplaying) {
         trackTelemetry('page_persist_skipped_loading', {
             activePageIndex,
+            reason: isPageLoading ? 'page-loading' : 'canvas-replaying',
         });
         return;
     }
@@ -350,16 +351,35 @@ async function jumpToPageFromInput() {
 }
 
 async function addPageAndGo(initialContent = BLANK_PAGE_JSON) {
+    if (isPageLoading) {
+        showToast('กำลังเปลี่ยนหน้า กรุณารอสักครู่');
+        trackTelemetry('page_add_blocked_loading', {
+            activePageIndex,
+            pageCount: workbook.pages.length,
+        });
+        return false;
+    }
+
     try {
         persistCurrentPage();
+        isPageLoading = true;
         const sanitizedInitial = sanitizeImportedData(initialContent || BLANK_PAGE_JSON);
         const initialJson = JSON.stringify(sanitizedInitial);
         workbook.pages.push(createPageState(initialJson));
         activePageIndex = workbook.pages.length - 1;
-        await loadCanvasJson(currentPage().json);
+        await loadCanvasJson(initialJson);
+        const page = currentPage();
+        if (page) {
+            page.json = initialJson;
+            if (!page.undoStack.length || page.undoStack[page.undoStack.length - 1] !== initialJson) {
+                page.undoStack = [initialJson];
+            }
+            page.redoStack = [];
+        }
         clearPropsPanel();
         updatePageIndicator();
         showToast('➕ เพิ่มหน้าใหม่แล้ว');
+        return true;
     } catch (error) {
         trackTelemetry('page_add_error', {
             message: String(error?.message || error || 'unknown-error'),
@@ -368,36 +388,67 @@ async function addPageAndGo(initialContent = BLANK_PAGE_JSON) {
         });
         showToast('ไม่สามารถเพิ่มหน้าใหม่ได้');
         throw error;
+    } finally {
+        isPageLoading = false;
     }
 }
 
 async function duplicateCurrentPage() {
+    if (isPageLoading) {
+        showToast('กำลังเปลี่ยนหน้า กรุณารอสักครู่');
+        trackTelemetry('page_duplicate_blocked_loading', {
+            activePageIndex,
+            pageCount: workbook.pages.length,
+        });
+        return false;
+    }
+
     persistCurrentPage();
-    const source = currentPage()?.json || BLANK_PAGE_JSON;
-    const insertAt = activePageIndex + 1;
-    workbook.pages.splice(insertAt, 0, createPageState(source));
-    activePageIndex = insertAt;
-    await loadCanvasJson(source);
-    clearPropsPanel();
-    updatePageIndicator();
-    showToast('📄 ทำซ้ำหน้านี้แล้ว');
-    return true;
+    isPageLoading = true;
+    try {
+        const source = currentPage()?.json || BLANK_PAGE_JSON;
+        const insertAt = activePageIndex + 1;
+        workbook.pages.splice(insertAt, 0, createPageState(source));
+        activePageIndex = insertAt;
+        await loadCanvasJson(source);
+        clearPropsPanel();
+        updatePageIndicator();
+        showToast('📄 ทำซ้ำหน้านี้แล้ว');
+        return true;
+    } finally {
+        isPageLoading = false;
+    }
 }
 
 async function deleteCurrentPage(index = activePageIndex) {
+    if (isPageLoading) {
+        showToast('กำลังเปลี่ยนหน้า กรุณารอสักครู่');
+        trackTelemetry('page_delete_blocked_loading', {
+            activePageIndex,
+            pageCount: workbook.pages.length,
+        });
+        return false;
+    }
+
     if (workbook.pages.length <= 1) {
         showToast('ต้องมีอย่างน้อย 1 หน้า');
         return false;
     }
-    const targetIndex = Math.min(Math.max(Number(index) || 0, 0), workbook.pages.length - 1);
-    workbook.pages.splice(targetIndex, 1);
-    if (activePageIndex > targetIndex) activePageIndex -= 1;
-    if (activePageIndex >= workbook.pages.length) activePageIndex = workbook.pages.length - 1;
-    await loadCanvasJson(currentPage()?.json || BLANK_PAGE_JSON);
-    clearPropsPanel();
-    updatePageIndicator();
-    showToast('🗑️ ลบหน้าแล้ว');
-    return true;
+
+    isPageLoading = true;
+    try {
+        const targetIndex = Math.min(Math.max(Number(index) || 0, 0), workbook.pages.length - 1);
+        workbook.pages.splice(targetIndex, 1);
+        if (activePageIndex > targetIndex) activePageIndex -= 1;
+        if (activePageIndex >= workbook.pages.length) activePageIndex = workbook.pages.length - 1;
+        await loadCanvasJson(currentPage()?.json || BLANK_PAGE_JSON);
+        clearPropsPanel();
+        updatePageIndicator();
+        showToast('🗑️ ลบหน้าแล้ว');
+        return true;
+    } finally {
+        isPageLoading = false;
+    }
 }
 
 function clearCurrentPage() {

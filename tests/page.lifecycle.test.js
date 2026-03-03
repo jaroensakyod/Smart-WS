@@ -212,6 +212,9 @@ function createAtomicAddPageHarness(options = {}) {
 
     let activePageIndex = 0;
     let canvasState = workbook.pages[0].json;
+    let isPageLoading = false;
+    let isReplaying = false;
+    let persistSkipCount = 0;
 
     function sanitizeImportedData(input) {
         if (!input) return JSON.parse(BLANK_PAGE_JSON);
@@ -224,13 +227,21 @@ function createAtomicAddPageHarness(options = {}) {
     }
 
     function persistCurrentPage() {
+        if (isPageLoading || isReplaying) {
+            persistSkipCount += 1;
+            return false;
+        }
         workbook.pages[activePageIndex].json = serializeCanvasNow();
+        return true;
     }
 
     function loadCanvasJson(json) {
         return new Promise((resolve) => {
+            isReplaying = true;
+            canvasState = 'EMPTY_CANVAS';
             setTimeout(() => {
                 canvasState = json;
+                isReplaying = false;
                 resolve();
             }, 20);
         });
@@ -249,13 +260,22 @@ function createAtomicAddPageHarness(options = {}) {
     }
 
     async function addPageAndGo(initialContent = BLANK_PAGE_JSON) {
+        if (isPageLoading) return false;
         persistCurrentPage();
+        isPageLoading = true;
         const sanitizedInitial = sanitizeImportedData(initialContent || BLANK_PAGE_JSON);
         const initialJson = JSON.stringify(sanitizedInitial);
         workbook.pages.push(createPageState(initialJson));
         activePageIndex = workbook.pages.length - 1;
-        await loadCanvasJson(currentPage().json);
+        await loadCanvasJson(initialJson);
+        currentPage().json = initialJson;
+        isPageLoading = false;
         return true;
+    }
+
+    function forcePersistWithCanvasState(state) {
+        canvasState = state;
+        return persistCurrentPage();
     }
 
     return {
@@ -263,6 +283,8 @@ function createAtomicAddPageHarness(options = {}) {
         workbook,
         addPageAndGo,
         getActivePageIndex: () => activePageIndex,
+        forcePersistWithCanvasState,
+        getPersistSkipCount: () => persistSkipCount,
     };
 }
 
@@ -292,4 +314,25 @@ test('phase1 atomic add-page: default call still creates blank page payload', as
 
     assert.equal(harness.getActivePageIndex(), 1);
     assert.equal(harness.workbook.pages[1].json, harness.BLANK_PAGE_JSON);
+});
+
+test('phase4 persistence lock: replay window cannot overwrite freshly seeded template page', async () => {
+    const harness = createAtomicAddPageHarness();
+    const templateSeed = {
+        version: '5.2.4',
+        objects: [{ id: 'tpl-lock', type: 'i-text', text: 'protected' }],
+    };
+
+    const pending = harness.addPageAndGo(templateSeed);
+
+    const persisted = harness.forcePersistWithCanvasState('EMPTY_CANVAS');
+    await pending;
+
+    assert.equal(persisted, false, 'persist should be blocked while page is loading/replaying');
+    assert.equal(harness.getPersistSkipCount() >= 1, true);
+    assert.equal(
+        harness.workbook.pages[1].json,
+        JSON.stringify(templateSeed),
+        'seeded template json must stay intact after replay window closes',
+    );
 });
