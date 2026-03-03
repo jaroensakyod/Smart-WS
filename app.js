@@ -15,55 +15,26 @@ let gridEnabled = false;
 let worksheetMode = 'student'; // student | answer
 const GRID_SIZE = 24;
 const SNAP_TOLERANCE = 8;
-const TELEMETRY_KEY = 'smartws_telemetry_v1';
-const TELEMETRY_MAX_EVENTS = 120;
 const PERSISTENCE_UTILS = window.SMARTWS_PERSISTENCE_UTILS || {};
-
-function readTelemetryState() {
-    try {
-        const raw = localStorage.getItem(TELEMETRY_KEY);
-        if (!raw) return { counts: {}, events: [], lastUpdatedAt: 0 };
-        const parsed = JSON.parse(raw);
-        return {
-            counts: parsed && typeof parsed.counts === 'object' ? parsed.counts : {},
-            events: Array.isArray(parsed?.events) ? parsed.events : [],
-            lastUpdatedAt: Number(parsed?.lastUpdatedAt) || 0,
-        };
-    } catch {
-        return { counts: {}, events: [], lastUpdatedAt: 0 };
-    }
-}
-
-function writeTelemetryState(state) {
-    try {
-        localStorage.setItem(TELEMETRY_KEY, JSON.stringify(state));
-    } catch {
-        return;
-    }
-}
+const TELEMETRY_UTILS = window.SMARTWS_TELEMETRY_UTILS || {};
 
 function trackTelemetry(eventName, payload = {}) {
-    if (!eventName) return;
-    const state = readTelemetryState();
-    state.counts[eventName] = (state.counts[eventName] || 0) + 1;
-    state.events.push({
-        event: eventName,
-        at: Date.now(),
-        payload: payload && typeof payload === 'object' ? payload : {},
-    });
-    if (state.events.length > TELEMETRY_MAX_EVENTS) {
-        state.events.splice(0, state.events.length - TELEMETRY_MAX_EVENTS);
+    if (typeof TELEMETRY_UTILS.trackTelemetry === 'function') {
+        TELEMETRY_UTILS.trackTelemetry(eventName, payload, { storage: window.localStorage });
     }
-    state.lastUpdatedAt = Date.now();
-    writeTelemetryState(state);
 }
 
 function getTelemetrySnapshot() {
-    return readTelemetryState();
+    if (typeof TELEMETRY_UTILS.getTelemetrySnapshot === 'function') {
+        return TELEMETRY_UTILS.getTelemetrySnapshot(window.localStorage);
+    }
+    return { counts: {}, events: [], lastUpdatedAt: 0 };
 }
 
 function clearTelemetryState() {
-    writeTelemetryState({ counts: {}, events: [], lastUpdatedAt: Date.now() });
+    if (typeof TELEMETRY_UTILS.clearTelemetryState === 'function') {
+        TELEMETRY_UTILS.clearTelemetryState(window.localStorage);
+    }
 }
 
 function getPaperConfig(size = paperSize) {
@@ -2542,23 +2513,12 @@ window.wbLoadWorkbookData = async (payload) => {
     clearPropsPanel();
 };
 
-window.addEventListener('error', (event) => {
-    trackTelemetry('global_runtime_error', {
-        message: String(event?.message || 'unknown-error'),
-        source: String(event?.filename || 'unknown-source'),
-        line: Number(event?.lineno) || 0,
-        column: Number(event?.colno) || 0,
+if (typeof TELEMETRY_UTILS.initGlobalErrorTelemetry === 'function') {
+    TELEMETRY_UTILS.initGlobalErrorTelemetry({
+        scope: window,
+        notify: (message) => showToast(message),
     });
-    showToast('⚠️ ระบบพบข้อผิดพลาด โปรดบันทึกงานและลองใหม่');
-});
-
-window.addEventListener('unhandledrejection', (event) => {
-    const reason = event?.reason;
-    trackTelemetry('global_unhandled_rejection', {
-        message: String(reason?.message || reason || 'unknown-rejection'),
-    });
-    showToast('⚠️ ระบบพบข้อผิดพลาดระหว่างประมวลผล โปรดบันทึกงานและลองใหม่');
-});
+}
 
 initThemeToggle();
 applyPaperLayout(paperSize);
