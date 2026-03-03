@@ -77,6 +77,54 @@
         };
     }
 
+    function isRemoteHttpUrl(url) {
+        const src = String(url || '').trim();
+        return /^https?:\/\//i.test(src) || /^\/\//.test(src);
+    }
+
+    function getImageSourceFromObject(obj) {
+        if (!obj || typeof obj !== 'object') return '';
+        const direct = obj.src || obj._src || obj.imageUrl || obj.url;
+        if (direct) return String(direct);
+        const data = obj.data && typeof obj.data === 'object' ? obj.data : null;
+        if (!data) return '';
+        return String(data.src || data.imageSourceUrl || data.url || '');
+    }
+
+    function isImageObjectLikelyTainted(obj) {
+        if (!obj || obj.type !== 'image') return false;
+        const src = getImageSourceFromObject(obj);
+        if (!isRemoteHttpUrl(src)) return false;
+        const crossOrigin = String(obj.crossOrigin || obj?.data?.crossOrigin || '').trim().toLowerCase();
+        return crossOrigin !== 'anonymous';
+    }
+
+    function collectRiskyImageObjects(pageJsonLike) {
+        let parsed = pageJsonLike;
+        if (typeof parsed === 'string') {
+            try {
+                parsed = JSON.parse(parsed);
+            } catch {
+                return [];
+            }
+        }
+
+        const root = parsed && typeof parsed === 'object' ? parsed : null;
+        const objects = Array.isArray(root?.objects) ? root.objects : [];
+        const risky = [];
+
+        objects.forEach((obj, index) => {
+            if (!isImageObjectLikelyTainted(obj)) return;
+            risky.push({
+                index,
+                src: getImageSourceFromObject(obj),
+                reason: 'missing-anonymous-cors',
+            });
+        });
+
+        return risky;
+    }
+
     const api = {
         getSafePageCount,
         getPaperMetrics,
@@ -84,6 +132,10 @@
         getPptxRenderProfile,
         getPdfPageSpec,
         getPptxLayoutSpec,
+        isRemoteHttpUrl,
+        getImageSourceFromObject,
+        isImageObjectLikelyTainted,
+        collectRiskyImageObjects,
     };
 
     if (typeof module !== 'undefined' && module.exports) {

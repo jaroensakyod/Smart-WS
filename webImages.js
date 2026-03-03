@@ -512,6 +512,13 @@
                 loadRasterFallback(item.thumbUrl);
                 return;
             }
+            const data = img.data && typeof img.data === 'object' ? img.data : {};
+            img.set('crossOrigin', 'anonymous');
+            img.set('data', {
+                ...data,
+                imageSourceUrl: item.fullUrl || item.thumbUrl || '',
+                crossOrigin: 'anonymous',
+            });
             placeImage(img);
         }, { crossOrigin: 'anonymous' });
     }
@@ -543,6 +550,13 @@
                 window.showToast?.('❌ โหลดรูปไม่สำเร็จ');
                 return;
             }
+            const data = img2.data && typeof img2.data === 'object' ? img2.data : {};
+            img2.set('crossOrigin', 'anonymous');
+            img2.set('data', {
+                ...data,
+                imageSourceUrl: thumbUrl || '',
+                crossOrigin: 'anonymous',
+            });
             placeImage(img2);
         }, { crossOrigin: 'anonymous' });
     }

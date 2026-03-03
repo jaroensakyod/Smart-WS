@@ -38,3 +38,46 @@ test('getPptxLayoutSpec converts mm to inches safely', () => {
     assert.ok(Math.abs(layout.widthIn - (210 / 25.4)) < 0.0001);
     assert.ok(Math.abs(layout.heightIn - (297 / 25.4)) < 0.0001);
 });
+
+test('collectRiskyImageObjects detects remote image without anonymous CORS', () => {
+    const pageJson = {
+        version: '5.2.4',
+        objects: [
+            { type: 'rect', width: 10, height: 10 },
+            { type: 'image', src: 'https://example.com/a.jpg' },
+            { type: 'image', src: 'https://example.com/b.jpg', crossOrigin: 'anonymous' },
+        ],
+    };
+
+    const risky = utils.collectRiskyImageObjects(pageJson);
+    assert.equal(risky.length, 1);
+    assert.equal(risky[0].index, 1);
+    assert.equal(risky[0].reason, 'missing-anonymous-cors');
+});
+
+test('collectRiskyImageObjects supports json string input', () => {
+    const raw = JSON.stringify({
+        version: '5.2.4',
+        objects: [
+            { type: 'image', data: { imageSourceUrl: 'https://example.com/x.png' } },
+        ],
+    });
+
+    const risky = utils.collectRiskyImageObjects(raw);
+    assert.equal(risky.length, 1);
+    assert.equal(risky[0].index, 0);
+});
+
+test('collectRiskyImageObjects ignores local/data URLs', () => {
+    const pageJson = {
+        version: '5.2.4',
+        objects: [
+            { type: 'image', src: 'data:image/png;base64,AAAA' },
+            { type: 'image', src: '/icons/logo.png' },
+            { type: 'image', src: 'chrome-extension://abc/image.png' },
+        ],
+    };
+
+    const risky = utils.collectRiskyImageObjects(pageJson);
+    assert.equal(risky.length, 0);
+});

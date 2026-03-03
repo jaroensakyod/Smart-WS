@@ -69,6 +69,121 @@ function isTaintedCanvasError(error) {
     return msg.includes('tainted') || msg.includes('insecure') || msg.includes('cross-origin');
 }
 
+function isRemoteHttpUrl(url) {
+    if (typeof EXPORT_UTILS.isRemoteHttpUrl === 'function') return EXPORT_UTILS.isRemoteHttpUrl(url);
+    const src = String(url || '').trim();
+    return /^https?:\/\//i.test(src) || /^\/\//.test(src);
+}
+
+function getImageSourceFromObject(obj) {
+    if (typeof EXPORT_UTILS.getImageSourceFromObject === 'function') return EXPORT_UTILS.getImageSourceFromObject(obj);
+    if (!obj || typeof obj !== 'object') return '';
+    const direct = obj.src || obj._src || obj.imageUrl || obj.url;
+    if (direct) return String(direct);
+    const data = obj.data && typeof obj.data === 'object' ? obj.data : null;
+    if (!data) return '';
+    return String(data.src || data.imageSourceUrl || data.url || '');
+}
+
+function collectRiskyImageObjects(pageJsonLike) {
+    if (typeof EXPORT_UTILS.collectRiskyImageObjects === 'function') {
+        return EXPORT_UTILS.collectRiskyImageObjects(pageJsonLike);
+    }
+
+    let parsed = pageJsonLike;
+    if (typeof parsed === 'string') {
+        try {
+            parsed = JSON.parse(parsed);
+        } catch {
+            return [];
+        }
+    }
+
+    const root = parsed && typeof parsed === 'object' ? parsed : null;
+    const objects = Array.isArray(root?.objects) ? root.objects : [];
+    const risky = [];
+
+    objects.forEach((obj, index) => {
+        if (!obj || obj.type !== 'image') return;
+        const src = getImageSourceFromObject(obj);
+        if (!isRemoteHttpUrl(src)) return;
+        const crossOrigin = String(obj.crossOrigin || obj?.data?.crossOrigin || '').trim().toLowerCase();
+        if (crossOrigin === 'anonymous') return;
+        risky.push({ index, src, reason: 'missing-anonymous-cors' });
+    });
+
+    return risky;
+}
+
+function getExportRiskSummary(snapshot, selectedIndices) {
+    const pages = Array.isArray(snapshot?.pages) ? snapshot.pages : [];
+    const indices = Array.isArray(selectedIndices) && selectedIndices.length
+        ? selectedIndices.filter((x) => x >= 0 && x < pages.length)
+        : createAllPageIndices(pages.length);
+    const riskyByPage = [];
+    let riskyImageCount = 0;
+
+    indices.forEach((idx) => {
+        const risky = collectRiskyImageObjects(pages[idx]);
+        if (!risky.length) return;
+        riskyImageCount += risky.length;
+        riskyByPage.push({ page: idx + 1, count: risky.length, risky });
+    });
+
+    return {
+        totalPages: indices.length,
+        riskyPages: riskyByPage.length,
+        riskyImageCount,
+        riskyByPage,
+    };
+}
+
+function summarizeRiskyPages(riskyByPage, maxPages = 6) {
+    const pages = (Array.isArray(riskyByPage) ? riskyByPage : [])
+        .map((x) => x?.page)
+        .filter((x) => Number.isFinite(x));
+    if (!pages.length) return '';
+    const sorted = [...new Set(pages)].sort((a, b) => a - b);
+    if (sorted.length <= maxPages) return sorted.join(', ');
+    const head = sorted.slice(0, maxPages).join(', ');
+    return `${head} (+${sorted.length - maxPages} หน้า)`;
+}
+
+function waitForCanvasImagesReady(targetCanvas, options = {}) {
+    const timeoutMs = Math.max(1000, Number(options.timeoutMs) || 6000);
+    const pollMs = Math.max(20, Number(options.pollMs) || 60);
+    const startedAt = Date.now();
+
+    const isReady = (obj) => {
+        if (!obj || obj.type !== 'image') return true;
+        const el = obj._element || obj._originalElement || (typeof obj.getElement === 'function' ? obj.getElement() : null);
+        if (!el) return false;
+        if (el.complete === false) return false;
+        if (typeof el.naturalWidth === 'number' && el.naturalWidth <= 0) return false;
+        return true;
+    };
+
+    return new Promise((resolve) => {
+        const tick = () => {
+            const images = typeof targetCanvas.getObjects === 'function'
+                ? targetCanvas.getObjects().filter((obj) => obj?.type === 'image')
+                : [];
+            const ready = images.every(isReady);
+            if (ready) {
+                resolve({ ready: true, waitedMs: Date.now() - startedAt, pending: 0 });
+                return;
+            }
+            if (Date.now() - startedAt >= timeoutMs) {
+                const pending = images.filter((obj) => !isReady(obj)).length;
+                resolve({ ready: false, waitedMs: Date.now() - startedAt, pending });
+                return;
+            }
+            setTimeout(tick, pollMs);
+        };
+        tick();
+    });
+}
+
 function getPdfRetryProfiles(pageCount) {
     const primary = getPdfRenderProfile(pageCount);
     const fallback = [
@@ -247,10 +362,12 @@ function normalizePageJsonForExport(pageJson, options = {}) {
     const root = parsed && typeof parsed === 'object' ? parsed : { version: '5.2.4', objects: [] };
     const rawObjects = Array.isArray(root.objects) ? root.objects : [];
     const dropImages = !!options.dropImages;
+    const dropImagePredicate = typeof options.dropImagePredicate === 'function' ? options.dropImagePredicate : null;
 
     const sanitizedObjects = rawObjects
         .filter((obj) => obj && typeof obj === 'object' && typeof obj.type === 'string')
         .filter((obj) => !(dropImages && obj.type === 'image'))
+        .filter((obj, index) => !(obj.type === 'image' && dropImagePredicate && dropImagePredicate(obj, index)))
         .map((obj) => {
             const out = { ...obj };
             ['left', 'top', 'width', 'height', 'scaleX', 'scaleY', 'fontSize', 'strokeWidth', 'angle', 'opacity'].forEach((key) => {
@@ -300,6 +417,14 @@ async function renderPageJsonToImage(pageJson, profile, width, height) {
             });
         });
 
+        const imageWait = await waitForCanvasImagesReady(tempCanvas, { timeoutMs: 6000, pollMs: 60 });
+        if (!imageWait.ready) {
+            window.wbTrackTelemetry?.('export_image_wait_timeout', {
+                pending: imageWait.pending,
+                waitedMs: imageWait.waitedMs,
+            });
+        }
+
         if (document.fonts?.ready) {
             try { await document.fonts.ready; } catch { }
         }
@@ -312,6 +437,11 @@ async function renderPageJsonToImage(pageJson, profile, width, height) {
     };
 
     const normalized = normalizePageJsonForExport(pageJson, { dropImages: false });
+    const riskyImageIndexes = new Set(
+        collectRiskyImageObjects(pageJson)
+            .map((x) => Number(x?.index))
+            .filter((x) => Number.isInteger(x) && x >= 0)
+    );
     let dataUrl = '';
     try {
         dataUrl = await loadAndRender(normalized);
@@ -319,6 +449,23 @@ async function renderPageJsonToImage(pageJson, profile, width, height) {
         if (!isTaintedCanvasError(error)) {
             tempCanvas.dispose?.();
             throw error;
+        }
+
+        if (riskyImageIndexes.size) {
+            window.wbTrackTelemetry?.('export_tainted_fallback_drop_risky', {
+                droppedImages: riskyImageIndexes.size,
+            });
+            try {
+                tempCanvas.clear();
+                const noRiskyImagesJson = normalizePageJsonForExport(pageJson, {
+                    dropImagePredicate: (_, objectIndex) => riskyImageIndexes.has(objectIndex),
+                });
+                dataUrl = await loadAndRender(noRiskyImagesJson);
+                tempCanvas.dispose?.();
+                return dataUrl;
+            } catch {
+                // fallback to full image-drop path below
+            }
         }
 
         const noImageJson = normalizePageJsonForExport(pageJson, { dropImages: true });
@@ -426,6 +573,23 @@ document.getElementById('btnExportPDF')?.addEventListener('click', async () => {
         if (!selectedPages.length) {
             window.showToast?.('❌ ไม่มีหน้าที่เลือกสำหรับส่งออก PDF');
             return;
+        }
+
+        const snapshot = getWorkbookSnapshotForExport();
+        if (!snapshot) {
+            window.showToast?.('❌ ไม่พบข้อมูล workbook สำหรับ export');
+            return;
+        }
+
+        const riskSummary = getExportRiskSummary(snapshot, selectedPages);
+        if (riskSummary.riskyImageCount > 0) {
+            const pageText = summarizeRiskyPages(riskSummary.riskyByPage);
+            window.showToast?.(`⚠️ พบรูปเว็บเสี่ยง CORS ${riskSummary.riskyImageCount} รูป (หน้า ${pageText}) ระบบจะข้ามเฉพาะรูปเสี่ยงอัตโนมัติ`);
+            window.wbTrackTelemetry?.('export_risky_images_detected', {
+                type: 'pdf',
+                riskyPages: riskSummary.riskyPages,
+                riskyImageCount: riskSummary.riskyImageCount,
+            });
         }
 
         const profiles = getPdfRetryProfiles(pageCount);
@@ -552,6 +716,23 @@ document.getElementById('btnExportPPTX')?.addEventListener('click', async () => 
         if (!selectedPages.length) {
             window.showToast?.('❌ ไม่มีหน้าที่เลือกสำหรับส่งออก PPTX');
             return;
+        }
+
+        const snapshot = getWorkbookSnapshotForExport();
+        if (!snapshot) {
+            window.showToast?.('❌ ไม่พบข้อมูล workbook สำหรับ export');
+            return;
+        }
+
+        const riskSummary = getExportRiskSummary(snapshot, selectedPages);
+        if (riskSummary.riskyImageCount > 0) {
+            const pageText = summarizeRiskyPages(riskSummary.riskyByPage);
+            window.showToast?.(`⚠️ พบรูปเว็บเสี่ยง CORS ${riskSummary.riskyImageCount} รูป (หน้า ${pageText}) ระบบจะข้ามเฉพาะรูปเสี่ยงอัตโนมัติ`);
+            window.wbTrackTelemetry?.('export_risky_images_detected', {
+                type: 'pptx',
+                riskyPages: riskSummary.riskyPages,
+                riskyImageCount: riskSummary.riskyImageCount,
+            });
         }
 
         const profile = getPptxRenderProfile(pageCount);
