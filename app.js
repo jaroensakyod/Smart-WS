@@ -105,6 +105,7 @@ let activePageIndex = 0;
 let workbook = { pages: [] };
 let isReplaying = false;
 let isPageLoading = false;
+let pageSwitchSafetySnapshot = null;
 
 const BLANK_PAGE_JSON = JSON.stringify(canvas.toJSON(SERIALIZE_PROPS));
 
@@ -236,23 +237,54 @@ function persistCurrentPage() {
     if (!page.undoStack.length) page.undoStack = [page.json];
 }
 
+function capturePageSwitchSafetySnapshot() {
+    const page = currentPage();
+    if (!page) {
+        pageSwitchSafetySnapshot = null;
+        return;
+    }
+    pageSwitchSafetySnapshot = {
+        index: activePageIndex,
+        json: page.json || BLANK_PAGE_JSON,
+    };
+}
+
+function restorePageSwitchSafetySnapshot() {
+    const snapshot = pageSwitchSafetySnapshot;
+    if (!snapshot || snapshot.index < 0 || snapshot.index >= workbook.pages.length) return false;
+    workbook.pages[snapshot.index].json = snapshot.json || BLANK_PAGE_JSON;
+    activePageIndex = snapshot.index;
+    return true;
+}
+
 function loadCanvasJson(json) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         isReplaying = true;
-        const sanitizedJson = sanitizeImportedData(json || BLANK_PAGE_JSON);
-        canvas.loadFromJSON(sanitizedJson, () => {
-            canvas.backgroundColor = '#ffffff';
-            applyWorksheetVisibilityMode();
-            canvas.renderAll();
+        try {
+            const sanitizedJson = sanitizeImportedData(json || BLANK_PAGE_JSON);
+            canvas.loadFromJSON(sanitizedJson, () => {
+                try {
+                    canvas.backgroundColor = '#ffffff';
+                    applyWorksheetVisibilityMode();
+                    canvas.renderAll();
+                    resolve();
+                } catch (error) {
+                    reject(error);
+                } finally {
+                    isReplaying = false;
+                }
+            });
+        } catch (error) {
             isReplaying = false;
-            resolve();
-        });
+            reject(error);
+        }
     });
 }
 
 async function goToPage(index) {
     if (index < 0 || index >= workbook.pages.length || index === activePageIndex) return false;
     if (isPageLoading) {
+        showToast('กำลังเปลี่ยนหน้า กรุณารอสักครู่');
         trackTelemetry('page_switch_blocked_loading', {
             from: activePageIndex,
             to: index,
@@ -260,6 +292,9 @@ async function goToPage(index) {
         });
         return false;
     }
+
+    const previousPageIndex = activePageIndex;
+    capturePageSwitchSafetySnapshot();
     persistCurrentPage();
     activePageIndex = index;
     isPageLoading = true;
@@ -268,6 +303,20 @@ async function goToPage(index) {
         clearPropsPanel();
         updatePageIndicator();
         return true;
+    } catch (error) {
+        trackTelemetry('page_switch_load_error', {
+            from: previousPageIndex,
+            to: index,
+            message: String(error?.message || error || 'unknown-error'),
+        });
+        const restored = restorePageSwitchSafetySnapshot();
+        if (restored) {
+            await loadCanvasJson(currentPage()?.json || BLANK_PAGE_JSON);
+            clearPropsPanel();
+            updatePageIndicator();
+        }
+        showToast('เกิดข้อผิดพลาดระหว่างเปลี่ยนหน้า ระบบคืนค่าหน้าก่อนหน้าให้แล้ว');
+        return false;
     } finally {
         isPageLoading = false;
     }
