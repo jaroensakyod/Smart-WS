@@ -100,6 +100,23 @@ function applyWorksheetVisibilityMode() {
 }
 
 /* ── 2. WORKBOOK STATE (MULTI-PAGE) ───────────────────────── */
+
+// Fix Fabric.js baseline crash (Alphabetical enum error)
+(function patchFabricBaseline() {
+    if (typeof fabric !== 'undefined' && fabric.Text) {
+        const originalSetTextStyles = fabric.Text.prototype._setTextStyles;
+        fabric.Text.prototype._setTextStyles = function(ctx) {
+            try {
+                return originalSetTextStyles.apply(this, arguments);
+            } catch (e) {
+                // If the context doesn't support alphabetical or any value, 
+                // fallback to something safe or ignore.
+                ctx.textBaseline = 'bottom'; 
+            }
+        };
+    }
+})();
+
 const HISTORY_MAX = 30;
 let activePageIndex = 0;
 let workbook = { pages: [] };
@@ -2466,6 +2483,17 @@ window.wbSetWritingLinesConfig = (cfg) => {
 };
 window.wbGetWritingLinesConfig = () => ({ ...writingLineSettings });
 window.wbGetWorkbookData = () => {
+    // SECURITY: Do not allow background auto-save to trigger 
+    // if the page is currently loading or replaying.
+    // This prevents a blank/incomplete canvas from overwriting valid data.
+    if (isPageLoading || isReplaying) {
+        trackTelemetry('bridge_persistence_blocked', { activePageIndex, isPageLoading, isReplaying });
+        return {
+            status: 'locked_by_lifecycle',
+            activePageIndex,
+        };
+    }
+
     persistCurrentPage();
     return {
         version: 2,

@@ -974,10 +974,20 @@ function openFilePicker() {
 setInterval(() => {
     if (typeof chrome === 'undefined' || !chrome.storage?.local) return;
     const payload = window.wbGetWorkbookData?.();
-    if (!payload) return;
-    window.wbSetSaveIndicator?.('saving');
-    chrome.storage.local.set({ wb_project_autosave: JSON.stringify(payload) });
-    window.wbSetSaveIndicator?.('saved');
+
+    // Check if persistence bridge returned a lock status
+    if (!payload || (payload.status && payload.status === 'locked_by_lifecycle')) {
+        // Skip auto-save while app is loading/replaying to prevent blank state overwrites
+        return;
+    }
+
+    try {
+        window.wbSetSaveIndicator?.('saving');
+        chrome.storage.local.set({ wb_project_autosave: JSON.stringify(payload) });
+        window.wbSetSaveIndicator?.('saved');
+    } catch (e) {
+        console.error('Auto-save bridge error:', e);
+    }
 }, 60_000);
 
 window.wbCollectAllPagesPng = collectAllPagesPng;
