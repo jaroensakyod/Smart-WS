@@ -4961,17 +4961,32 @@ Return in sections: Lesson Goals, Student Worksheet, Answer Key, Rubric, Print N
 
     window.wbSetSaveIndicator = setSaveIndicator;
 
-    setupTabs();
-    setupTemplateGallery();
-    setupUploads();
-    renderUploadGallery();
-    renderDocColors();
-    renderLayersPanel();
-    renderSavedElements();
-    setupEvents();
-    setupPan();
+    /* ── Resilient init: each step wrapped so one failure doesn't kill all features ── */
+    function safeInit(label, fn) {
+        try { fn(); } catch (err) { console.error(`[proFeatures.init.${label}]`, err); }
+    }
+
+    safeInit('setupTabs', setupTabs);
+    safeInit('setupTemplateGallery', setupTemplateGallery);
+    safeInit('setupUploads', setupUploads);
+    safeInit('renderUploadGallery', renderUploadGallery);
+    safeInit('renderDocColors', renderDocColors);
+    safeInit('renderLayersPanel', renderLayersPanel);
+    safeInit('renderSavedElements', renderSavedElements);
+    safeInit('setupEvents', setupEvents);
+    safeInit('setupPan', setupPan);
     setSaveIndicator('saved');
-    zoomToFit();
+
+    /* Delay zoomToFit until the DOM layout is complete so getBoundingClientRect is accurate */
+    requestAnimationFrame(() => {
+        try {
+            zoomToFit();
+            canvas.calcOffset();
+        } catch (err) {
+            console.error('[proFeatures.init.zoomToFit]', err);
+        }
+    });
+
     window.addEventListener('resize', () => {
         if (Math.abs(zoom - 1) < 0.001) zoomToFit();
     });

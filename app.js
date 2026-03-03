@@ -132,6 +132,7 @@ const HISTORY_MAX = 30;
 let activePageIndex = 0;
 let workbook = { pages: [] };
 let isReplaying = false;
+let _loadCanvasPromise = Promise.resolve();
 
 const BLANK_PAGE_JSON = JSON.stringify(canvas.toJSON(SERIALIZE_PROPS));
 
@@ -164,9 +165,14 @@ function updatePageIndicator() {
     if (nextBtn) nextBtn.disabled = activePageIndex >= workbook.pages.length - 1;
 }
 
+function sanitizeJsonNumericValues(json) {
+    return json.replace(/:\s*(?:NaN|Infinity|-Infinity|null)\s*([,}\]])/g, ': 0$1');
+}
+
 function serializeCanvasNow() {
     try {
-        return JSON.stringify(canvas.toJSON(SERIALIZE_PROPS));
+        const raw = JSON.stringify(canvas.toJSON(SERIALIZE_PROPS));
+        return sanitizeJsonNumericValues(raw);
     } catch (error) {
         trackTelemetry('canvas_serialize_error', {
             message: String(error?.message || error || 'unknown-error'),
@@ -200,9 +206,20 @@ function sanitizeFabricLikeObject(raw) {
     const obj = sanitizeSerializableValue(raw);
     if (!obj || typeof obj !== 'object') return null;
     if (!obj.type) return null;
+    /* Fix numeric properties for ALL object types */
+    ['left', 'top', 'width', 'height', 'scaleX', 'scaleY', 'angle', 'opacity', 'fontSize', 'strokeWidth'].forEach(key => {
+        if (obj[key] !== undefined && !Number.isFinite(Number(obj[key]))) {
+            if (key === 'scaleX' || key === 'scaleY') obj[key] = 1;
+            else if (key === 'opacity') obj[key] = 1;
+            else obj[key] = 0;
+        }
+    });
     if (obj.type === 'rect') {
         obj.width = Math.abs(Number(obj.width || 0));
         obj.height = Math.abs(Number(obj.height || 0));
+    }
+    if ((obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') && !obj.text && obj.text !== '') {
+        obj.text = '';
     }
     return obj;
 }
@@ -257,6 +274,7 @@ function sanitizeTemplateCanvasData(canvasData) {
 }
 
 function persistCurrentPage() {
+    if (isReplaying) return;
     const page = currentPage();
     if (!page) return;
     try {
@@ -272,20 +290,58 @@ function persistCurrentPage() {
 }
 
 function loadCanvasJson(json) {
-    return new Promise((resolve) => {
+    const LOAD_TIMEOUT_MS = 8000;
+    const p = new Promise((resolve) => {
         isReplaying = true;
-        canvas.loadFromJSON(json || BLANK_PAGE_JSON, () => {
-            canvas.backgroundColor = '#ffffff';
-            applyWorksheetVisibilityMode();
-            canvas.renderAll();
+        let resolved = false;
+        const finish = () => {
+            if (resolved) return;
+            resolved = true;
+            try {
+                canvas.backgroundColor = '#ffffff';
+                applyWorksheetVisibilityMode();
+                if (window.activeTool === 'select') {
+                    canvas.getObjects().forEach(o => {
+                        const locked = !!o.data?.locked;
+                        o.set({ selectable: !locked, evented: !locked, hasControls: !locked });
+                    });
+                }
+                canvas.calcOffset();
+                canvas.renderAll();
+            } catch (renderErr) {
+                console.error('[loadCanvasJson] post-load render error:', renderErr);
+            }
             isReplaying = false;
             resolve();
-        });
+        };
+        const timer = setTimeout(() => {
+            if (!resolved) {
+                console.warn('[loadCanvasJson] timeout reached, forcing resolve');
+                trackTelemetry('canvas_load_timeout', { jsonLen: String(json || '').length });
+                finish();
+            }
+        }, LOAD_TIMEOUT_MS);
+        try {
+            canvas.loadFromJSON(json || BLANK_PAGE_JSON, () => {
+                clearTimeout(timer);
+                finish();
+            });
+        } catch (loadErr) {
+            clearTimeout(timer);
+            console.error('[loadCanvasJson] loadFromJSON threw:', loadErr);
+            trackTelemetry('canvas_loadFromJSON_error', {
+                message: String(loadErr?.message || loadErr || 'unknown'),
+            });
+            finish();
+        }
     });
+    _loadCanvasPromise = p;
+    return p;
 }
 
 async function goToPage(index) {
     if (index < 0 || index >= workbook.pages.length || index === activePageIndex) return false;
+    await _loadCanvasPromise;
     persistCurrentPage();
     activePageIndex = index;
     await loadCanvasJson(currentPage().json);
@@ -323,6 +379,7 @@ async function jumpToPageFromInput() {
 
 async function addPageAndGo() {
     try {
+        await _loadCanvasPromise;
         persistCurrentPage();
         workbook.pages.push(createPageState());
         activePageIndex = workbook.pages.length - 1;
@@ -342,6 +399,7 @@ async function addPageAndGo() {
 }
 
 async function duplicateCurrentPage() {
+    await _loadCanvasPromise;
     persistCurrentPage();
     const source = currentPage()?.json || BLANK_PAGE_JSON;
     const insertAt = activePageIndex + 1;
@@ -359,6 +417,7 @@ async function deleteCurrentPage(index = activePageIndex) {
         showToast('ต้องมีอย่างน้อย 1 หน้า');
         return false;
     }
+    await _loadCanvasPromise;
     const targetIndex = Math.min(Math.max(Number(index) || 0, 0), workbook.pages.length - 1);
     workbook.pages.splice(targetIndex, 1);
     if (activePageIndex > targetIndex) activePageIndex -= 1;
@@ -2505,3 +2564,9 @@ initThemeToggle();
 applyPaperLayout(paperSize);
 syncUiToggles();
 updatePageIndicator();
+
+/* Ensure canvas offset is correct after initial layout — prevents "can't move objects" on first load */
+requestAnimationFrame(() => {
+    canvas.calcOffset();
+    canvas.requestRenderAll();
+});

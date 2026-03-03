@@ -4,6 +4,49 @@
 
 const EXPORT_UTILS = window.wbExportUtils || {};
 
+/* ── Robust Download Helper ──────────────────────────────────── */
+function downloadBlobOrDataUrl(data, filename, mimeType) {
+    let blob;
+    if (data instanceof Blob) {
+        blob = data;
+    } else if (typeof data === 'string' && data.startsWith('data:')) {
+        try {
+            const parts = data.split(',');
+            const byteString = atob(parts[1]);
+            const mime = (parts[0].match(/:([^;]+);/) || [])[1] || mimeType || 'application/octet-stream';
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+            blob = new Blob([ab], { type: mime });
+        } catch {
+            blob = new Blob([data], { type: mimeType || 'application/octet-stream' });
+        }
+    } else {
+        blob = new Blob([data], { type: mimeType || 'application/octet-stream' });
+    }
+
+    /* Prefer chrome.downloads API in extension context — most reliable */
+    if (typeof chrome !== 'undefined' && chrome.downloads && typeof chrome.downloads.download === 'function') {
+        const blobUrl = URL.createObjectURL(blob);
+        chrome.downloads.download({ url: blobUrl, filename: filename, saveAs: false }, () => {
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+        });
+        return;
+    }
+
+    /* Fallback: Blob URL + anchor click (works in normal web context) */
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+        try { document.body.removeChild(a); } catch { }
+        URL.revokeObjectURL(blobUrl);
+    }, 5000);
+}
+
 function fallbackPdfRenderProfile(pageCount) {
     if (pageCount <= 4) return { multiplier: 300 / 96, imageType: 'png', quality: 1, label: 'High (300 DPI)' };
     if (pageCount <= 10) return { multiplier: 2.2, imageType: 'jpeg', quality: 0.92, label: 'Balanced' };
@@ -136,7 +179,8 @@ async function exportPdfInBatches(selectedPages, pageSpec, options = {}) {
 
         skippedAll.push(...(result.skippedPages || []));
         if (Array.isArray(result?.skippedDetails)) skippedDetailsAll.push(...result.skippedDetails);
-        pdf.save(`${baseName}_part${String(part).padStart(2, '0')}.pdf`);
+        const partBlob = pdf.output('blob');
+        downloadBlobOrDataUrl(partBlob, `${baseName}_part${String(part).padStart(2, '0')}.pdf`, 'application/pdf');
         exportedParts += 1;
         await waitForUiBreath();
     }
@@ -238,7 +282,9 @@ function normalizePageJsonForExport(pageJson, options = {}) {
     let parsed = pageJson;
     if (typeof parsed === 'string') {
         try {
-            parsed = JSON.parse(parsed);
+            /* Fix NaN/null values in JSON string before parsing */
+            const sanitized = parsed.replace(/:[ \t]*(?:NaN|Infinity|-Infinity|null)[ \t]*([,}\]])/g, ': 0$1');
+            parsed = JSON.parse(sanitized);
         } catch {
             parsed = { version: '5.2.4', objects: [] };
         }
@@ -248,16 +294,30 @@ function normalizePageJsonForExport(pageJson, options = {}) {
     const rawObjects = Array.isArray(root.objects) ? root.objects : [];
     const dropImages = !!options.dropImages;
 
+    /* Safe defaults when a numeric property is invalid */
+    const numericDefaults = {
+        left: 0, top: 0, width: 1, height: 1,
+        scaleX: 1, scaleY: 1, fontSize: 22,
+        strokeWidth: 0, angle: 0, opacity: 1,
+    };
+
     const sanitizedObjects = rawObjects
         .filter((obj) => obj && typeof obj === 'object' && typeof obj.type === 'string')
         .filter((obj) => !(dropImages && obj.type === 'image'))
         .map((obj) => {
             const out = { ...obj };
-            ['left', 'top', 'width', 'height', 'scaleX', 'scaleY', 'fontSize', 'strokeWidth', 'angle', 'opacity'].forEach((key) => {
+            if (out.type === 'image') {
+                out.crossOrigin = 'anonymous';
+            }
+            Object.keys(numericDefaults).forEach((key) => {
                 if (out[key] === undefined) return;
                 const n = Number(out[key]);
-                if (!Number.isFinite(n)) delete out[key];
+                out[key] = Number.isFinite(n) ? n : numericDefaults[key];
             });
+            /* Ensure text objects always have a text property */
+            if ((out.type === 'textbox' || out.type === 'i-text' || out.type === 'text') && out.text == null) {
+                out.text = '';
+            }
             return out;
         });
 
@@ -277,6 +337,7 @@ function applyWorksheetVisibilityForCanvas(targetCanvas) {
 
 async function renderPageJsonToImage(pageJson, profile, width, height) {
     if (!window.fabric) throw new Error('Fabric.js not available');
+    const RENDER_TIMEOUT_MS = 10000;
     const el = document.createElement('canvas');
     el.width = Math.max(1, Math.floor(Number(width) || 794));
     el.height = Math.max(1, Math.floor(Number(height) || 1123));
@@ -291,13 +352,37 @@ async function renderPageJsonToImage(pageJson, profile, width, height) {
     });
 
     const loadAndRender = async (jsonLike) => {
-        await new Promise((resolve) => {
-            tempCanvas.loadFromJSON(jsonLike || '{}', () => {
-                applyWorksheetVisibilityForCanvas(tempCanvas);
-                tempCanvas.discardActiveObject();
-                tempCanvas.renderAll();
-                resolve();
-            });
+        await new Promise((resolve, reject) => {
+            let resolved = false;
+            const timer = setTimeout(() => {
+                if (!resolved) {
+                    resolved = true;
+                    console.warn('[export] loadFromJSON timeout, forcing resolve');
+                    try { tempCanvas.renderAll(); } catch { }
+                    resolve();
+                }
+            }, RENDER_TIMEOUT_MS);
+            try {
+                tempCanvas.loadFromJSON(jsonLike || '{}', () => {
+                    if (resolved) return;
+                    resolved = true;
+                    clearTimeout(timer);
+                    try {
+                        applyWorksheetVisibilityForCanvas(tempCanvas);
+                        tempCanvas.discardActiveObject();
+                        tempCanvas.renderAll();
+                    } catch (renderErr) {
+                        console.error('[export] post-load render error:', renderErr);
+                    }
+                    resolve();
+                });
+            } catch (loadErr) {
+                if (resolved) return;
+                resolved = true;
+                clearTimeout(timer);
+                console.error('[export] loadFromJSON threw:', loadErr);
+                reject(loadErr);
+            }
         });
 
         if (document.fonts?.ready) {
@@ -390,23 +475,37 @@ document.getElementById('btnExportPNG')?.addEventListener('click', () => {
     const canvas = window.wbCanvas;
     if (!canvas) return;
 
-    window.wbPersistCurrentPage?.();
-    canvas.discardActiveObject();
+    try {
+        window.wbPersistCurrentPage?.();
+        canvas.discardActiveObject();
 
-    const originalZoom = window.wbGetZoom?.() || 1;
-    if (window.wbSetZoom) window.wbSetZoom(1);
+        const originalZoom = window.wbGetZoom?.() || 1;
+        if (window.wbSetZoom) window.wbSetZoom(1);
 
-    canvas.renderAll();
+        canvas.renderAll();
 
-    const dataUrl = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 2 });
+        let dataUrl;
+        try {
+            dataUrl = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 2 });
+        } catch (exportErr) {
+            if (isTaintedCanvasError(exportErr)) {
+                window.showToast?.('❌ ส่งออก PNG ไม่สำเร็จ: มีรูปจากเว็บที่ไม่อนุญาต export (CORS)');
+            } else {
+                window.showToast?.('❌ ส่งออก PNG ไม่สำเร็จ');
+                console.error('[export.png]', exportErr);
+            }
+            if (window.wbSetZoom) window.wbSetZoom(originalZoom);
+            return;
+        }
 
-    if (window.wbSetZoom) window.wbSetZoom(originalZoom);
+        if (window.wbSetZoom) window.wbSetZoom(originalZoom);
 
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = `worksheet_page_${(window.wbGetActivePageIndex?.() ?? 0) + 1}_${Date.now()}.png`;
-    a.click();
-    window.showToast?.('📥 ดาวน์โหลด PNG เรียบร้อย');
+        downloadBlobOrDataUrl(dataUrl, `worksheet_page_${(window.wbGetActivePageIndex?.() ?? 0) + 1}_${Date.now()}.png`, 'image/png');
+        window.showToast?.('📥 ดาวน์โหลด PNG เรียบร้อย');
+    } catch (err) {
+        console.error('[export.png]', err);
+        window.showToast?.('❌ ส่งออก PNG ไม่สำเร็จ');
+    }
 });
 
 /* ── 2. EXPORT PDF (ALL PAGES) ─────────────────────────────── */
@@ -468,7 +567,8 @@ document.getElementById('btnExportPDF')?.addEventListener('click', async () => {
                     throw new Error('no-pages-rendered');
                 }
 
-                pdf.save(`worksheet_${Date.now()}.pdf`);
+                const pdfBlob = pdf.output('blob');
+                downloadBlobOrDataUrl(pdfBlob, `worksheet_${Date.now()}.pdf`, 'application/pdf');
                 if (result.skippedPages.length) {
                     window.showToast?.(`📄 ดาวน์โหลด PDF แล้ว (ข้ามหน้า: ${result.skippedPages.join(', ')})`);
                 } else {
@@ -582,7 +682,13 @@ document.getElementById('btnExportPPTX')?.addEventListener('click', async () => 
             throw new Error('no-pages-rendered');
         }
 
-        await pptx.writeFile({ fileName: `worksheet_${Date.now()}.pptx`, compression: true });
+        const pptxFileName = `worksheet_${Date.now()}.pptx`;
+        try {
+            const pptxBlob = await pptx.write({ outputType: 'blob' });
+            downloadBlobOrDataUrl(pptxBlob, pptxFileName, 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+        } catch {
+            await pptx.writeFile({ fileName: pptxFileName, compression: true });
+        }
         if (result.skippedPages.length) {
             window.showToast?.(`📊 ดาวน์โหลด PPTX แล้ว (ข้ามหน้า: ${result.skippedPages.join(', ')})`);
         } else {
@@ -640,10 +746,7 @@ document.getElementById('btnExportPreview')?.addEventListener('click', async () 
         ctx.fillText('PREVIEW', 0, 0);
         ctx.restore();
 
-        const a = document.createElement('a');
-        a.href = out.toDataURL('image/jpeg', 0.86);
-        a.download = `worksheet_preview_${Date.now()}.jpg`;
-        a.click();
+        downloadBlobOrDataUrl(out.toDataURL('image/jpeg', 0.86), `worksheet_preview_${Date.now()}.jpg`, 'image/jpeg');
         window.showToast?.('👁 ดาวน์โหลด Preview (Watermark) แล้ว');
     } catch (err) {
         console.error('[export.preview]', err);
@@ -651,7 +754,7 @@ document.getElementById('btnExportPreview')?.addEventListener('click', async () 
     }
 });
 
-/* ── 4. SAVE WORKBOOK (chrome.storage.local) ───────────────── */
+/* ── 4. SAVE WORKBOOK (chrome.storage.local → localStorage → file) */
 document.getElementById('btnSave')?.addEventListener('click', () => {
     const key = 'wb_project_autosave';
     const payload = window.wbGetWorkbookData?.() || null;
@@ -666,14 +769,22 @@ document.getElementById('btnSave')?.addEventListener('click', () => {
             window.showToast?.('💾 บันทึกแล้ว');
         });
     } else {
-        const blob = new Blob([json], { type: 'application/smartws+json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `worksheet_${Date.now()}.smartws`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-        window.wbSetSaveIndicator?.('saved');
-        window.showToast?.('💾 ดาวน์โหลด Project .smartws แล้ว');
+        /* Try localStorage first for seamless save/load roundtrip */
+        let savedToLocal = false;
+        try {
+            localStorage.setItem(key, json);
+            savedToLocal = true;
+        } catch { /* quota exceeded – fall through to file download */ }
+
+        if (savedToLocal) {
+            window.wbSetSaveIndicator?.('saved');
+            window.showToast?.('💾 บันทึกแล้ว');
+        } else {
+            const blob = new Blob([json], { type: 'application/smartws+json' });
+            downloadBlobOrDataUrl(blob, `worksheet_${Date.now()}.smartws`, 'application/smartws+json');
+            window.wbSetSaveIndicator?.('saved');
+            window.showToast?.('💾 ดาวน์โหลด Project .smartws แล้ว');
+        }
     }
 });
 
@@ -690,6 +801,14 @@ document.getElementById('btnLoad')?.addEventListener('click', () => {
             }
         });
     } else {
+        /* Try localStorage first, then fall back to file picker */
+        try {
+            const stored = localStorage.getItem(key);
+            if (stored) {
+                loadJson(stored);
+                return;
+            }
+        } catch { /* no localStorage */ }
         openFilePicker();
     }
 });
@@ -733,12 +852,51 @@ function openFilePicker() {
 
 /* ── 6. AUTO-SAVE every 60 seconds ─────────────────────────── */
 setInterval(() => {
-    if (typeof chrome === 'undefined' || !chrome.storage?.local) return;
-    const payload = window.wbGetWorkbookData?.();
-    if (!payload) return;
-    window.wbSetSaveIndicator?.('saving');
-    chrome.storage.local.set({ wb_project_autosave: JSON.stringify(payload) });
-    window.wbSetSaveIndicator?.('saved');
+    try {
+        const payload = window.wbGetWorkbookData?.();
+        if (!payload) return;
+        const json = JSON.stringify(payload);
+        window.wbSetSaveIndicator?.('saving');
+
+        if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+            chrome.storage.local.set({ wb_project_autosave: json });
+        } else {
+            try { localStorage.setItem('wb_project_autosave', json); } catch { /* quota */ }
+        }
+        window.wbSetSaveIndicator?.('saved');
+    } catch (err) {
+        console.error('[autosave]', err);
+    }
 }, 60_000);
+
+/* ── 7. AUTO-LOAD on startup ──────────────────────────────── */
+(function autoLoadOnStartup() {
+    function doLoad(json) {
+        if (!json) return;
+        try {
+            const parsed = JSON.parse(json);
+            if (parsed?.version === 2 && Array.isArray(parsed.pages) && parsed.pages.length) {
+                window.wbLoadWorkbookData?.(parsed);
+                console.log('[autoload] restored workbook from storage');
+            } else if (parsed?.objects) {
+                window.wbLoadWorkbookData?.({ version: 2, activePageIndex: 0, pages: [json] });
+                console.log('[autoload] restored single-page from storage');
+            }
+        } catch (err) {
+            console.error('[autoload]', err);
+        }
+    }
+
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+        chrome.storage.local.get(['wb_project_autosave'], (result) => {
+            doLoad(result?.wb_project_autosave);
+        });
+    } else {
+        try {
+            const json = localStorage.getItem('wb_project_autosave');
+            if (json) doLoad(json);
+        } catch { /* no storage */ }
+    }
+})();
 
 window.wbCollectAllPagesPng = collectAllPagesPng;
