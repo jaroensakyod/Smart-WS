@@ -5,6 +5,7 @@ const {
     sanitizeSerializableValue,
     sanitizeFabricLikeObject,
     sanitizeImportedData,
+    sanitizeTemplateCanvasData,
 } = require('../persistence.utils.js');
 
 test('sanitizeSerializableValue drops functions and non-serializable links', () => {
@@ -59,4 +60,19 @@ test('sanitizeImportedData handles invalid json string safely', () => {
     const out = sanitizeImportedData('{invalid');
     assert.equal(Array.isArray(out.objects), true);
     assert.equal(out.objects.length, 0);
+});
+
+test('sanitizeTemplateCanvasData marks curated objects and keeps valid types', () => {
+    const out = sanitizeTemplateCanvasData({
+        version: '5.2.4',
+        objects: [
+            { type: 'textbox', text: 'hello' },
+            { bogus: true },
+        ],
+    });
+
+    assert.equal(out.version, '5.2.4');
+    assert.equal(out.objects.length, 1);
+    assert.equal(out.objects[0].type, 'textbox');
+    assert.equal(out.objects[0].data.curatedTemplateObject, true);
 });

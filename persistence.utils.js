@@ -1,4 +1,6 @@
 (function (root) {
+    const DEFAULT_VERSION = '5.2.4';
+
     function sanitizeSerializableValue(value) {
         if (value === null || value === undefined) return value;
         if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
@@ -31,18 +33,21 @@
         return obj;
     }
 
-    function sanitizeImportedData(input) {
+    function sanitizeImportedData(input, options = {}) {
+        const defaultVersion = options.defaultVersion || DEFAULT_VERSION;
         const rootData = typeof input === 'string'
             ? (() => {
                 try {
                     return JSON.parse(input);
                 } catch {
-                    return { version: '5.2.4', objects: [] };
+                    return { version: defaultVersion, objects: [] };
                 }
             })()
             : input;
 
-        const rootObj = rootData && typeof rootData === 'object' ? rootData : { version: '5.2.4', objects: [] };
+        const rootObj = rootData && typeof rootData === 'object'
+            ? rootData
+            : { version: defaultVersion, objects: [] };
         const objects = Array.isArray(rootObj.objects)
             ? rootObj.objects
                 .map((item) => sanitizeFabricLikeObject(item))
@@ -51,7 +56,29 @@
 
         return {
             ...rootObj,
-            version: rootObj.version || '5.2.4',
+            version: rootObj.version || defaultVersion,
+            objects,
+        };
+    }
+
+    function sanitizeTemplateCanvasData(canvasData, options = {}) {
+        const defaultVersion = options.defaultVersion || DEFAULT_VERSION;
+        const root = sanitizeImportedData(canvasData || {}, { defaultVersion });
+        const objects = Array.isArray(root?.objects)
+            ? root.objects
+                .map((item) => sanitizeFabricLikeObject(item))
+                .filter(Boolean)
+                .map((item) => ({
+                    ...item,
+                    data: {
+                        ...(item.data || {}),
+                        curatedTemplateObject: true,
+                    },
+                }))
+            : [];
+
+        return {
+            version: root?.version || defaultVersion,
             objects,
         };
     }
@@ -60,6 +87,7 @@
         sanitizeSerializableValue,
         sanitizeFabricLikeObject,
         sanitizeImportedData,
+        sanitizeTemplateCanvasData,
     };
 
     if (typeof module !== 'undefined' && module.exports) {
