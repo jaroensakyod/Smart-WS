@@ -3995,6 +3995,8 @@ Return in sections: Lesson Goals, Student Worksheet, Answer Key, Rubric, Print N
         if (state === 'saving') {
             el.textContent = 'Saving...';
             el.classList.add('saving');
+        } else if (state === 'waiting') {
+            el.textContent = 'Waiting for sync...';
         } else {
             el.textContent = 'Saved';
             el.classList.add('saved');

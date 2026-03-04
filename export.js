@@ -356,6 +356,21 @@ function getWorkbookSnapshotForExport() {
     return payload;
 }
 
+function parsePageObjectCount(pageJson) {
+    try {
+        const parsed = typeof pageJson === 'string' ? JSON.parse(pageJson) : pageJson;
+        if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.objects)) return 0;
+        return parsed.objects.length;
+    } catch {
+        return 0;
+    }
+}
+
+function countWorkbookObjects(payload) {
+    if (!payload || !Array.isArray(payload.pages)) return 0;
+    return payload.pages.reduce((sum, pageJson) => sum + parsePageObjectCount(pageJson), 0);
+}
+
 function normalizePageJsonForExport(pageJson, options = {}) {
     let parsed = pageJson;
     if (typeof parsed === 'string') {
@@ -971,23 +986,51 @@ function openFilePicker() {
 }
 
 /* ── 6. AUTO-SAVE every 60 seconds ─────────────────────────── */
+let lastStableAutosaveObjectCount = null;
+
 setInterval(() => {
     if (typeof chrome === 'undefined' || !chrome.storage?.local) return;
-    const payload = window.wbGetWorkbookData?.();
 
-    // Check if persistence bridge returned a lock status
-    if (!payload || (payload.status && payload.status === 'locked_by_lifecycle')) {
-        // Skip auto-save while app is loading/replaying to prevent blank state overwrites
+    const persistenceStatus = window.wbGetPersistenceStatus?.() || {};
+    if (persistenceStatus.isPageLoading || persistenceStatus.isReplaying) {
+        window.wbSetSaveIndicator?.('waiting');
+        window.wbTrackTelemetry?.('autosave_waiting_for_sync', {
+            activePageIndex: Number.isFinite(persistenceStatus.activePageIndex) ? persistenceStatus.activePageIndex : -1,
+            pageCount: Number.isFinite(persistenceStatus.pageCount) ? persistenceStatus.pageCount : 0,
+            reason: persistenceStatus.isPageLoading ? 'page-loading' : 'canvas-replaying',
+        });
         return;
     }
 
-    try {
-        window.wbSetSaveIndicator?.('saving');
-        chrome.storage.local.set({ wb_project_autosave: JSON.stringify(payload) });
-        window.wbSetSaveIndicator?.('saved');
-    } catch (e) {
-        console.error('Auto-save bridge error:', e);
+    const payload = window.wbGetWorkbookData?.();
+    if (!payload) return;
+
+    const nextObjectCount = countWorkbookObjects(payload);
+    if (
+        Number.isFinite(lastStableAutosaveObjectCount)
+        && lastStableAutosaveObjectCount > 0
+        && nextObjectCount === 0
+    ) {
+        window.wbSetSaveIndicator?.('waiting');
+        window.wbTrackTelemetry?.('autosave_skip_suspicious_empty_payload', {
+            previousObjectCount: lastStableAutosaveObjectCount,
+            nextObjectCount,
+            pageCount: Array.isArray(payload.pages) ? payload.pages.length : 0,
+        });
+        return;
     }
+
+    window.wbSetSaveIndicator?.('saving');
+    chrome.storage.local.set({ wb_project_autosave: JSON.stringify(payload) }, () => {
+        const runtimeError = chrome.runtime?.lastError;
+        if (runtimeError) {
+            reportExportError('autosave_storage_error', runtimeError);
+            window.wbSetSaveIndicator?.('idle');
+            return;
+        }
+        lastStableAutosaveObjectCount = nextObjectCount;
+        window.wbSetSaveIndicator?.('saved');
+    });
 }, 60_000);
 
 window.wbCollectAllPagesPng = collectAllPagesPng;

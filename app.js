@@ -54,6 +54,39 @@ const canvas = new fabric.Canvas('worksheetCanvas', {
     preserveObjectStacking: true,
 });
 
+function applyFabricTextBaselineHardening() {
+    const textProto = fabric?.Text?.prototype;
+    if (!textProto || typeof textProto._getFontDeclaration !== 'function' || textProto.__smartwsBaselinePatched) return;
+
+    const baselineByPathAlign = {
+        center: 'middle',
+        ascender: 'top',
+        descender: 'bottom',
+    };
+
+    textProto._setTextStyles = function _setTextStylesSafe(ctx, styleDecl, forMeasuring) {
+        if (!ctx) return;
+        let baseline = 'alphabetic';
+        if (this.path) {
+            baseline = baselineByPathAlign[this.pathAlign] || baseline;
+        }
+        try {
+            ctx.textBaseline = baseline;
+        } catch (error) {
+            trackTelemetry('fabric_text_baseline_fallback', {
+                requested: baseline,
+                message: String(error?.message || error || 'unknown-error'),
+            });
+            ctx.textBaseline = 'alphabetic';
+        }
+        ctx.font = this._getFontDeclaration(styleDecl, forMeasuring);
+    };
+
+    textProto.__smartwsBaselinePatched = true;
+}
+
+applyFabricTextBaselineHardening();
+
 function syncUiToggles() {
     document.body.classList.toggle('show-grid', gridEnabled);
     const gridBtn = document.getElementById('btnToggleGrid');
@@ -100,23 +133,6 @@ function applyWorksheetVisibilityMode() {
 }
 
 /* ── 2. WORKBOOK STATE (MULTI-PAGE) ───────────────────────── */
-
-// Fix Fabric.js baseline crash (Alphabetical enum error)
-(function patchFabricBaseline() {
-    if (typeof fabric !== 'undefined' && fabric.Text) {
-        const originalSetTextStyles = fabric.Text.prototype._setTextStyles;
-        fabric.Text.prototype._setTextStyles = function(ctx) {
-            try {
-                return originalSetTextStyles.apply(this, arguments);
-            } catch (e) {
-                // If the context doesn't support alphabetical or any value, 
-                // fallback to something safe or ignore.
-                ctx.textBaseline = 'bottom'; 
-            }
-        };
-    }
-})();
-
 const HISTORY_MAX = 30;
 let activePageIndex = 0;
 let workbook = { pages: [] };
@@ -277,6 +293,18 @@ function restorePageSwitchSafetySnapshot() {
 
 function loadCanvasJson(json) {
     return new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = (error = null) => {
+            if (settled) return;
+            settled = true;
+            isReplaying = false;
+            if (error) {
+                reject(error);
+                return;
+            }
+            resolve();
+        };
+
         isReplaying = true;
         try {
             const sanitizedJson = sanitizeImportedData(json || BLANK_PAGE_JSON);
@@ -285,16 +313,13 @@ function loadCanvasJson(json) {
                     canvas.backgroundColor = '#ffffff';
                     applyWorksheetVisibilityMode();
                     canvas.renderAll();
-                    resolve();
+                    finish();
                 } catch (error) {
-                    reject(error);
-                } finally {
-                    isReplaying = false;
+                    finish(error);
                 }
             });
         } catch (error) {
-            isReplaying = false;
-            reject(error);
+            finish(error);
         }
     });
 }
@@ -2482,19 +2507,23 @@ window.wbSetWritingLinesConfig = (cfg) => {
     if (!['primary', 'dotted', 'grid'].includes(writingLineSettings.style)) writingLineSettings.style = 'primary';
 };
 window.wbGetWritingLinesConfig = () => ({ ...writingLineSettings });
+window.wbGetPersistenceStatus = () => ({
+    isPageLoading,
+    isReplaying,
+    activePageIndex,
+    pageCount: workbook.pages.length,
+});
 window.wbGetWorkbookData = () => {
-    // SECURITY: Do not allow background auto-save to trigger 
-    // if the page is currently loading or replaying.
-    // This prevents a blank/incomplete canvas from overwriting valid data.
     if (isPageLoading || isReplaying) {
-        trackTelemetry('bridge_persistence_blocked', { activePageIndex, isPageLoading, isReplaying });
-        return {
-            status: 'locked_by_lifecycle',
+        trackTelemetry('workbook_data_snapshot_loading_guard', {
             activePageIndex,
-        };
+            reason: isPageLoading ? 'page-loading' : 'canvas-replaying',
+            pageCount: workbook.pages.length,
+        });
+    } else {
+        persistCurrentPage();
     }
 
-    persistCurrentPage();
     return {
         version: 2,
         paperSize,
